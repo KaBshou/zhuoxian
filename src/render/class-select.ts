@@ -1,6 +1,7 @@
 import type { ClassDef, ClassId } from '../data/classes';
 import { CLASSES } from '../data/classes';
 import { STAT_META } from '../data/stats';
+import { LOGICAL_H, LOGICAL_W } from './viewport';
 
 /**
  * 开局选道统（D1：6 职业，开局选一个，之后不能转职）。
@@ -141,8 +142,8 @@ export function drawClassSelect(
   index: number,
   timeSec = 0,
 ): ClassSelectResult {
-  const W = ctx.canvas.width;
-  const H = ctx.canvas.height;
+  const W = LOGICAL_W;
+  const H = LOGICAL_H;
 
   ctx.fillStyle = C.mask;
   ctx.fillRect(0, 0, W, H);

@@ -15,6 +15,7 @@ import type { GameSession } from '../core/session';
 import { ACTIVE_SKILLS, type ActiveSkillDef } from '../data/skills';
 import { GEM_SLOTS, SUPPORT_GEMS, getSupportGem } from '../data/support-gems';
 import { TAG_NAME } from '../data/tags';
+import { LOGICAL_H, LOGICAL_W } from './viewport';
 
 const C = {
   panel: 'rgba(11, 10, 12, 0.9)',
@@ -81,12 +82,12 @@ export function drawSkillPanel(
   ch: CharacterState = s.character,
   cursor: SkillCursor | null = null,
 ): SkillPanelResult {
-  const x = (ctx.canvas.width - W) / 2;
-  const y = Math.max(20, (ctx.canvas.height - H) / 2);
+  const x = (LOGICAL_W - W) / 2;
+  const y = Math.max(20, (LOGICAL_H - H) / 2);
 
   // 遮罩：面板下面的一切都按「暂停」读
   ctx.fillStyle = 'rgba(5, 7, 11, 0.72)';
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
 
   ctx.fillStyle = C.panel;
   ctx.fillRect(x, y, W, H);

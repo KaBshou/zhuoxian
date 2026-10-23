@@ -80,11 +80,30 @@ import { sessionFromSave, sessionToSave } from './core/save-bridge';
 import { copyText, downloadText, pickTextFile } from './ui/file-transfer';
 import { formatRealm } from './data/glossary';
 import { savePanelButtons, type SavePanelAction, type SavePanelPhase } from './render/save-panel';
+import { LOGICAL_H, LOGICAL_W, resizeCanvas } from './render/viewport';
 
 const canvas = document.getElementById('stage');
 if (!(canvas instanceof HTMLCanvasElement)) {
   throw new Error('找不到 #stage 画布，检查 index.html');
 }
+
+/**
+ * 画布铺满窗口（用户要的「适配整个网页」）。
+ *
+ * 逻辑分辨率仍是 960×540 —— 这个文件里所有布局与命中测试都按它写 —— 变的只是
+ * **后备缓冲的像素数**：resizeCanvas 按「显示宽度 × devicePixelRatio ÷ 960」算出
+ * 像素比，把后备缓冲放大并 setTransform，于是大屏上的字是真的按倍数
+ * 渲染出来的，而不是把小位图拉大（拉大会糊）。
+ *
+ * 时机很讲究：必须等 CSS 布局过之后再算（getBoundingClientRect 才有宽度），
+ * 所以排一帧；窗口缩放/分屏/换屏都会触发 resize，重算一次即可。
+ */
+let pixelRatio = 1;
+const syncViewport = (): void => {
+  pixelRatio = resizeCanvas(canvas);
+};
+requestAnimationFrame(syncViewport);
+window.addEventListener('resize', syncViewport);
 
 const TABLES = { bases: ITEM_BASES, affixes: AFFIXES };
 
@@ -376,10 +395,10 @@ function doSaveAction(action: SavePanelAction): void {
  */
 canvas.addEventListener('pointerdown', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const pt = toCanvasPoint(e.clientX, e.clientY, rect, canvas.width, canvas.height);
+  const pt = toCanvasPoint(e.clientX, e.clientY, rect, LOGICAL_W, LOGICAL_H);
   if (phase === 'select') {
     // 选道统：点卡片 = 选中并确认。一次点击走完，不要求"点一下再点开始"。
-    const hit = classCardRects(canvas.width, canvas.height).find(
+    const hit = classCardRects(LOGICAL_W, LOGICAL_H).find(
       (c) => pt.x >= c.x && pt.x <= c.x + c.w && pt.y >= c.y && pt.y <= c.y + c.h,
     );
     if (hit) {
@@ -389,7 +408,7 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   if (renderer.savePanelVisible) {
-    const hitSave = savePanelButtons(canvas.width, canvas.height, savePhase).find(
+    const hitSave = savePanelButtons(LOGICAL_W, LOGICAL_H, savePhase).find(
       (b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h,
     );
     if (hitSave) {
@@ -399,7 +418,7 @@ canvas.addEventListener('pointerdown', (e) => {
     }
     // 存档面板开着时，**顶部按钮条仍然有效** —— 否则「点同一个按钮关不掉」，
     // 而按钮是手机上关面板的唯一手段（Escape 只在键盘上）。点别处仍然不穿透。
-    const hudWhileSave = hitTestHudButtons(pt.x, pt.y, canvas.width);
+    const hudWhileSave = hitTestHudButtons(pt.x, pt.y, LOGICAL_W);
     if (hudWhileSave) {
       e.preventDefault();
       activatePanel(hudWhileSave.id);
@@ -407,7 +426,7 @@ canvas.addEventListener('pointerdown', (e) => {
     }
     return; // 面板开着时，点空白不穿透到下面的 HUD（否则点"空白"会顺手把面板关掉）
   }
-  const btn = hitTestHudButtons(pt.x, pt.y, canvas.width);
+  const btn = hitTestHudButtons(pt.x, pt.y, LOGICAL_W);
   if (btn) {
     e.preventDefault();
     activatePanel(btn.id);
@@ -855,6 +874,7 @@ declare global {
       readonly tutorialStep: number;
       /** 引导总条数（探针断言「走完」时要跟这个数比，不许写死 9/10） */
       readonly tutorialLength: number;
+  readonly viewport: () => { readonly logicalW: number; readonly logicalH: number; readonly ratio: number };
       /** 一口气把引导推到底（探针不想等 12 秒时用） */
       finishTutorial(): void;
       /** 某条神通当前的装配（探针断言用；与面板画的是同一个来源） */
@@ -1088,7 +1108,10 @@ if (import.meta.env.DEV) {
       doImportConfirm();
       return true;
     },
-    get tutorialLength() {
+    /** 画布像素比（后备缓冲 / 逻辑 960）：探针把「逻辑坐标」换算成「缓冲像素」时要乘它 */
+  viewport: () => ({ logicalW: LOGICAL_W, logicalH: LOGICAL_H, ratio: pixelRatio }),
+
+  get tutorialLength() {
       return TUTORIAL_LENGTH;
     },
     finishTutorial: () => {
@@ -1163,7 +1186,7 @@ if (import.meta.env.DEV) {
     },
     // 触屏/鼠标验收用：按钮真实布局 + 卡片真实矩形。探针不许自己抄一套坐标常量
     // （抄了就会在「按钮自适应压窄」「卡片按视口重排」之后静默点空）。
-    hudButtons: () => layoutHudButtons(canvas.width, canvas.height).map((b) => ({
+    hudButtons: () => layoutHudButtons(LOGICAL_W, LOGICAL_H).map((b) => ({
       id: b.id,
       label: b.label,
       key: b.key,
@@ -1189,13 +1212,13 @@ if (import.meta.env.DEV) {
      * 布局的唯一出处在 `save-panel.ts` 的 `savePanelButtons` —— 钩子只是把它透出去，
      * 探针不许自己算坐标（算错会变成"按钮点不动"的假红，而这个项目的按钮已经踩过一次）。
      */
-    saveButtons: () => savePanelButtons(canvas.width, canvas.height, savePhase).map((b) => ({
+    saveButtons: () => savePanelButtons(LOGICAL_W, LOGICAL_H, savePhase).map((b) => ({
       id: b.id,
       x: b.x,
       y: b.y,
       w: b.w,
       h: b.h,
     })),
-    classCards: () => classCardRects(canvas.width, canvas.height).map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })),
+    classCards: () => classCardRects(LOGICAL_W, LOGICAL_H).map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })),
   };
 }
