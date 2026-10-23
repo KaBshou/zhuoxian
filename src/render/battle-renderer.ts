@@ -25,7 +25,7 @@ import { TURBID_MAX } from '../core/turbid';
 import type { ElementTag } from '../data/tags';
 import { EMPTY_FRAGMENTS } from '../data/fragments';
 import type { Rarity } from '../data/rarity';
-import { drawHudStack } from './hud-panels';
+import { drawHudStack, drawTopStripInfo } from './hud-panels';
 import { drawEquipmentDetail } from './detail-panels';
 import { drawTalentPanel } from './talent-panel';
 import { drawSkillPanel } from './skill-panel';
@@ -337,6 +337,8 @@ export class BattleRenderer {
 
     this.drawLighting(state.player.x, state.player.y);
     this.drawTopBars(state);
+    // 境界 / 战力 / 层数 / 波次 挂在顶栏右侧（D176：这几个数是每秒都要扫一眼的）
+    drawTopStripInfo(this.ctx, s);
     this.drawLog(s);
     this.drawHudPanels(s);
     if (this.showBreakdown) this.drawBreakdown(s);

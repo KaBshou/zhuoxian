@@ -50,6 +50,20 @@ const PANEL_X_GAP = 14;
 const ROW_H = 16;
 const GAP = 8;
 
+/**
+ * HUD 布局（D176）：顶栏 38px 只放血条，下面分两列 ——
+ *   左列：法宝（装备）—— 用户明确要求「装备可以直接在主界面看到」，不再藏在 E 面板里；
+ *   右列：状态 / 囊中 / 背包。
+ * 面板都从 `HUD_TOP` 开始往下堆，按钮条占 y 42~64，所以起点取 74。
+ */
+export const TOP_STRIP_H = 38;
+export const HUD_TOP = 74;
+export const HUD_PANEL_W = PANEL_W;
+export const HUD_LEFT_X = PANEL_X_GAP;
+export const HUD_RIGHT_X = 960 - PANEL_W - PANEL_X_GAP;
+const PANEL_X_RIGHT = HUD_RIGHT_X;
+const PANEL_X_LEFT = HUD_LEFT_X;
+
 type Line = { label: string; value: string; color?: string };
 
 /** 画一块面板，返回它的高度（调用方靠返回值堆叠，别写死坐标） */
@@ -97,17 +111,9 @@ export function drawStatusPanel(
 ): number {
   const maxed = s.character.step >= TOTAL_STEPS - 1;
   const marks = Math.max(0, Math.floor(s.character.marks ?? 0));
+  // 境界 / 战力 / 层数 / 波次 已经在顶栏（drawTopStripInfo、D176），这里不再重复：
+  // 同一组数字画两遍，玩家会以为两个数不一样。
   const lines: Line[] = [
-    { label: TERM.realm, value: formatRealm(s.character.step), color: C.gold },
-    { label: '战力', value: String(characterPower(s.character)), color: C.teal },
-    // 层数后面标出无尽区：玩家必须一眼看出「27 之后还有内容」，
-    // 否则满级那一刻他会以为游戏结束了（D36-A 的存在理由）。
-    {
-      label: '层数',
-      value: s.floor > MAIN_FLOOR_END ? `${s.floor} / ${MAX_FLOOR} · 渊底` : `${s.floor} / ${MAIN_FLOOR_END}`,
-      color: s.floor > MAIN_FLOOR_END ? C.purple : C.text,
-    },
-    { label: '波次', value: String(s.wave), color: C.text },
     { label: '击杀', value: `${s.battle.kills}（死 ${s.floorDeaths}）`, color: C.dim },
   ];
   // 渊痕只在满级后才有意义（它是满级后的唯一积累物，不产生战力）。
@@ -124,7 +130,7 @@ export function drawStatusPanel(
   if (depth > 0) {
     lines.push({ label: '深缘', value: `+${Math.round(depth * 100)}% 仙缘`, color: C.teal });
   }
-  return drawPanel(ctx, 960 - PANEL_W - PANEL_X_GAP, topOffset, lines);
+  return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines);
 }
 
 /** 装备一览：部位 / 名字 / 品阶 / 灵纹条数。返回高度（0 = 没画） */
@@ -140,7 +146,7 @@ export function drawEquipmentPanel(
     value: `${e.item.name} · ${RARITY_NAME[e.item.rarity]}${e.item.affixes.length > 0 ? ` ${e.item.affixes.length}纹` : ''}${e.item.legendary ? ' · 传奇' : ''}`,
     color: RARITY_COLOR[e.item.rarity],
   }));
-  return drawPanel(ctx, 960 - PANEL_W - PANEL_X_GAP, topOffset, lines, '法宝');
+  return drawPanel(ctx, PANEL_X_LEFT, topOffset, lines, '法宝');
 }
 
 /** 通货口袋 + 玉简：玩家攒的东西必须看得见（不然打造是黑箱）。返回高度 */
@@ -157,7 +163,7 @@ export function drawPocketPanel(
     color: C.gold,
   }));
   lines.push({ label: TERM.supportStone, value: String(gemCount), color: C.purple });
-  return drawPanel(ctx, 960 - PANEL_W - PANEL_X_GAP, topOffset, lines, '囊中');
+  return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines, '囊中');
 }
 
 /** 背包前 3 件（简单露出，不做成可点击界面）。返回高度（0 = 没画） */
@@ -191,33 +197,69 @@ export function drawBagPanel(
     value: lineOf(item),
     color: RARITY_COLOR[item.rarity],
   }));
-  return drawPanel(ctx, 960 - PANEL_W - PANEL_X_GAP, topOffset, lines, `背包 ${s.bag.length}/40`);
+  return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines, `背包 ${s.bag.length}/40`);
 }
 
 /**
- * 把四块面板自顶向下排好。
+ * 把 HUD 排成两列（D176）。
+ *
+ * 左列：法宝（装备）—— 常驻，玩家一眼看到自己穿了什么、什么品阶、有没有传奇；
+ * 右列：状态 / 囊中 / 背包。
  *
  * 用「每块返回高度 + 累加」而不是写死坐标：面板行数是变的（装备 1~9 行、
  * 背包 0~3 行），写死坐标一改行数就叠在一起，而且这种错在截图里很难看出来。
  */
-export function drawHudStack(ctx: CanvasRenderingContext2D, s: GameSession, top = 44): number {
-  let y = top;
-  y += drawStatusPanel(ctx, s, y) + GAP;
-  y += drawEquipmentPanel(ctx, s, y) + GAP;
-  y += drawPocketPanel(ctx, s, y) + GAP;
-  y += drawBagPanel(ctx, s, y) + GAP;
-  return y - top;
+export function drawHudStack(ctx: CanvasRenderingContext2D, s: GameSession, top = HUD_TOP): number {
+  // 左列（法宝）从顶栏下沿开始 —— 按钮条只占右侧，左侧 42 起是空的，
+  // 让装备尽量往上、尽量像"主界面的一部分"而不是"一个藏起来的面板"。
+  const leftH = drawEquipmentPanel(ctx, s, TOP_STRIP_H + 4);
+  let ry = top;
+  ry += drawStatusPanel(ctx, s, ry) + GAP;
+  ry += drawPocketPanel(ctx, s, ry) + GAP;
+  ry += drawBagPanel(ctx, s, ry) + GAP;
+  return Math.max(leftH, ry - top);
 }
 
-/** 整列 HUD 的最大高度（渲染器留空间用） */
+/**
+ * 顶栏右侧常驻两行：境界 · 战力 / 层数 · 波次（D176）。
+ *
+ * 为什么不放进右列面板：这几个数玩家每秒都要扫一眼（跟血条同级），
+ * 塞进面板就要低头找；而顶栏右侧本来是空的（罡气条右端 632，之后一直空到 946）。
+ *
+ * **必须挤在 38px 高的顶栏里**（两行：基线 16 / 31）：按钮条从 y=42 开始，
+ * 文字一旦画到 38 以下就会压到按钮上 —— 这正是这次要修的「UI 互相重叠」。
+ */
+export function drawTopStripInfo(ctx: CanvasRenderingContext2D, s: GameSession): void {
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'alphabetic';
+  const deep = s.floor > MAIN_FLOOR_END;
+  const cx = 946;
+  // 第一行：境界 · 战力
+  ctx.font = '12px "Noto Sans SC", system-ui, sans-serif';
+  ctx.fillStyle = C.gold;
+  ctx.fillText(formatRealm(s.character.step), cx - 78, 17);
+  ctx.fillStyle = C.teal;
+  ctx.fillText(`战力 ${characterPower(s.character)}`, cx, 17);
+  // 第二行：层数 · 波次
+  ctx.font = '11px "Noto Sans SC", system-ui, sans-serif';
+  ctx.fillStyle = deep ? C.purple : C.text;
+  ctx.fillText(`${deep ? '渊底 ' : ''}${s.floor} / ${deep ? MAX_FLOOR : MAIN_FLOOR_END} 层`, cx - 62, 32);
+  ctx.fillStyle = C.dim;
+  ctx.fillText(`第 ${s.wave} 波`, cx, 32);
+  ctx.restore();
+}
+
+/** HUD 占用的最大高度（两列取高的那列；渲染器留空间用） */
 export function hudStackHeight(s: GameSession): number {
   const status = 10 + 5 * ROW_H + 4;
   const equipped = equipmentSummary(s.character).length;
   const equip = equipped === 0 ? 0 : 10 + 16 + equipped * ROW_H + 4;
   const pocket = 10 + 16 + 4 * ROW_H + 4;
   const bag = s.bag.length === 0 ? 0 : 10 + 16 + Math.min(3, s.bag.length) * ROW_H + 4;
-  const panels = [status, equip, pocket, bag].filter((h) => h > 0).length;
-  return status + equip + pocket + bag + Math.max(0, panels - 1) * GAP;
+  // 左列只有法宝一块；右列三块加间隔
+  const right = status + pocket + bag + 2 * GAP;
+  return Math.max(equip, right);
 }
 
 export const HUD_COLORS = { ...C, RARITY_COLOR };
