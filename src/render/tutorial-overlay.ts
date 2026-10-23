@@ -69,7 +69,22 @@ const LINE_H = 20;
 const TITLE_H = 18;
 
 /**
+ * 引导条与画面底边的最小留白。
+ *
+ * 2026-10-23 线上事故（D177）：原来写死 `y = canvasH - boxH - 18`，
+ * 而底栏（「第 N 波　M 层　击杀…　键位提示」）的基线在 `canvasH - 14`，
+ * 于是引导框**正好压在底栏文字上**（截图里两行字糊成一团）。
+ *
+ * 修法不是「再挪几个像素」——挪多少都会在下一次改字号时重演。
+ * 而是让调用方把**底栏占多高**传进来（`bottomInset`），引导框从它上面往上排。
+ */
+const BOTTOM_MARGIN = 8;
+
+/**
  * 画一条引导提示。返回它的矩形（探针/测试要断言「它真的画在屏幕内」）。
+ *
+ * `bottomInset` = 画面底部被别的东西占掉的高度（底栏）。引导框从它上方往上排，
+ * 默认 0 保持旧行为（单测与老探针不受影响）。
  */
 export function drawTutorial(
   ctx: CanvasRenderingContext2D,
@@ -77,6 +92,7 @@ export function drawTutorial(
   progress: string,
   canvasW: number,
   canvasH: number,
+  bottomInset = 0,
 ): TutorialBox {
   const boxW = Math.min(MAX_BOX_W, Math.max(240, canvasW - 60));
   // 半角宽度预算：减去左右内边距，再留一点给标点
@@ -84,7 +100,7 @@ export function drawTutorial(
   const lines = wrapTutorialText(text, textUnits);
   const boxH = PAD_Y * 2 + TITLE_H + lines.length * LINE_H;
   const x = Math.round((canvasW - boxW) / 2);
-  const y = Math.round(canvasH - boxH - 18);
+  const y = Math.round(canvasH - bottomInset - boxH - BOTTOM_MARGIN);
 
   ctx.fillStyle = C.panel;
   ctx.fillRect(x, y, boxW, boxH);
@@ -126,4 +142,24 @@ export function tutorialBoxHeight(text: string, canvasW: number): number {
   const boxW = Math.min(MAX_BOX_W, Math.max(240, canvasW - 60));
   const textUnits = Math.floor((boxW - PAD_X * 2 - 8) / 6.5);
   return PAD_Y * 2 + TITLE_H + wrapTutorialText(text, textUnits).length * LINE_H;
+}
+
+/** 引导框的矩形（不画，只算）。测试用它断言「不许压到底栏」。 */
+export function tutorialBoxRect(
+  text: string,
+  canvasW: number,
+  canvasH: number,
+  bottomInset = 0,
+): TutorialBox {
+  const boxW = Math.min(MAX_BOX_W, Math.max(240, canvasW - 60));
+  const textUnits = Math.floor((boxW - PAD_X * 2 - 8) / 6.5);
+  const lines = wrapTutorialText(text, textUnits);
+  const boxH = PAD_Y * 2 + TITLE_H + lines.length * LINE_H;
+  return {
+    x: Math.round((canvasW - boxW) / 2),
+    y: Math.round(canvasH - bottomInset - boxH - BOTTOM_MARGIN),
+    w: boxW,
+    h: boxH,
+    lines,
+  };
 }

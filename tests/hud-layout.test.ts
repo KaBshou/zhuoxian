@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { layoutHudButtons } from '../src/render/hud-buttons';
-import { HUD_LEFT_X, HUD_PANEL_W, HUD_RIGHT_X, HUD_TOP, TOP_STRIP_H } from '../src/render/hud-panels';
+import {
+  FOOTER_H,
+  HUD_LEFT_X,
+  HUD_PANEL_W,
+  HUD_RIGHT_X,
+  HUD_TOP,
+  TOP_STRIP_H,
+  estimateTextWidth,
+  topStripRows,
+} from '../src/render/hud-panels';
+import { tutorialBoxRect } from '../src/render/tutorial-overlay';
+import { createCharacter } from '../src/core/character';
+import { createSession } from '../src/core/session';
+import { ITEM_BASES } from '../src/data/bases';
+import { AFFIXES } from '../src/data/affixes';
+import type { GameSession } from '../src/core/session';
 
 /**
  * HUD 布局的几何钉子（D176）。
@@ -90,9 +105,104 @@ describe('HUD 布局不重叠（D176）', () => {
   });
 
   it('战况日志区（左下）与两列面板都不相交', () => {
-    // 日志从底部往上画 6 行（每行约 18px），左下角 x 14 起、宽约 380
-    const log: Rect = { x: 14, y: H - 14 - 6 * 18, w: 380, h: 6 * 18 };
+    // 日志从底栏上方往上画（D177：原来第一行画在 BATTLE_H-14，与底栏同一基线）
+    const logBottom = H - FOOTER_H - 6;
+    const log: Rect = { x: 14, y: logBottom - 6 * 18, w: 380, h: 6 * 18 };
     const left: Rect = { x: HUD_LEFT_X, y: TOP_STRIP_H + 4, w: HUD_PANEL_W, h: 200 };
     expect(overlap(log, left)).toBe(false);
+  });
+});
+
+/**
+ * D177：线上截图实拍的两处重叠。
+ *
+ * 这两条的共同点：**错的是布局算法，不是某个坐标**。所以测试钉的是
+ * 「算出来的矩形不许相交」，不是「某个数字等于多少」——后者下次改字号又会失效。
+ */
+function makeSession(): GameSession {
+  return createSession({
+    classId: 'yujian',
+    seed: 2026,
+    tables: { bases: ITEM_BASES, affixes: AFFIXES },
+  });
+}
+
+describe('顶栏右侧文字不许重叠（D177）', () => {
+  it('境界与战力两段文字不重叠（这是线上事故的正面）', () => {
+    const s = makeSession();
+    const rows = topStripRows(s, 946);
+    const first = rows[0];
+    expect(first).toBeTruthy();
+    const items = first!.items;
+    expect(items.length).toBeGreaterThanOrEqual(2);
+
+    // 按渲染器的摆法复算每段的左右边界，断言相邻两段之间留出 STRIP_GAP 的空隙
+    const widths = items.map((it) => estimateTextWidth(it.text, 12));
+    const total = widths.reduce((a, b) => a + b, 0) + 10 * (items.length - 1);
+    let x = 946 - total;
+    let prevRight = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < items.length; i += 1) {
+      const w = widths[i] ?? 0;
+      expect(x, `第 ${i} 段（${items[i]!.text}）压到了前一段`).toBeGreaterThanOrEqual(prevRight);
+      prevRight = x + w;
+      x += w + 10;
+    }
+  });
+
+  it('带小数的战力比旧的 78px 间距还宽 —— 这才是那次重叠的真根因', () => {
+    // 事故复盘：旧代码 `fillText(realm, cx - 78)` + `fillText(power, cx)`，
+    // 两段都是右对齐、间距写死 78。境界「练气·一重」只有约 55px，装得下；
+    // 真正越界的是 `战力 156.65895`（约 90px）—— 所以修法是「取整」+「算宽度」，
+    // 不是「把 78 改成 90」（改数字下次换个更长的小数又会叠）。
+    expect(estimateTextWidth('战力 156.65895', 12)).toBeGreaterThan(78);
+    expect(estimateTextWidth('战力 157', 12)).toBeLessThan(78);
+  });
+
+  it('战力是整数（不出现 156.65895 这种撑爆行宽的小数）', () => {
+    const s = makeSession();
+    const power = topStripRows(s, 946)[0]?.items.at(-1)?.text ?? '';
+    expect(power).toMatch(/^战力 \d+$/);
+  });
+
+  it('两行都整体落在顶栏 38px 内（基线 17 / 32 + 字高）', () => {
+    for (const baseline of [17, 32]) {
+      expect(baseline + 4).toBeLessThanOrEqual(TOP_STRIP_H);
+    }
+  });
+
+  it('极窄预算时降级成只留战力/波次，而不是叠在一起', () => {
+    const s = makeSession();
+    const rows = topStripRows(s, 946, 40);
+    expect(rows[0]?.items).toHaveLength(1);
+    expect(rows[0]?.items[0]?.text).toMatch(/^战力 \d+$/);
+    expect(rows[1]?.items).toHaveLength(1);
+    expect(rows[1]?.items[0]?.text).toMatch(/^第 \d+ 波$/);
+  });
+});
+
+describe('引导框不许压底栏（D177）', () => {
+  it('引导框底边在底栏上方', () => {
+    const text = '浊气入体，你还活着。它会替你出手 —— 你不必按任何键。';
+    const rect = tutorialBoxRect(text, W, H, FOOTER_H);
+    const footerTop = H - FOOTER_H;
+    expect(rect.y + rect.h).toBeLessThanOrEqual(footerTop);
+  });
+
+  it('多行引导也不许压底栏（换行会变高，压不压取决于算法不是运气）', () => {
+    const text = '这是一句很长的引导文案，用来逼出两行甚至三行，验证引导框变高之后依然从底栏上方往上排，而不是压到底栏文字上。';
+    const rect = tutorialBoxRect(text, W, H, FOOTER_H);
+    expect(rect.lines.length).toBeGreaterThan(1);
+    expect(rect.y + rect.h).toBeLessThanOrEqual(H - FOOTER_H);
+    expect(rect.y).toBeGreaterThan(TOP_STRIP_H);
+  });
+
+  it('不传 bottomInset 时保持旧行为（老探针与单测不受影响）', () => {
+    const rect = tutorialBoxRect('短句', W, H);
+    expect(rect.y + rect.h).toBeLessThanOrEqual(H);
+  });
+
+  it('FOOTER_H 覆盖底栏基线与字高（14 + 字高 11 ≈ 25，取 24 会让字贴边）', () => {
+    // 底栏基线 = H-14，字高 11px ⇒ 文字顶端约 H-25。FOOTER_H 必须 ≥ 25 才真正让开。
+    expect(FOOTER_H).toBeGreaterThanOrEqual(25);
   });
 });

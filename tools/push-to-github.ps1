@@ -120,24 +120,45 @@ git remote remove origin 2>$null
 git remote add origin $authUrl
 Say '  开始上传（项目约 21MB，第一次会慢一点）……'
 
+# 注意：不能用 $LASTEXITCODE 判成败。git push 在「没有新提交」时把
+# "Everything up-to-date" 写到 stderr，PowerShell 会把它包装成 NativeCommandError，
+# 于是看起来像失败（实测过：其实早推成功了）。判据改成「远端 HEAD 是否等于本地 HEAD」。
 $pushOut = git push -u origin main 2>&1
-$pushCode = $LASTEXITCODE
+$pushText = ($pushOut | Out-String)
 
 # 无论成败，先把 Token 从 remote 地址里摘掉（不让它留在配置文件里）
 git remote set-url origin $remoteUrl
 
-if ($pushCode -ne 0) {
+$localHead = (git rev-parse HEAD).Trim()
+$remoteHead = ''
+try {
+  $lsOut = git ls-remote origin refs/heads/main 2>$null
+  if ($lsOut) { $remoteHead = ($lsOut -split '\s+')[0].Trim() }
+} catch { $remoteHead = '' }
+
+$pushOk = ($localHead.Length -gt 0) -and ($localHead -eq $remoteHead)
+
+if (-not $pushOk) {
   Say ''
-  Say '  [X] 推送失败' 'Red'
-  Say ($pushOut | Out-String)
+  Say '  [X] 推送失败（远端 main 和本地对不上）' 'Red'
+  Say ("  本地 HEAD：" + $localHead)
+  Say ("  远端 HEAD：" + $(if ($remoteHead) { $remoteHead } else { '（读不到）' }))
+  Say ''
+  Say '  git 输出：'
+  Say $pushText
   Say '  常见原因：' 'Yellow'
   Say '   a) Token 复制不全 / 已过期 -> 重新生成一个'
   Say '   b) Token 没勾 repo 权限 -> 生成时把 repo 那一整行勾上'
   Say '   c) 建仓库时勾了 README -> 本地和远端历史冲突，在 GitHub 上删掉仓库重建（空仓库）'
+  Say '   d) 网络断了 -> 重跑本脚本即可（不会重复上传）'
   exit 1
 }
 
-Say '  [OK] 推送成功'
+if ($pushText -match 'Everything up-to-date') {
+  Say '  [OK] 远端已经是最新的（没有新提交要推，这不算失败）'
+} else {
+  Say '  [OK] 推送成功'
+}
 
 # ---------- 5. 记住凭据 ----------
 Say ''

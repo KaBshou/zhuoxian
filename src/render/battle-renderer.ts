@@ -25,7 +25,7 @@ import { TURBID_MAX } from '../core/turbid';
 import type { ElementTag } from '../data/tags';
 import { EMPTY_FRAGMENTS } from '../data/fragments';
 import type { Rarity } from '../data/rarity';
-import { drawHudStack, drawTopStripInfo } from './hud-panels';
+import { FOOTER_H, drawHudStack, drawTopStripInfo } from './hud-panels';
 import { drawEquipmentDetail } from './detail-panels';
 import { drawTalentPanel } from './talent-panel';
 import { drawSkillPanel } from './skill-panel';
@@ -295,7 +295,8 @@ export class BattleRenderer {
    * 渲染器不判"第几条"。
    */
   renderTutorial(text: string, progress: string): void {
-    drawTutorial(this.ctx, text, progress, BATTLE_W, BATTLE_H);
+    // 底栏占着画面最下面 24px，引导框必须让位（D177：线上实拍两行字叠在一起）
+    drawTutorial(this.ctx, text, progress, BATTLE_W, BATTLE_H, FOOTER_H);
   }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -942,7 +943,11 @@ export class BattleRenderer {
     const ctx = this.ctx;
     ctx.textAlign = 'left';
     ctx.font = '11px "Noto Sans SC", system-ui, sans-serif';
-    let y = BATTLE_H - 14;
+    // 日志从**底栏上方**往上堆（D177）。
+    // 原来第一行画在 `BATTLE_H - 14`，与底栏统计行同一个基线 ⇒ 两串字糊在一起
+    // （线上截图实拍：左下日志与右下统计在中段重叠）。
+    const footerTop = BATTLE_H - FOOTER_H;
+    let y = footerTop - 6;
     for (let i = s.log.length - 1; i >= 0; i--) {
       const l = s.log[i];
       if (!l) continue;
@@ -951,11 +956,11 @@ export class BattleRenderer {
       ctx.fillStyle = l.color;
       ctx.fillText(l.text, 16, y);
       y -= 16;
-      if (y < BATTLE_H - 90) break;
+      if (y < BATTLE_H - 120) break;
     }
     ctx.globalAlpha = 1;
 
-    // 右下角统计
+    // 右下角统计（底栏）
     ctx.textAlign = 'right';
     ctx.fillStyle = C.dim;
     ctx.fillText(

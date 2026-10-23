@@ -58,6 +58,15 @@ const GAP = 8;
  */
 export const TOP_STRIP_H = 38;
 export const HUD_TOP = 74;
+/**
+ * 底栏占的高度（D177）。底栏是「第 N 波　M 层　击杀…　键位提示」那一行，
+ * 基线原本写死在 `BATTLE_H - 14`。
+ *
+ * 抽成常量是为了让**别的东西知道它占了多少地方**：引导框（引路）原本
+ * 也是从画面底部往上算的，两者直接叠在一起（线上截图实拍）。
+ * 引导框现在按这个常量让位。
+ */
+export const FOOTER_H = 26;
 export const HUD_PANEL_W = PANEL_W;
 export const HUD_LEFT_X = PANEL_X_GAP;
 export const HUD_RIGHT_X = 960 - PANEL_W - PANEL_X_GAP;
@@ -226,27 +235,102 @@ export function drawHudStack(ctx: CanvasRenderingContext2D, s: GameSession, top 
  * 为什么不放进右列面板：这几个数玩家每秒都要扫一眼（跟血条同级），
  * 塞进面板就要低头找；而顶栏右侧本来是空的（罡气条右端 632，之后一直空到 946）。
  *
- * **必须挤在 38px 高的顶栏里**（两行：基线 16 / 31）：按钮条从 y=42 开始，
- * 文字一旦画到 38 以下就会压到按钮上 —— 这正是这次要修的「UI 互相重叠」。
+ * **必须挤在 38px 高的顶栏里**（两行：基线 17 / 32）：按钮条从 y=42 开始，
+ * 文字一旦画到 38 以下就会压到按钮上。
+ *
+ * 2026-10-23 线上事故（D177）：原来用 `cx - 78` 这种**写死偏移**给左半段留位，
+ * 但「练气·一重」实测宽度 > 78px，于是境界与战力两串字**叠在一起**渲染成
+ * `练气·一重战力156.65895`。改成 `topStripRows()` 先算宽度再定位（可单测），
+ * 并且战力取整（挂机游戏没人需要小数点后 5 位，`156.65895` 还会撑爆行宽）。
  */
+export interface TopStripItem {
+  readonly text: string;
+  readonly color: string;
+  readonly align: 'left' | 'right';
+}
+
+export interface TopStripRow {
+  readonly items: readonly TopStripItem[];
+}
+
+/** 估算一段文字的像素宽度（顶栏布局用；宁可高估，否则又会叠） */
+export function estimateTextWidth(text: string, fontPx: number): number {
+  let units = 0;
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    units += code < 0x2e80 ? 0.55 : 1;
+  }
+  return units * fontPx;
+}
+
+const STRIP_GAP = 10;
+
+/**
+ * 顶栏右侧两行的排布（纯函数，单测直接钉「两段文字不许重叠」）。
+ *
+ * 规则：一行里最后一项右对齐到 `right`，前面的项依次往左摆、中间留 `STRIP_GAP`。
+ * 这样只要总宽不超预算就**永远不会叠**——叠是因为写了固定偏移，不是因为字太长。
+ */
+export function topStripRows(
+  s: GameSession,
+  right = 946,
+  maxW = 300,
+): readonly TopStripRow[] {
+  const deep = s.floor > MAIN_FLOOR_END;
+  const realm = formatRealm(s.character.step);
+  // 战力取整：`characterPower` 返回浮点，直接贴进模板会出现 156.65895
+  const power = `战力 ${Math.round(characterPower(s.character))}`;
+  const floorText = `${deep ? '渊底 ' : ''}${s.floor} / ${deep ? MAX_FLOOR : MAIN_FLOOR_END} 层`;
+  const waveText = `第 ${s.wave} 波`;
+
+  // 两行都用同一个字号（12px）量宽度，避免一行量 12 一行画 11 造成的误差
+  const wRealm = estimateTextWidth(realm, 12);
+  const wPower = estimateTextWidth(power, 12);
+  const wFloor = estimateTextWidth(floorText, 11);
+  const wWave = estimateTextWidth(waveText, 11);
+
+  // 第一行超预算时砍掉境界（战力比境界重要：玩家靠它判断换装有没有用）
+  const row1: TopStripItem[] = [];
+  if (wRealm + STRIP_GAP + wPower <= maxW) {
+    row1.push({ text: realm, color: C.gold, align: 'left' });
+  }
+  row1.push({ text: power, color: C.teal, align: 'left' });
+
+  const row2: TopStripItem[] = [];
+  if (wFloor + STRIP_GAP + wWave <= maxW) {
+    row2.push({ text: floorText, color: deep ? C.purple : C.text, align: 'left' });
+  }
+  row2.push({ text: waveText, color: C.dim, align: 'left' });
+
+  return [{ items: row1 }, { items: row2 }];
+}
+
 export function drawTopStripInfo(ctx: CanvasRenderingContext2D, s: GameSession): void {
   ctx.save();
-  ctx.textAlign = 'right';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  const deep = s.floor > MAIN_FLOOR_END;
-  const cx = 946;
-  // 第一行：境界 · 战力
-  ctx.font = '12px "Noto Sans SC", system-ui, sans-serif';
-  ctx.fillStyle = C.gold;
-  ctx.fillText(formatRealm(s.character.step), cx - 78, 17);
-  ctx.fillStyle = C.teal;
-  ctx.fillText(`战力 ${characterPower(s.character)}`, cx, 17);
-  // 第二行：层数 · 波次
-  ctx.font = '11px "Noto Sans SC", system-ui, sans-serif';
-  ctx.fillStyle = deep ? C.purple : C.text;
-  ctx.fillText(`${deep ? '渊底 ' : ''}${s.floor} / ${deep ? MAX_FLOOR : MAIN_FLOOR_END} 层`, cx - 62, 32);
-  ctx.fillStyle = C.dim;
-  ctx.fillText(`第 ${s.wave} 波`, cx, 32);
+  const right = 946;
+  const rows = topStripRows(s, right);
+  const ys = [17, 32];
+  const sizes = [12, 11];
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (!row) continue;
+    const fontPx = sizes[i] ?? 11;
+    ctx.font = `${fontPx}px "Noto Sans SC", system-ui, sans-serif`;
+    const widths = row.items.map((it) => estimateTextWidth(it.text, fontPx));
+    const total = widths.reduce((a, b) => a + b, 0) + STRIP_GAP * Math.max(0, row.items.length - 1);
+    let x = right - total;
+    const y = ys[i] ?? 32;
+    for (let k = 0; k < row.items.length; k += 1) {
+      const it = row.items[k];
+      if (!it) continue;
+      ctx.fillStyle = it.color;
+      ctx.fillText(it.text, x, y);
+      x += (widths[k] ?? 0) + STRIP_GAP;
+    }
+  }
   ctx.restore();
 }
 
