@@ -39,6 +39,7 @@ export interface PlayerSave {
   readonly fragments?: { readonly metal?: number; readonly fire?: number; readonly water?: number };
   /** D181：音效静音（玩家偏好，可选；老档没有 = 不静音） */
   readonly muted?: boolean;
+  readonly volume?: number;
   readonly equipment: Partial<Record<string, Item>>;
   readonly bag: readonly Item[];
 }
@@ -139,6 +140,7 @@ export function serialize(input: {
       marks: Math.max(0, Math.floor(ch.marks ?? 0)),
       diveLockUnlocked: ch.diveLockUnlocked === true,
       muted: ch.muted === true,
+      volume: ch.volume,
       fragments: {
         metal: Math.max(0, Math.floor(ch.fragments?.metal ?? 0)),
         fire: Math.max(0, Math.floor(ch.fragments?.fire ?? 0)),
@@ -212,6 +214,10 @@ export function deserialize(raw: unknown): { ok: true; state: SaveState } | { ok
         marks: typeof p.marks === 'number' && Number.isFinite(p.marks) ? Math.max(0, Math.floor(p.marks)) : 0,
         diveLockUnlocked: p.diveLockUnlocked === true,
         muted: p.muted === true,
+        volume:
+          typeof p.volume === 'number' && Number.isFinite(p.volume)
+            ? Math.min(1, Math.max(0, p.volume))
+            : undefined,
         // 五行碎片（D104）：与 marks 同理，逐字段重建，漏了就是静默清零。
         fragments: sanitizeFragments(p.fragments),
         equipment: p.equipment as Partial<Record<string, Item>>,

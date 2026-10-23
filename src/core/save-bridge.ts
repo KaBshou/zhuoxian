@@ -90,6 +90,10 @@ export function sessionFromSave(state: SaveState, opts: RestoreOptions): GameSes
   ch.diveLockUnlocked = state.player.diveLockUnlocked === true;
   // 音效静音（D181）：玩家偏好，读档必须恢复 —— 上次关了声，这次打开不能自己响。
   ch.muted = state.player.muted === true;
+  ch.volume =
+    typeof state.player.volume === 'number' && Number.isFinite(state.player.volume)
+      ? Math.min(1, Math.max(0, state.player.volume))
+      : undefined;
   // 五行碎片（D104）：与渊痕同理，丢它等于把攒的定向工具清零。老档没有 → 全 0。
   ch.fragments = sanitizeFragments(state.player.fragments);
   ch.equipment = state.player.equipment;

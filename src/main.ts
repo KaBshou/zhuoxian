@@ -133,7 +133,12 @@ const loaded = autosaver.load();
  * - **静音读档**：玩家上次关掉音效，这次打开不能自己响（存档里的 `muted`）；
  * - 引擎自己吞掉所有异常（没声卡/被策略拦），所以这里不用 try。
  */
-const audio = createAudioEngine({ muted: loaded ? loaded.session.character.muted === true : false });
+const audio = createAudioEngine({
+  muted: loaded ? loaded.session.character.muted === true : false,
+  volume: loaded ? loaded.session.character.volume : undefined,
+});
+/** 音量步进 10%：手柄摇杆一样的粗粒度，键盘调不出"精确 37%"也不需要 */
+const VOLUME_STEP = 0.1;
 
 /**
  * 两个阶段：新号先选道统（D1：6 职业，开局选一个、之后不能转职），有档直接进。
@@ -428,6 +433,28 @@ function toggleSound(): void {
     audio.unlock();
     audio.play('ui');
   }
+}
+
+/**
+ * 调音量（D182）。[ 降、] 升，步进 10%。
+ *
+ * 两个细节：
+ * - 调到 0 不等于静音：静音是独立开关（v 键），音量 0 只是「听不见但仍在播」。
+ *   如果这里顺手把 muted 置真，玩家按 ] 想调回来时会发现还得再按 v，多一步就是坑。
+ * - 每次都播一声 'ui' 让玩家当场听到结果 —— 调音量必须有听觉反馈，否则调完不知道有没有生效。
+ */
+function adjustVolume(delta: number): void {
+  const next = Math.min(1, Math.max(0, Math.round((audio.volume + delta) * 100) / 100));
+  audio.setVolume(next);
+  session.character = { ...session.character, volume: next };
+  autosaver.saveNow();
+  session.log.push({
+    text: `音量 ${Math.round(next * 100)}%`,
+    color: next === 0 ? '#6d665c' : '#8eeae2',
+    age: 0,
+  });
+  audio.unlock();
+  audio.play('ui');
 }
 
 /**
@@ -778,6 +805,12 @@ window.addEventListener('keydown', (e) => {
     activatePanel('sound');
     return;
   }
+  // [ / ] = 音量 -/+（D182）。放在 V 旁边是因为它们属于同一件事：听起来舒不舒服。
+  if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+    e.preventDefault();
+    adjustVolume(e.code === 'BracketRight' ? VOLUME_STEP : -VOLUME_STEP);
+    return;
+  }
   if (e.code === 'KeyM') {
     activatePanel('marks');
     return;
@@ -974,7 +1007,14 @@ declare global {
       /** 真正执行导入（覆盖当前 session） */
       confirmImport(): boolean;
       /** 音效状态（D181 探针用） */
-      audio(): { readonly muted: boolean; readonly played: number; readonly failed: number };
+      audio(): {
+        readonly muted: boolean;
+        readonly volume: number;
+        readonly played: number;
+        readonly failed: number;
+      };
+      /** 直接设音量（探针用；与 [ ] 走同一个引擎方法） */
+      setAudioVolume(value: number): number;
       /** 切换静音（走 UI 同一条路径） */
       toggleSound(): boolean;
       /** 引导走到第几条（探针验收用；0 = 刚开局） */
@@ -1223,7 +1263,11 @@ if (import.meta.env.DEV) {
         visible: renderer.savePanelVisible,
       };
     },
-    audio: () => ({ muted: audio.muted, played: audio.played, failed: audio.failed }),
+    audio: () => ({ muted: audio.muted, volume: audio.volume, played: audio.played, failed: audio.failed }),
+    setAudioVolume: (value: number) => {
+      adjustVolume(value - audio.volume);
+      return audio.volume;
+    },
     toggleSound: () => {
       toggleSound();
       return audio.muted;

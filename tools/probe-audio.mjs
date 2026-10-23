@@ -204,6 +204,39 @@ try {
   const a5 = await evalJs(cdp, `window.__zhuoxian.audio()`);
   ok('打开后继续播', a5.played > 0, `played=${a5.played}`);
 
+
+  // ── D182 音量轴 ─────────────────────────────────────────────────────
+  // 只证「机制」：引擎的音量变了、进了存档、刷新后还在、0 与静音是两件事。
+  // 响不响仍然只能靠耳朵（无声 CI 里 AudioContext 一样能跑）。
+  const v0 = await evalJs(cdp, 'window.__zhuoxian.audio().volume');
+  ok('默认音量是 45%', v0 === 0.45, String(v0));
+
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'BracketRight', key: ']', windowsVirtualKeyCode: 221 });
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'BracketRight', key: ']', windowsVirtualKeyCode: 221 });
+  await sleep(300);
+  const vUp = await evalJs(cdp, 'window.__zhuoxian.audio().volume');
+  ok('按 ] 音量升一档（+10%）', Math.abs(vUp - 0.55) < 1e-9, String(vUp));
+  const logVol = await evalJs(cdp, "window.__zhuoxian.session.log.some(l => l.text.includes('音量 55%'))");
+  ok('调音量有日志反馈', logVol === true);
+
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'BracketLeft', key: '[', windowsVirtualKeyCode: 219 });
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'BracketLeft', key: '[', windowsVirtualKeyCode: 219 });
+  await sleep(300);
+  const vDown = await evalJs(cdp, 'window.__zhuoxian.audio().volume');
+  ok('按 [ 音量降回来', Math.abs(vDown - 0.45) < 1e-9, String(vDown));
+
+  const savedVol = await evalJs(cdp, 'window.__zhuoxian.exportSaveText().includes(String.fromCharCode(34) + "volume" + String.fromCharCode(34))');
+  ok('音量状态进了存档', savedVol === true);
+
+  await cdp.send('Page.reload');
+  await sleep(2200);
+  const vReload = await evalJs(cdp, 'window.__zhuoxian.audio().volume');
+  ok('刷新后音量还在', Math.abs(vReload - 0.45) < 1e-9, String(vReload));
+
+  const vZero = await evalJs(cdp, 'window.__zhuoxian.setAudioVolume(0)');
+  const mutedAtZero = await evalJs(cdp, 'window.__zhuoxian.audio().muted');
+  ok('音量 0 不等于静音（静音是独立开关）', vZero === 0 && mutedAtZero === false, JSON.stringify({ vZero, mutedAtZero }));
+  await evalJs(cdp, 'window.__zhuoxian.setAudioVolume(0.45)');
   ok('控制台零报错', cdp.errors.length === 0, `${cdp.errors.length} 条`);
 
   const shot = await cdp.send('Page.captureScreenshot', { format: 'png' });

@@ -2823,3 +2823,26 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 **探针只证机制，不证听感**：无声卡的 CI 里 `AudioContext` 一样能跑，「好不好听」只有耳朵能判断。所以探针钉的是「引擎被调用 / 状态入档 / 按钮高亮」，不钉「响没响」。
 
 **没做的**：音量滑块（引擎已支持 `setVolume`，但玩家没有入口，属可见奖励缺口，记账）、背景音乐（挂机游戏长听 2 BGM 不如无 BGM，暂不做）。
+### D182 音量控制接线（`[` `]` 调 10%，与静音并存但两件事）
+
+**问题**：D181 把 14 个音效和静音开关做出来，但 `createAudioEngine` 的 `setVolume` 从来没有玩家入口 —— 玩家唯一能做的音量操作是「整个关掉」。这不是缺新功能，是把已经造好的旋钮接上线。
+
+**落地**
+- `src/core/character.ts` 加 `readonly volume?: number`；`src/core/save.ts` 的 `PlayerSave.volume?` + serialize + deserialize（`Number.isFinite` 才取、越界夹 0~1、NaN → `undefined`）；`src/core/save-bridge.ts` 回填同口径。**和 `muted` 一起进角色存档** —— 存档只有角色这一处能存玩家状态，另开 localStorage key 就是第二套口径。
+- `src/main.ts`：`createAudioEngine({ muted, volume: loaded ? session.character.volume : undefined })`；`VOLUME_STEP = 0.1`；`function adjustVolume(delta)`（`Math.round((audio.volume + delta) * 100) / 100` → 夹 0~1 → `audio.setVolume` + `session.character.volume` 同步 + `autosaver.saveNow()` + 日志「音量 N%」+ `audio.play('ui')` 让玩家当场听见结果）；键位 `BracketLeft`/`BracketRight`；钩子 `audio().volume` 与 `setAudioVolume(v)`（走同一条 `adjustVolume`）。
+- `src/render/battle-renderer.ts` 底栏提示行补 `S 存档　V 音效　[ ] 音量` —— 顺带发现 **S 与 V 两个键从来没进提示行**（按钮有、快捷键提示没有，等于只有鼠标能发现）。
+
+**两条判断**
+1. **调到 0 不等于静音**：静音是独立开关（V 键），音量 0 只是「听不见但仍在播」。如果 `adjustVolume` 顺手把 `muted` 置真，玩家按 `]` 想调回来时还得再按一次 V —— 多一步就是坑。
+2. **调音量必须当场有听觉反馈**：每次 `adjustVolume` 都播一声 `ui`，否则调完不知道有没有生效（这也是所有音量滑块的默认做法）。
+
+**验证（本次真跑）**
+- `npx vitest run` **831 passed / 54 files**（新增 `tests/audio-volume.test.ts` 9 条：默认音量不是 0 / `setVolume` 夹 0~1 / 脏值（NaN、`'abc'`、`null`）不把引擎变 NaN / 静音与音量独立（volume=1 + muted 时 `played=0`）/ 存档往返含 `"volume":0.7` / 没设过不写字段且读回 `undefined` / 越界与 NaN 存档值被夹或丢弃 / muted 与 volume 同时往返互不覆盖）。
+- `node tools/probe-audio.mjs` **22/22**（新增 7 项：默认 45% / 按 `]` 到 55% / 日志「音量 55%」/ 按 `[` 回 45% / 存档含 `"volume"` / 刷新后仍 45% / **音量 0 时 `muted` 仍是 false**）。
+  - 探针只证机制（引擎音量变了、进档、刷新还在），**不能证「响不响」** —— 无声 CI 里 AudioContext 一样能跑。
+
+**踩坑**
+1. 补丁脚本里用 `\\\`` 往 TS 源码写模板字符串，结果把字面 `\`` 写进文件 ⇒ `main.ts` 报 10 个 `TS1127 Invalid character` / `TS1005`。**改源码里的模板字符串只能用编辑工具写字面反引号，不能在补丁脚本里转义**。
+2. PowerShell 里含反引号与 `$` 的内联 heredoc 补丁被 CC Safety Net 判 `analysis.strict-unparseable` 拦下 ⇒ 一律先用文件写工具建 `.mjs` 再 `node` 跑。
+3. `deserialize(raw)` **只收对象、不吃字符串**（JSON 解析是调用方的事），第一版传 `JSON.stringify(...)` 进去 9 条里红了 6 条。
+4. Node 里没有 `AudioContext` ⇒ `ensureContext()` 返回 null、`played` 永远不动。测「静音时不播」必须注入假上下文，否则测的是「Node 没声卡」而不是静音逻辑。
