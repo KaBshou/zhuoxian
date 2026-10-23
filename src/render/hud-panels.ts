@@ -9,6 +9,7 @@
  * 走 inventory.ts 的纯函数，否则离线收益（无渲染）和在线不一致。
  */
 import type { GameSession } from '../core/session';
+import { prestigeReady } from '../core/session';
 import { characterPower, equipmentSummary, itemPower, slotForItem } from '../core/inventory';
 import { powerDeltaText, powerRatioText, rarityRankText } from '../core/power-rank';
 import { SLOT_NAME, type SlotId } from '../data/slots';
@@ -114,6 +115,17 @@ function drawPanel(
 }
 
 /** 右上角状态面板：境界 / 战力 / 层数 / 波次 / 击杀。返回高度 */
+/**
+ * 轮回提示的文案（纯函数，单测直接钉「什么时候该显示、显示什么」）。
+ *
+ * 为什么单独抽出来：满级是 4 小时之后才到的状态，用截图和探针验一次要挂机很久；
+ * 抽成纯函数就能在单测里把「满级 / 死亡冷却 / 已轮回若干次」三种状态一次钉死。
+ */
+export function prestigeHintText(s: GameSession): string | null {
+  if (!prestigeReady(s)) return null;
+  return s.cycle > 0 ? `第 ${s.cycle} 周目圆满 · 按 N 再入` : '渡劫圆满 · 按 N 入轮回';
+}
+
 export function drawStatusPanel(
   ctx: CanvasRenderingContext2D,
   s: GameSession,
@@ -139,6 +151,12 @@ export function drawStatusPanel(
   const depth = depthRarityBonus(s.floor);
   if (depth > 0) {
     lines.push({ label: '深缘', value: `+${Math.round(depth * 100)}% 仙缘`, color: C.teal });
+  }
+  // 轮回（D180）：满级那一刻「按 N」是本项目唯一不可撤销的操作，玩家必须看得见它可用。
+  // 只在真的可入时提示；死亡冷却中不显示（那时按 N 会被拒，提示了反而像 bug）。
+  const prestigeHint = prestigeHintText(s);
+  if (prestigeHint !== null) {
+    lines.push({ label: '轮回', value: prestigeHint, color: C.gold });
   }
   return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines);
 }

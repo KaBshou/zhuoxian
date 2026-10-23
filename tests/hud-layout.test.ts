@@ -8,6 +8,7 @@ import {
   HUD_TOP,
   TOP_STRIP_H,
   estimateTextWidth,
+  prestigeHintText,
   topStripRows,
 } from '../src/render/hud-panels';
 import { tutorialBoxRect } from '../src/render/tutorial-overlay';
@@ -204,5 +205,50 @@ describe('引导框不许压底栏（D177）', () => {
   it('FOOTER_H 覆盖底栏基线与字高（14 + 字高 11 ≈ 25，取 24 会让字贴边）', () => {
     // 底栏基线 = H-14，字高 11px ⇒ 文字顶端约 H-25。FOOTER_H 必须 ≥ 25 才真正让开。
     expect(FOOTER_H).toBeGreaterThanOrEqual(25);
+  });
+});
+
+/**
+ * D180：满级那一刻必须告诉玩家「按 N 能轮回」。
+ *
+ * 为什么单独钉它：满级要挂机 4 小时之后才到，用截图/探针验一次成本极高，
+ * 而它错了的表现是「玩家满级后以为游戏卡住了」—— 沉默的失败，没人报错。
+ */
+describe('轮回提示（D180）', () => {
+  it('没满级不提示', () => {
+    const s = makeSession();
+    expect(s.character.step).toBeLessThan(80);
+    expect(prestigeHintText(s)).toBeNull();
+  });
+
+  it('满级且不在死亡冷却时提示「按 N 入轮回」', () => {
+    const s = makeSession();
+    const maxed = { ...s, character: { ...s.character, step: 80 }, battle: { ...s.battle, reviveCooldown: 0 } };
+    expect(prestigeHintText(maxed)).toBe('渡劫圆满 · 按 N 入轮回');
+  });
+
+  it('死亡冷却中不提示（那时按 N 会被拒，提示了反而像 bug）', () => {
+    const s = makeSession();
+    const dying = { ...s, character: { ...s.character, step: 80 }, battle: { ...s.battle, reviveCooldown: 3 } };
+    expect(prestigeHintText(dying)).toBeNull();
+  });
+
+  it('已经在周目里时带上周目号', () => {
+    const s = makeSession();
+    const inCycle = {
+      ...s,
+      cycle: 3,
+      character: { ...s.character, step: 80 },
+      battle: { ...s.battle, reviveCooldown: 0 },
+    };
+    expect(prestigeHintText(inCycle)).toBe('第 3 周目圆满 · 按 N 再入');
+  });
+
+  it('提示文案本身不含「未满级」这类会误导的字样', () => {
+    const s = makeSession();
+    const maxed = { ...s, character: { ...s.character, step: 80 }, battle: { ...s.battle, reviveCooldown: 0 } };
+    const text = prestigeHintText(maxed) ?? '';
+    expect(text).toContain('按 N');
+    expect(text).not.toContain('未');
   });
 });

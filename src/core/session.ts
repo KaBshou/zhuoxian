@@ -598,9 +598,11 @@ export function tickSession(s: GameSession, dt: number): void {
       }
       if (s.character.step > before) {
         s.breakthroughs += s.character.step - before;
-        pushLog(s, `突破 ${s.character.step + 1} 重`, '#d4a13c');
+        // 满级那一下要单独说：它不再是「又一重」，而是「这条线到头了，另一条线开始了」。
+        // 玩家如果不知道这里按 N 能轮回，他会以为游戏卡在满级不动（D180）。
+        pushLog(s, breakthroughLogText(s.character.step), '#d4a13c');
         pushFloat(s, {
-          text: '突破！',
+          text: s.character.step >= TOTAL_STEPS - 1 ? '渡劫圆满！' : '突破！',
           x: BATTLE_W / 2,
           y: BATTLE_H / 2 - 80,
           color: '#d4a13c',
@@ -940,6 +942,19 @@ export function syncAchievements(s: GameSession): void {
       rise: 26,
     });
   }
+}
+
+/**
+ * 突破日志的文案（纯函数，单测直接钉边界）。
+ *
+ * 为什么要单独一个函数：满级那一下如果和别的重数一样只写「突破 81 重」，
+ * 玩家看到的是一句**不存在的境界**（只有九境九重 = 81 台阶，没有「第 81 重」），
+ * 而且他不会知道这儿能按 N 轮回 —— 满级那一刻就变成「游戏结束了」而不是「另一条线开始了」。
+ */
+export function breakthroughLogText(step: number): string {
+  if (isMaxStep(step)) return '渡劫圆满 · 第九境已成 —— 按 N 入轮回';
+  const safe = Number.isFinite(step) ? Math.max(0, Math.floor(step)) : 0;
+  return `突破 ${Math.min(TOTAL_STEPS, safe + 1)} 重`;
 }
 
 /**

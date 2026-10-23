@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BOSS_EVERY,
   WAVE_SIZE,
+  breakthroughLogText,
   createSession,
   liveMonsters,
   startWave,
@@ -231,5 +232,34 @@ describe('一局游戏：浮字与日志', () => {
     startWave(s);
     run(s, 120);
     expect(s.log.length).toBeLessThanOrEqual(6);
+  });
+});
+
+/**
+ * D180：满级那一下的日志文案。
+ *
+ * 旧实现一视同仁写 `突破 ${step+1} 重`，满级时会打印「突破 81 重」——
+ * 一个**不存在的境界**（九境九重 = 81 台阶，没有「第 81 重」），
+ * 而且完全没提「按 N 能轮回」，玩家会以为游戏卡在满级不动。
+ */
+describe('突破日志文案（D180）', () => {
+  it('普通突破写「突破 N 重」', () => {
+    expect(breakthroughLogText(0)).toBe('突破 1 重');
+    expect(breakthroughLogText(39)).toBe('突破 40 重');
+    expect(breakthroughLogText(79)).toBe('突破 80 重');
+  });
+
+  it('满级（step 80）不写重数，改写「渡劫圆满 + 按 N 入轮回」', () => {
+    const text = breakthroughLogText(80);
+    expect(text).toContain('渡劫圆满');
+    expect(text).toContain('按 N');
+    expect(text).not.toContain('81');
+  });
+
+  it('脏值不崩、不产生 NaN/Infinity', () => {
+    expect(breakthroughLogText(Number.NaN)).toBe('突破 1 重');
+    expect(breakthroughLogText(-5)).toBe('突破 1 重');
+    expect(breakthroughLogText(Number.POSITIVE_INFINITY)).toBe('突破 1 重');
+    expect(breakthroughLogText(999)).toBe('渡劫圆满 · 第九境已成 —— 按 N 入轮回');
   });
 });
