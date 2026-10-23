@@ -19,3 +19,6 @@ tmp/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# 补丁脚本的临时快照（本机用，不进仓库）
+*.bak
