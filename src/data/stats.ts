@@ -72,6 +72,15 @@ export interface StatMeta {
   readonly kind: StatKind;
   /** true = 内部 0.05 表示 5%，UI 要乘 100 显示 */
   readonly ratio: boolean;
+  /**
+   * true = 这条属性的 **flat 值是绝对值**（点数），不是比例。
+   *
+   * 只有 `damage` 需要：它同时支持两种量纲 ——
+   *   `flat`      = 附加固定伤害（法器基底给 `+8`，是 8 点伤害）； 
+   *   `increased` = 伤害提高百分比（`+10%`）。
+   * 全都乘 100 会把「+8 点」显示成「+800%」（线上实拍过的显示 bug）。
+   */
+  readonly flatAbsolute?: boolean;
   /** 无任何修正器时的基础值 */
   readonly base: number;
   /** 值域下限（含） */
@@ -106,7 +115,18 @@ export const STAT_META: Readonly<Record<StatKey, StatMeta>> = {
   resFire: { key: 'resFire', name: '火抗', desc: '减免火属性伤害', kind: 'defense', ratio: true, base: 0, min: -1, max: RESIST_CAP },
   resEarth: { key: 'resEarth', name: '土抗', desc: '减免土属性伤害', kind: 'defense', ratio: true, base: 0, min: -1, max: RESIST_CAP },
 
-  damage: { key: 'damage', name: '伤害', desc: '所有伤害的加成，实际结算见伤害管线', kind: 'offense', ratio: true, base: 0, min: 0 },
+  damage: {
+    key: 'damage',
+    name: '伤害',
+    desc: '所有伤害的加成，实际结算见伤害管线',
+    kind: 'offense',
+    ratio: true,
+    // 唯一一个「两种量纲并存」的属性：flat 是点数、increased 是百分比。
+    // 没有这个标记，法器基底的 `+8 点` 会被 formatStat 乘 100 显示成 `+800%`（线上实拍）。
+    flatAbsolute: true,
+    base: 0,
+    min: 0,
+  },
   attackSpeed: { key: 'attackSpeed', name: '出手速度', desc: '每秒攻击次数', kind: 'offense', ratio: true, base: 1.0, min: 0.1 },
   castSpeed: { key: 'castSpeed', name: '结印速度', desc: '每秒施法次数', kind: 'offense', ratio: true, base: 1.0, min: 0.1 },
   critChance: { key: 'critChance', name: '破绽率', desc: '命中破绽的概率', kind: 'offense', ratio: true, base: 0.05, min: 0, max: CRIT_CHANCE_CAP },
@@ -171,6 +191,30 @@ export function clampStat(key: StatKey, value: number, resistCapBonus = 0): numb
   if (v < m.min) v = m.min;
   if (max !== undefined && v > max) v = max;
   return v;
+}
+
+/**
+ * 把「一条带 op 的修正」格式化成给玩家看的文字。
+ *
+ * 为什么不直接用 `formatStat`：属性只有一套量纲，修正有三套 ——
+ *   `flat`      固定值（法器基底 `+8` 点伤害 / 一条灵纹 `+12` 护体）
+ *   `increased` 加算百分比（`+10%`）
+ *   `more`      连乘百分比（`×1.15`）
+ * `damage` 尤其特殊：它的 flat 是点数、increased 是百分比（见 `flatAbsolute`）。
+ * 一条规则：**op 决定量纲，属性只在 flat 且没有 `flatAbsolute` 时才查 `ratio`。**
+ * 线上实拍过 `基底 伤害 +800%`，就是这个函数不存在导致的。
+ */
+export function formatModifier(key: StatKey, op: 'flat' | 'increased' | 'more', value: number): string {
+  const m = STAT_META[key];
+  if (!Number.isFinite(value)) return '—';
+  const signed = (n: number, text: string): string => `${n >= 0 ? '+' : ''}${text}`;
+  if (op === 'more') return `×${(1 + value).toFixed(2)}`;
+  if (op === 'increased' || (op === 'flat' && m.ratio && m.flatAbsolute !== true)) {
+    const pct = value * 100;
+    const digits = Math.abs(pct) >= 100 ? 0 : 1;
+    return signed(pct, `${pct.toFixed(digits)}%`);
+  }
+  return signed(value, Number.isInteger(value) ? String(value) : value.toFixed(1));
 }
 
 /** 把内部比值格式化成给玩家看的文字（0.075 → "7.5%"） */

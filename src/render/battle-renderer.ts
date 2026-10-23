@@ -23,9 +23,10 @@ import { pushLog, sessionAchievementFacts, tickSession, type GameSession } from 
 import type { TurbidState } from '../core/turbid';
 import { TURBID_MAX } from '../core/turbid';
 import type { ElementTag } from '../data/tags';
+import type { SlotId } from '../data/slots';
 import { EMPTY_FRAGMENTS } from '../data/fragments';
 import type { Rarity } from '../data/rarity';
-import { FOOTER_H, drawHudStack, drawTopStripInfo } from './hud-panels';
+import { FOOTER_H, HUD_TOP, drawHudStack, drawTopStripInfo } from './hud-panels';
 import { drawEquipmentDetail } from './detail-panels';
 import { drawTalentPanel } from './talent-panel';
 import { drawSkillPanel } from './skill-panel';
@@ -105,6 +106,12 @@ export class BattleRenderer {
 
   /** 法宝详情（按 E）。和损伤详解一样是"按需覆盖"的调试/阅读层 */
   private showDetail = false;
+  /**
+   * 详情面板要高亮的那一格（D178：从纸娃娃点进来时，玩家必须知道
+   * 「我现在看的是哪一格」，否则 10 张卡片长得一样）。
+   * null = 没从格子进来（按 E 打开），此时不高亮任何一格。
+   */
+  private focusedSlot: SlotId | null = null;
   private showTalent = false;
   private showSkill = false;
   /** 图鉴（按 K，D87）。收集进度看不见 = 收集这件事在玩家心里不存在 */
@@ -125,7 +132,24 @@ export class BattleRenderer {
   /** 切换法宝详情，返回切换后的状态 */
   toggleDetail(): boolean {
     this.showDetail = !this.showDetail;
+    if (!this.showDetail) this.focusedSlot = null;
     return this.showDetail;
+  }
+
+  /**
+   * 从纸娃娃点开详情（D178）：打开并把那一格高亮。
+   *
+   * 和 `toggleDetail()` 分开是因为语义不同 —— 按 E 是「我要看全部」，
+   * 点格子是「我要看这一件」。合成一个函数就得靠参数猜意图。
+   */
+  openDetailAt(slot: SlotId): void {
+    this.showDetail = true;
+    this.focusedSlot = slot;
+  }
+
+  /** 详情面板当前高亮的格子（探针/单测用） */
+  get detailFocus(): SlotId | null {
+    return this.focusedSlot;
   }
 
   /** 详情是否开着（探针用） */
@@ -258,6 +282,7 @@ export class BattleRenderer {
    */
   closeAllPanels(): void {
     this.showDetail = false;
+    this.focusedSlot = null;
     this.showBreakdown = false;
     this.showTalent = false;
     this.showSkill = false;
@@ -296,8 +321,7 @@ export class BattleRenderer {
    */
   renderTutorial(text: string, progress: string): void {
     // 底栏占着画面最下面 24px，引导框必须让位（D177：线上实拍两行字叠在一起）
-    drawTutorial(this.ctx, text, progress, BATTLE_W, BATTLE_H, FOOTER_H);
-  }
+    drawTutorial(this.ctx, text, progress, BATTLE_W, BATTLE_H, FOOTER_H);  }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -343,7 +367,7 @@ export class BattleRenderer {
     this.drawLog(s);
     this.drawHudPanels(s);
     if (this.showBreakdown) this.drawBreakdown(s);
-    if (this.showDetail) drawEquipmentDetail(this.ctx, s);
+    if (this.showDetail) drawEquipmentDetail(this.ctx, s, this.focusedSlot);
     if (this.showTalent) drawTalentPanel(this.ctx, s);
     if (this.showSkill) drawSkillPanel(this.ctx, s, s.character, this.skillCursor);
     if (this.showCodex) drawCodexPanel(this.ctx, s.codex, BATTLE_W, BATTLE_H, this.codexCursor);
@@ -887,7 +911,8 @@ export class BattleRenderer {
   private drawHudPanels(s: GameSession): void {
     // 四块面板（状态 / 法宝 / 囊中 / 背包）由 hud-panels 自己按高度堆叠，
     // 这里不给坐标 —— 行数是变的，写死坐标一改行数就叠在一起。
-    drawHudStack(this.ctx, s);
+    // focusedSlot 只影响纸娃娃画不画金框（D178），不影响布局。
+    drawHudStack(this.ctx, s, HUD_TOP, this.showDetail ? this.focusedSlot : null);
   }
 
   /**

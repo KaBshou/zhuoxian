@@ -14,9 +14,9 @@ import type { Item } from '../core/item';
 import type { AffixInstance } from '../core/item';
 import { equipmentSummary, itemPower } from '../core/inventory';
 import { powerRatioText, rarityRankText } from '../core/power-rank';
-import { SLOT_NAME } from '../data/slots';
+import { SLOT_NAME, type SlotId } from '../data/slots';
 import { RARITY_NAME, type Rarity } from '../data/rarity';
-import { STAT_META, formatStat } from '../data/stats';
+import { STAT_META, formatModifier } from '../data/stats';
 import { legendaryOf } from '../core/item';
 import { TERM } from '../data/glossary';
 
@@ -34,13 +34,11 @@ const COLS = 3;
 const ROWS = 3;
 const LINE_H = 14;
 
-/** 一条灵纹在面板上的样子：词条名 + 数值（百分比类走 formatStat） */
+/** 一条灵纹在面板上的样子：词条名 + 数值（按 op 决定量纲，见 formatModifier） */
 function affixLine(a: AffixInstance): string {
   const meta = STAT_META[a.stat];
   const name = meta ? meta.name : a.stat;
-  const value = formatStat(a.stat, a.value);
-  const sign = a.op === 'flat' || a.value >= 0 ? '+' : '';
-  return `${a.name} · ${name} ${sign}${value}`;
+  return `${a.name} · ${name} ${formatModifier(a.stat, a.op, a.value)}`;
 }
 
 function drawCard(
@@ -88,7 +86,7 @@ function drawCard(
   for (const b of item.base) {
     const meta = STAT_META[b.stat];
     const label = meta ? meta.name : b.stat;
-    ctx.fillText(`基底 ${label} ${b.op === 'flat' ? '+' : '+'}${formatStat(b.stat, b.value)}`, x + 10, ly);
+    ctx.fillText(`基底 ${label} ${formatModifier(b.stat, b.op, b.value)}`, x + 10, ly);
     ly += LINE_H;
   }
 
@@ -154,8 +152,15 @@ function wrapByWidth(text: string, maxUnits: number): string[] {
 
 /**
  * 画整个详情面板。返回是否画了（没有装备就不画）。
+ *
+ * `focused` 是从纸娃娃点进来的那一格（D178）：画一圈金框 + 标「当前」，
+ * 否则 10 张卡片长得一样，玩家点完不知道自己在看哪件。
  */
-export function drawEquipmentDetail(ctx: CanvasRenderingContext2D, s: GameSession): boolean {
+export function drawEquipmentDetail(
+  ctx: CanvasRenderingContext2D,
+  s: GameSession,
+  focused: SlotId | null = null,
+): boolean {
   const equipped = equipmentSummary(s.character);
   if (equipped.length === 0) return false;
 
@@ -176,9 +181,23 @@ export function drawEquipmentDetail(ctx: CanvasRenderingContext2D, s: GameSessio
   equipped.slice(0, COLS * ROWS).forEach((e, i) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
-    drawCard(ctx, e.item, baseX + col * (CARD_W + CARD_GAP), baseY + row * (CARD_H + CARD_GAP));
+    const cx = baseX + col * (CARD_W + CARD_GAP);
+    const cy = baseY + row * (CARD_H + CARD_GAP);
+    drawCard(ctx, e.item, cx, cy);
+    // 从纸娃娃点进来的那一件：金框 + 「当前」角标
+    if (focused !== null && e.slot === focused) {
+      ctx.strokeStyle = 'rgba(240, 214, 140, 0.95)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx + 1, cy + 1, CARD_W - 2, CARD_H - 2);
+      ctx.lineWidth = 1;
+      ctx.textAlign = 'left';
+      ctx.font = '11px "Noto Sans SC", sans-serif';
+      ctx.fillStyle = '#f0d68c';
+      ctx.fillText('当前', cx + 8, cy + CARD_H - 8);
+    }
   });
 
+  ctx.textAlign = 'left';
   ctx.font = '12px "Noto Sans SC", sans-serif';
   ctx.fillStyle = '#6d665c';
   ctx.fillText('按 E 关闭', baseX, baseY + totalH + 18);

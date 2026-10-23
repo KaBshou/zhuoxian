@@ -2770,3 +2770,16 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
   （本轮第一次截图就是旧 server 跑的 18:41 启动版本，白查了一轮）。
 - 线上第一次跑 probe-live 出现「全黑 canvas + 零网络事件」：**代理瞬时故障**，
   重跑即恢复。SKIP/全黑要重跑一次再下结论。
+### D179 显示量纲由 `op` 决定，不由属性决定（`formatModifier`）
+
+**问题（线上实拍）**：详情卡片显示 `基底 伤害 +800%`。法器基底给的是 `{ stat:'damage', op:'flat', value:8 }`（8 点固定伤害），而 `formatStat('damage', 8)` 只看 `STAT_META.damage.ratio === true` 就乘 100。
+
+**根因**：属性只有一套量纲，但一条修正有三套 —— `flat`（固定值）、`increased`（加算百分比）、`more`（连乘）。`formatStat(key, value)` 的签名里**根本没有 op**，所以它只能猜，而 `damage` 恰好是唯一「flat 是点数、increased 是百分比」的双量纲属性。
+
+**做法**：
+1. `StatMeta` 新增可选 `flatAbsolute?: boolean`，只给 `damage` 置 true —— 语义是「这条属性的 **flat 是绝对值**，别乘 100」。
+2. 新增 `formatModifier(key, op, value)`：`more` → `×1.30`；`increased` → `+10.0%`；`flat` → 若 `ratio && !flatAbsolute` 则百分比（五行抗性 `+12.0%`），否则点数（`+8`）。负值带符号，脏值输出 `—`。
+3. `src/render/detail-panels.ts` 的基底行与灵纹行改用 `formatModifier`（顺带修掉一个永远为真的三元 `b.op === 'flat' ? '+' : '+'`）。
+4. 单测：`+8` 不许含 `%`、`increased` 是 `+10.0%`、`more` 是 `×1.30`、普通抗性 flat 仍是 `+12.0%`、非比值属性 flat 是 `+120`、负数带符号、NaN 不崩；另加一条「27 属性 × 3 op 全产出非空且不含 undefined/NaN」的穷举护栏（防以后新增属性漏配）。
+
+**纪律**：**格式化函数的签名里必须具备决定量纲的全部信息**。`formatStat(key, value)` 少一个 op，就注定要在某个属性上撒谎；而这个谎只在某一类装备上出现，测试不覆盖那条装备就永远看不见。

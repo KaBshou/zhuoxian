@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { TAG_NAME, elementOf, isTag, matchesTags, type Tag } from '../src/data/tags';
-import { STAT_META, clampStat, formatStat } from '../src/data/stats';
+import { STAT_META, clampStat, formatModifier, formatStat } from '../src/data/stats';
 import {
   EMPTY_AGGREGATE,
   aggregate,
@@ -205,6 +205,39 @@ describe('属性结算 stats', () => {
     expect(formatStat('critChance', 0.075)).toBe('7.5%');
     expect(formatStat('resFire', 0.75)).toBe('75.0%');
     expect(formatStat('life', 120)).toBe('120');
+  });
+
+  /**
+   * D178 补：`formatStat` 只看属性不看 op，而 `damage` 的 flat 是点数、increased 是百分比。
+   * 线上实拍到「基底 伤害 +800%」（8 点固定伤害被乘了 100），就是缺这条按 op 分流的格式化。
+   */
+  it('formatModifier：op 决定量纲（damage 的 flat 是点数、increased 是百分比）', () => {
+    // 真 bug 的钉子：法器基底 flat 8 = 8 点伤害，不许显示成 800%
+    expect(formatModifier('damage', 'flat', 8)).toBe('+8');
+    expect(formatModifier('damage', 'increased', 0.1)).toBe('+10.0%');
+    expect(formatModifier('damage', 'flat', 8)).not.toContain('%');
+    // 「更多」是连乘，显示倍率而不是百分比
+    expect(formatModifier('damage', 'more', 0.3)).toBe('×1.30');
+    // 普通百分比属性的 flat 仍然是百分比（五行抗性 flat 0.12 = 12%）
+    expect(formatModifier('resFire', 'flat', 0.12)).toBe('+12.0%');
+    expect(formatModifier('critChance', 'flat', 0.06)).toBe('+6.0%');
+    // 非比值属性的 flat 是点数
+    expect(formatModifier('life', 'flat', 120)).toBe('+120');
+    expect(formatModifier('armor', 'increased', 0.45)).toBe('+45.0%');
+    // 负值带符号，脏值不崩
+    expect(formatModifier('life', 'flat', -30)).toBe('-30');
+    expect(formatModifier('life', 'flat', Number.NaN)).toBe('—');
+  });
+
+  it('formatModifier 每个属性每种 op 都产出非空文字（防某属性漏配）', () => {
+    for (const key of Object.keys(STAT_META) as (keyof typeof STAT_META)[]) {
+      for (const op of ['flat', 'increased', 'more'] as const) {
+        const text = formatModifier(key, op, 0.1);
+        expect(text.length).toBeGreaterThan(0);
+        expect(text).not.toContain('undefined');
+        expect(text).not.toContain('NaN');
+      }
+    }
   });
 
   it('clampStat 挡住 NaN 并回落到基础值', () => {

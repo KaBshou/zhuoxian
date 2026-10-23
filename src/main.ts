@@ -21,7 +21,8 @@ import {
   simulateOffline,
 } from './core/offline';
 import { gainXp } from './core/character';
-import { pickup } from './core/inventory';
+import { equipmentSummary, pickup } from './core/inventory';
+import { RARITY_NAME } from './data/rarity';
 import {
   createSession,
   floorSelectableMax,
@@ -51,6 +52,9 @@ import { BattleRenderer } from './render/battle-renderer';
 import { CLASSES, getClass, type ClassId } from './data/classes';
 import { indexFromDigit, moveClassIndex, classCardRects } from './render/class-select';
 import { hitTestHudButtons, layoutHudButtons, toCanvasPoint, type HudButtonId } from './render/hud-buttons';
+import { hitTestPaperdoll, paperdollLayout } from './render/paperdoll';
+import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
+import { isSlotId } from './data/slots';
 import { characterGemLoadout } from './core/character';
 import { prestige, prestigeReady } from './core/session';
 import { cycleDmgMul, cycleHpMul, cycleMarksMul, cycleName } from './data/cycles';
@@ -430,6 +434,24 @@ canvas.addEventListener('pointerdown', (e) => {
   if (btn) {
     e.preventDefault();
     activatePanel(btn.id);
+    return;
+  }
+  // 点纸娃娃某一格 = 打开法宝详情并高亮那一格（D178，用户要求"装备在主界面能点开看"）。
+  // 必须在按钮条之后判：按钮条压在画面上层，同一坐标两者都可能命中时以按钮为准。
+  const cellSlot = hitTestPaperdoll(pt.x, pt.y, HUD_LEFT_X, TOP_STRIP_H + 4, HUD_PANEL_W);
+  if (cellSlot) {
+    e.preventDefault();
+    renderer.closeAllPanels();
+    renderer.openDetailAt(cellSlot);
+    const summary = equipmentSummary(session.character);
+    const equipped = summary.find((it) => it.slot === cellSlot);
+    session.log.push({
+      text: equipped
+        ? `查看 ${equipped.item.name} · ${RARITY_NAME[equipped.item.rarity]}`
+        : `查看 ${cellSlot}（空位）`,
+      color: '#6d665c',
+      age: 0,
+    });
     return;
   }
   // 点空白处 = 跳过当前这一条引导（手机上的等价于空格）。
@@ -849,6 +871,29 @@ declare global {
       toggleBreakdown(): boolean;
       /** 切换法宝详情面板（探针验收用） */
       toggleDetail(): boolean;
+      /**
+       * 从纸娃娃点开某一件（D178，探针验收用）。
+       * 和 `toggleDetail()` 分开：按 E 是「看全部」，点格子是「看这一件」。
+       */
+      openDetailAtSlot(slot: string): boolean;
+      /** 详情面板当前高亮的部位（null = 没从格子进来） */
+      readonly detailFocus: string | null;
+      /** 详情面板是否开着 */
+      readonly detailVisible: boolean;
+      /** 关掉所有面板（探针用；等价于玩家点两次按钮） */
+      closePanels(): void;
+      /**
+       * 纸娃娃 10 格的几何（探针用）。
+       * 探针**不许自己写死格子坐标** —— 布局改了探针要跟着改，
+       * 而写死的探针只会假红或假绿（D128 判据基数单一来源同源纪律）。
+       */
+      paperdollCells(): Array<{
+        readonly slot: string;
+        readonly x: number;
+        readonly y: number;
+        readonly w: number;
+        readonly h: number;
+      }>;
       /** 当前阶段（探针验收选道统用） */
       readonly phase: Phase;
       /** 选道统阶段的高亮下标 */
@@ -1050,6 +1095,30 @@ if (import.meta.env.DEV) {
       autosaver.saveNow();
     },
     toggleDetail: () => renderer.toggleDetail(),
+    openDetailAtSlot: (slot: string) => {
+      if (phase !== 'play') return false;
+      if (!isSlotId(slot)) return false;
+      renderer.closeAllPanels();
+      renderer.openDetailAt(slot);
+      return renderer.detailVisible;
+    },
+    get detailFocus() {
+      return renderer.detailFocus;
+    },
+    get detailVisible() {
+      return renderer.detailVisible;
+    },
+    closePanels: () => {
+      renderer.closeAllPanels();
+    },
+    paperdollCells: () =>
+      paperdollLayout(HUD_LEFT_X, TOP_STRIP_H + 4, HUD_PANEL_W).map((c) => ({
+        slot: c.slot,
+        x: c.x,
+        y: c.y,
+        w: c.w,
+        h: c.h,
+      })),
     get phase() {
       return phase;
     },

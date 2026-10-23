@@ -11,13 +11,14 @@
 import type { GameSession } from '../core/session';
 import { characterPower, equipmentSummary, itemPower, slotForItem } from '../core/inventory';
 import { powerDeltaText, powerRatioText, rarityRankText } from '../core/power-rank';
-import { SLOT_NAME } from '../data/slots';
+import { SLOT_NAME, type SlotId } from '../data/slots';
 import { RARITY_NAME, type Rarity } from '../data/rarity';
 import { CURRENCIES, type CurrencyId } from '../data/currency';
 import { TERM, formatRealm } from '../data/glossary';
 import { MAX_FLOOR, MAIN_FLOOR_END, depthRarityBonus } from '../data/monsters';
 import { TOTAL_STEPS } from '../core/progression';
 import { affordableSinks } from '../data/marks';
+import { drawPaperdoll, paperdollHeight } from './paperdoll';
 
 const C = {
   panel: 'rgba(11, 10, 12, 0.82)',
@@ -142,20 +143,22 @@ export function drawStatusPanel(
   return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines);
 }
 
-/** 装备一览：部位 / 名字 / 品阶 / 灵纹条数。返回高度（0 = 没画） */
+/**
+ * 装备一览（D178）：改成**格子式纸娃娃**，10 个部位常驻。
+ *
+ * 原来这里是 10 行文字（`法器  铁剑 · 凡品`），三个问题：
+ * 空位也占一行、品阶只能靠字色扫、**点不开**（看到「道袍 · 灵品 2纹」却看不到灵纹）。
+ * 格子把这三件事一起解决：空位是灰框、品阶是边框色、点一格打开详情对比。
+ *
+ * 返回高度（0 = 没画）。
+ */
 export function drawEquipmentPanel(
   ctx: CanvasRenderingContext2D,
   s: GameSession,
   topOffset = 44,
+  focusedSlot: SlotId | null = null,
 ): number {
-  const equipped = equipmentSummary(s.character);
-  if (equipped.length === 0) return 0;
-  const lines: Line[] = equipped.map((e) => ({
-    label: SLOT_NAME[e.item.slot] ?? e.slot,
-    value: `${e.item.name} · ${RARITY_NAME[e.item.rarity]}${e.item.affixes.length > 0 ? ` ${e.item.affixes.length}纹` : ''}${e.item.legendary ? ' · 传奇' : ''}`,
-    color: RARITY_COLOR[e.item.rarity],
-  }));
-  return drawPanel(ctx, PANEL_X_LEFT, topOffset, lines, '法宝');
+  return drawPaperdoll(ctx, s, PANEL_X_LEFT, topOffset, PANEL_W, focusedSlot);
 }
 
 /** 通货口袋 + 玉简：玩家攒的东西必须看得见（不然打造是黑箱）。返回高度 */
@@ -218,10 +221,15 @@ export function drawBagPanel(
  * 用「每块返回高度 + 累加」而不是写死坐标：面板行数是变的（装备 1~9 行、
  * 背包 0~3 行），写死坐标一改行数就叠在一起，而且这种错在截图里很难看出来。
  */
-export function drawHudStack(ctx: CanvasRenderingContext2D, s: GameSession, top = HUD_TOP): number {
+export function drawHudStack(
+  ctx: CanvasRenderingContext2D,
+  s: GameSession,
+  top = HUD_TOP,
+  focusedSlot: SlotId | null = null,
+): number {
   // 左列（法宝）从顶栏下沿开始 —— 按钮条只占右侧，左侧 42 起是空的，
   // 让装备尽量往上、尽量像"主界面的一部分"而不是"一个藏起来的面板"。
-  const leftH = drawEquipmentPanel(ctx, s, TOP_STRIP_H + 4);
+  const leftH = drawEquipmentPanel(ctx, s, TOP_STRIP_H + 4, focusedSlot);
   let ry = top;
   ry += drawStatusPanel(ctx, s, ry) + GAP;
   ry += drawPocketPanel(ctx, s, ry) + GAP;
@@ -337,8 +345,7 @@ export function drawTopStripInfo(ctx: CanvasRenderingContext2D, s: GameSession):
 /** HUD 占用的最大高度（两列取高的那列；渲染器留空间用） */
 export function hudStackHeight(s: GameSession): number {
   const status = 10 + 5 * ROW_H + 4;
-  const equipped = equipmentSummary(s.character).length;
-  const equip = equipped === 0 ? 0 : 10 + 16 + equipped * ROW_H + 4;
+  const equip = paperdollHeight(PANEL_W);
   const pocket = 10 + 16 + 4 * ROW_H + 4;
   const bag = s.bag.length === 0 ? 0 : 10 + 16 + Math.min(3, s.bag.length) * ROW_H + 4;
   // 左列只有法宝一块；右列三块加间隔
