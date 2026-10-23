@@ -145,7 +145,11 @@ $probes = @(
   # Sampling must multiply by viewport().ratio: after D175 canvas.width != 960, so logical coordinates
   # feed getImageData the wrong region.
   'F:\dsh-work\zhuoxian\tools\probe-boss-bar.mjs',
-  # 28th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
+  # 28th: floor map (76-cell grid panel, D185). 13 items.
+  # The probe reads cell geometry from floorMapCells() and asserts the FLOOR NUMBER really changed --
+  # logging "jumped" proves nothing if setFloor rejected the move silently.
+  'F:\dsh-work\zhuoxian\tools\probe-floormap.mjs',
+  # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'
 )

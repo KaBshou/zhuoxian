@@ -91,9 +91,11 @@ async function soundButtonGold(cdp) {
       const c = document.getElementById('stage');
       const g = c.getContext('2d');
       const scale = c.width / z.viewport().logicalW;
-      // 最后一个按钮就是「音效」（layout 顺序固定），从钩子拿几何，不写死坐标
+      // 按 id 找「音效」按钮。以前这里写的是「最后一个按钮就是音效」—— D185 加了秘境图之后
+      // 按钮顺序变了，探针立刻假红。按钮排在哪儿是产品的自由，探针不许假设顺序。
       const bs = z.hudButtons();
-      const b = bs[bs.length - 1];
+      const b = bs.find((x) => x.id === 'sound');
+      if (!b) return { error: 'no-sound-button' };
       const d = g.getImageData(Math.round(b.x * scale), Math.round(b.y * scale), Math.round(b.w * scale), Math.round(b.h * scale)).data;
       let gold = 0;
       for (let i = 0; i < d.length; i += 4) {
@@ -171,7 +173,9 @@ try {
   ok('没有音频异常', a1.failed === 0, `failed=${a1.failed}`);
 
   const goldBefore = await soundButtonGold(cdp);
-  ok('按钮条最后一个按钮是「音效」', goldBefore.id === 'sound', JSON.stringify(goldBefore));
+  // 断言从「它是最后一个按钮」改成「按 id 找到了音效按钮」——
+  // 顺序断言等于把产品的排版自由写进探针，加一个按钮就假红（D185 就是这么红的）。
+  ok('按钮条里能找到「音效」按钮', goldBefore.id === 'sound', JSON.stringify(goldBefore));
 
   // 按 V 关掉
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyV', key: 'v', windowsVirtualKeyCode: 86 });

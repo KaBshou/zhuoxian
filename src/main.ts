@@ -54,6 +54,13 @@ import { BattleRenderer } from './render/battle-renderer';
 import { CLASSES, getClass, type ClassId } from './data/classes';
 import { indexFromDigit, moveClassIndex, classCardRects } from './render/class-select';
 import { hitTestHudButtons, layoutHudButtons, toCanvasPoint, type HudButtonId } from './render/hud-buttons';
+import {
+  floorCellState,
+  floorMapHeight,
+  floorMapLayout,
+  floorMapWidth,
+  hitTestFloorMap,
+} from './render/floor-map';
 import { hitTestPaperdoll, paperdollLayout } from './render/paperdoll';
 import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
 import { isSlotId } from './data/slots';
@@ -222,6 +229,7 @@ const PANEL_NAME: Record<HudButtonId, string> = {
   achievement: '成就',
   marks: '渊痕价目表',
   save: '存档',
+  floormap: '秘境图',
   sound: '音效',
 };
 
@@ -235,6 +243,7 @@ const PANEL_CLOSE_HINT: Record<HudButtonId, string> = {
   achievement: '（再按 J 或点按钮关闭）',
   marks: '（再按 M 或点按钮关闭）',
   save: '（再按 S 或点按钮关闭）',
+  floormap: '（再按 P 或点按钮关闭）',
   sound: '',
 };
 function activatePanel(id: HudButtonId): void {
@@ -278,6 +287,8 @@ function activatePanel(id: HudButtonId): void {
     renderer.setAchievementCursor(achievementCursor);
   } else if (id === 'save') {
     openSavePanel();
+  } else if (id === 'floormap') {
+    renderer.toggleFloorMap();
   } else {
     renderer.toggleMarksPanel();
   }
@@ -292,6 +303,26 @@ function activatePanel(id: HudButtonId): void {
         ? `；现有 ${Math.max(0, Math.floor(session.character.marks ?? 0)).toLocaleString('en-US')}`
         : '';
   session.log.push({ text: `打开${PANEL_NAME[id]}${extra}${PANEL_CLOSE_HINT[id]}`, color: '#d4a13c', age: 0 });
+}
+
+/**
+ * 当前开着哪些面板（唯一出处）。
+ * 为什么要一个函数：`panelsOpen()` 调试钩子、Escape 兜底、以及"一次只开一个"的判断
+ * 都需要这份清单 —— 三处各写一遍，加第 10 个面板时必然漏一处（D185 就因为漏了
+ * `floormap` 让 Escape 关不掉秘境图，而探针是唯一发现它的东西）。
+ */
+function openPanelIds(): string[] {
+  const open: string[] = [];
+  if (renderer.detailVisible) open.push('detail');
+  if (renderer.breakdownVisible) open.push('breakdown');
+  if (renderer.talentVisible) open.push('talent');
+  if (renderer.skillVisible) open.push('skill');
+  if (renderer.codexVisible) open.push('codex');
+  if (renderer.achievementsVisible) open.push('achievement');
+  if (renderer.marksPanelVisible) open.push('marks');
+  if (renderer.savePanelVisible) open.push('save');
+  if (renderer.floorMapVisible) open.push('floormap');
+  return open;
 }
 
 // ── 1.6 存档搬家（导出 / 导入） ────────────────────────────
@@ -506,6 +537,33 @@ canvas.addEventListener('pointerdown', (e) => {
   if (btn) {
     e.preventDefault();
     activatePanel(btn.id);
+    return;
+  }
+  // 秘境图开着时，点击只对网格生效：点格子跳层、点空白关面板（D185）。
+  // 面板压在最上层，所以必须在按钮与纸娃娃之前判。
+  if (renderer.floorMapVisible) {
+    const mapX = Math.round((LOGICAL_W - floorMapWidth()) / 2);
+    const mapY = Math.round((LOGICAL_H - floorMapHeight()) / 2);
+    const target = hitTestFloorMap(pt.x, pt.y, mapX, mapY);
+    if (target !== null) {
+      e.preventDefault();
+      const from = session.floor;
+      if (setFloor(session, target)) {
+        renderer.toggleFloorMap();
+        session.log.push({ text: '自第 ' + from + ' 层转入第 ' + target + ' 层', color: '#6b3fa0', age: 0 });
+        autosaver.saveNow();
+      } else {
+        session.log.push({
+          text: '第 ' + target + ' 层还去不了（最深 ' + floorSelectableMax(session) + ' 层）',
+          color: '#6d665c',
+          age: 0,
+        });
+      }
+      return;
+    }
+    e.preventDefault();
+    renderer.toggleFloorMap();
+    session.log.push({ text: '关闭秘境图', color: '#6d665c', age: 0 });
     return;
   }
   // 点纸娃娃某一格 = 打开法宝详情并高亮那一格（D178，用户要求"装备在主界面能点开看"）。
@@ -744,6 +802,16 @@ window.addEventListener('keydown', (e) => {
   }
   // K = 图鉴（"我收集到哪了"的答案，D87）。
   // 打开时接管 ↑↓ 翻条目：否则方向键会顺手去回刷层 —— 和神通面板是同一个冲突。
+  // Escape 兜底（D185.1）：以前每个面板各写一条 `if (xxxVisible && Escape)`，
+  // 漏写一个就变成「按 Esc 没反应」——玩家会以为界面卡死。这里保留各面板自己的处理
+  // （存档面板要清掉待确认的导入），但最前面加一条兜底：还有面板开着就全关。
+  if (e.code === 'Escape' && openPanelIds().length > 0) {
+    e.preventDefault();
+    closeSavePanel();
+    renderer.closeAllPanels();
+    session.log.push({ text: '关闭面板', color: '#6d665c', age: 0 });
+    return;
+  }
   if (renderer.codexVisible) {
     if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
       e.preventDefault();
@@ -798,6 +866,11 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyS') {
     e.preventDefault();
     activatePanel('save');
+    return;
+  }
+  if (e.code === 'KeyP') {
+    e.preventDefault();
+    activatePanel('floormap');
     return;
   }
   if (e.code === 'KeyV') {
@@ -984,6 +1057,17 @@ declare global {
         readonly y: number;
         readonly w: number;
         readonly h: number;
+      }>;
+      /** 秘境图是否开着 */
+      readonly floorMapVisible: boolean;
+      /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
+      floorMapCells(): Array<{
+        readonly floor: number;
+        readonly x: number;
+        readonly y: number;
+        readonly w: number;
+        readonly h: number;
+        readonly state: string;
       }>;
       /** 当前阶段（探针验收选道统用） */
       readonly phase: Phase;
@@ -1213,6 +1297,21 @@ if (import.meta.env.DEV) {
     closePanels: () => {
       renderer.closeAllPanels();
     },
+    get floorMapVisible() {
+      return renderer.floorMapVisible;
+    },
+    floorMapCells: () => {
+      const x = Math.round((LOGICAL_W - floorMapWidth()) / 2);
+      const y = Math.round((LOGICAL_H - floorMapHeight()) / 2);
+      return floorMapLayout(x, y).map((c) => ({
+        floor: c.floor,
+        x: c.x,
+        y: c.y,
+        w: c.w,
+        h: c.h,
+        state: floorCellState(c.floor, session),
+      }));
+    },
     paperdollCells: () =>
       paperdollLayout(HUD_LEFT_X, TOP_STRIP_H + 4, HUD_PANEL_W).map((c) => ({
         slot: c.slot,
@@ -1375,18 +1474,7 @@ if (import.meta.env.DEV) {
       w: b.w,
       h: b.h,
     })),
-    panelsOpen: () => {
-      const open: string[] = [];
-      if (renderer.detailVisible) open.push('detail');
-      if (renderer.breakdownVisible) open.push('breakdown');
-      if (renderer.talentVisible) open.push('talent');
-      if (renderer.skillVisible) open.push('skill');
-      if (renderer.codexVisible) open.push('codex');
-      if (renderer.achievementsVisible) open.push('achievement');
-      if (renderer.marksPanelVisible) open.push('marks');
-      if (renderer.savePanelVisible) open.push('save');
-      return open;
-    },
+    panelsOpen: () => openPanelIds(),
     /**
      * 存档面板的按钮矩形（画布坐标）。
      * 布局的唯一出处在 `save-panel.ts` 的 `savePanelButtons` —— 钩子只是把它透出去，

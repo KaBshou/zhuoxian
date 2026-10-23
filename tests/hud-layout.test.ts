@@ -45,8 +45,8 @@ function overlap(a: Rect, b: Rect): boolean {
 const buttons = layoutHudButtons(W, H);
 
 describe('HUD 布局不重叠（D176）', () => {
-  it('有 8 个按钮（法宝/详解/周天/神通/图鉴/成就/渊痕/存档）', () => {
-    expect(buttons).toHaveLength(9);
+  it('有 10 个按钮（法宝/详解/周天/神通/图鉴/成就/渊痕/存档/音效/秘境）', () => {
+    expect(buttons).toHaveLength(10);
     expect(buttons.map((b) => b.id)).toEqual([
       'detail',
       'breakdown',
@@ -57,6 +57,7 @@ describe('HUD 布局不重叠（D176）', () => {
       'marks',
       'save',
       'sound',
+      'floormap',
     ]);
   });
 

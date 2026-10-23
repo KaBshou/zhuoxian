@@ -34,6 +34,7 @@ import { drawCodexPanel } from './codex-panel';
 import { drawAchievementPanel } from './achievement-panel';
 import { drawMarksPanel } from './marks-panel';
 import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-panel';
+import { drawFloorMap } from './floor-map';
 import { bossBarGeometry, bossBarVisible, bossPercentText } from './boss-bar';
 import type { SkillCursor } from './skill-panel';
 import { drawTutorial } from './tutorial-overlay';
@@ -119,6 +120,9 @@ export class BattleRenderer {
   private showCodex = false;
   /** 渊痕价目表（按 M）：满级后唯一还在涨的数字，必须能点开看价 */
   private showMarksPanel = false;
+  /** 秘境图（D185）：76 层网格，点格子跳层。 */
+  private showFloorMap = false;
+  private floorMapFocus: number | null = null;
   /** 存档面板的状态（null = 关着）。文案与阶段都由 main.ts 给，渲染器不自己编事实。 */
   private savePaint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null = null;
   /** 成就（按 J，D87）：24h 缺口里「有终点」的收集。看不见的进度等于不存在 */
@@ -212,6 +216,25 @@ export class BattleRenderer {
     return this.showMarksPanel;
   }
 
+  /** 秘境图开关；关掉时清掉悬停高亮，避免下次打开残留上次的格子 */
+  toggleFloorMap(): boolean {
+    this.showFloorMap = !this.showFloorMap;
+    if (!this.showFloorMap) this.floorMapFocus = null;
+    return this.showFloorMap;
+  }
+
+  get floorMapVisible(): boolean {
+    return this.showFloorMap;
+  }
+
+  setFloorMapFocus(floor: number | null): void {
+    this.floorMapFocus = floor;
+  }
+
+  get floorMapFocused(): number | null {
+    return this.floorMapFocus;
+  }
+
   /** 存档面板没有「切换」语义：打开时由 main.ts 给初始 paint，关闭时置 null。 */
   setSavePanel(paint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null): void {
     this.savePaint = paint;
@@ -286,6 +309,8 @@ export class BattleRenderer {
         // 音效不是面板：它没有遮罩、不参与互斥，所以永远算「没开」。
         // 不出现在 activeButtons 里会让玩家看不出自己关没关，那一步在 activeButtons 处理。
         return false;
+      case 'floormap':
+        return this.showFloorMap;
     }
   }
 
@@ -305,6 +330,8 @@ export class BattleRenderer {
     this.showCodex = false;
     this.showMarksPanel = false;
     this.savePaint = null;
+    this.showFloorMap = false;
+    this.floorMapFocus = null;
     this.showAchievements = false;
     this.skillCursor = null;
   }
@@ -326,6 +353,7 @@ export class BattleRenderer {
     if (this.soundMuted) on.push('sound');
     if (this.showMarksPanel) on.push('marks');
     if (this.savePaint !== null) on.push('save');
+    if (this.showFloorMap) on.push('floormap');
     return on;
   }
 
@@ -399,6 +427,9 @@ export class BattleRenderer {
       });
     // 按钮条画在**所有面板之后**：面板盖住它就看不出还能点，而且它本身是"退出面板"的唯一手段
     // （手机上没有 Escape 键，除了再点一次按钮没有别的关法）。
+    if (this.showFloorMap) {
+      drawFloorMap(this.ctx, s, BATTLE_W, BATTLE_H, this.floorMapFocus);
+    }
     if (this.savePaint !== null) {
       drawSavePanel(this.ctx, BATTLE_W, BATTLE_H, this.savePaint.phase, this.savePaint);
     }
