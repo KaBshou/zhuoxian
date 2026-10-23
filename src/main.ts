@@ -69,6 +69,7 @@ import {
   hitTestBagGrid,
 } from './render/bag-panel';
 import { hitTestPaperdoll, paperdollLayout } from './render/paperdoll';
+import { helpButtonRect, hitTestHelpButton } from './render/help-panel';
 import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
 import { isSlotId } from './data/slots';
 import { characterGemLoadout } from './core/character';
@@ -334,6 +335,7 @@ function openPanelIds(): string[] {
   if (renderer.savePanelVisible) open.push('save');
   if (renderer.floorMapVisible) open.push('floormap');
   if (renderer.bagVisible) open.push('bag');
+  if (renderer.helpVisible) open.push('help');
   return open;
 }
 
@@ -544,6 +546,12 @@ canvas.addEventListener('pointerdown', (e) => {
       return;
     }
     return; // 面板开着时，点空白不穿透到下面的 HUD（否则点"空白"会顺手把面板关掉）
+  }
+  // 底部「?」按钮优先：它不在顶部按钮条里，也不属于任何面板（D190）
+  if (hitTestHelpButton(pt.x, pt.y, LOGICAL_W, LOGICAL_H)) {
+    e.preventDefault();
+    renderer.toggleHelp();
+    return;
   }
   const btn = hitTestHudButtons(pt.x, pt.y, LOGICAL_W);
   if (btn) {
@@ -915,6 +923,17 @@ window.addEventListener('keydown', (e) => {
     autosaver.saveNow();
     return;
   }
+  // 帮助（D190）：H 与 ?（Slash，Shift+/ 也命中）—— 新手与回归玩家找「这游戏怎么玩」的出口
+  if (e.code === 'KeyH' || e.code === 'Slash') {
+    e.preventDefault();
+    renderer.toggleHelp();
+    session.log.push({
+      text: renderer.helpVisible ? '打开帮助' : '关闭帮助',
+      color: '#6d665c',
+      age: 0,
+    });
+    return;
+  }
   if (e.code === 'KeyB') {
     e.preventDefault();
     activatePanel('bag');
@@ -1126,6 +1145,11 @@ declare global {
         readonly filled: boolean;
         readonly cursor: boolean;
       }>;
+      /** 帮助面板（D190） */
+      readonly helpVisible: boolean;
+      toggleHelp(): boolean;
+      /** 底部「?」按钮矩形（探针据此点，不写死坐标） */
+      helpButton(): { x: number; y: number; w: number; h: number };
       /** 按格号放光标（探针免键盘路径用） */
       setBagCursor(index: number): void;
       /** 穿上背包第 index 件（探针免键盘路径用，与空格同一函数） */
@@ -1392,6 +1416,11 @@ if (import.meta.env.DEV) {
         cursor: renderer.bagFocused === c.index,
       }));
     },
+    get helpVisible() {
+      return renderer.helpVisible;
+    },
+    toggleHelp: () => renderer.toggleHelp(),
+    helpButton: () => helpButtonRect(LOGICAL_W, LOGICAL_H),
     setBagCursor: (index: number) => {
       renderer.setBagCursor(index);
     },

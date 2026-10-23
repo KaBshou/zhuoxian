@@ -35,6 +35,7 @@ import { drawAchievementPanel } from './achievement-panel';
 import { drawMarksPanel } from './marks-panel';
 import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-panel';
 import { drawFloorMap } from './floor-map';
+import { drawHelpButton, drawHelpPanel } from './help-panel';
 import { drawBagPanel, clampBagIndex } from './bag-panel';
 import { bossBarGeometry, bossBarVisible, bossPercentText } from './boss-bar';
 import type { SkillCursor } from './skill-panel';
@@ -123,6 +124,7 @@ export class BattleRenderer {
   private showMarksPanel = false;
   /** 秘境图（D185）：76 层网格，点格子跳层。 */
   private showFloorMap = false;
+  private showHelp = false;
   private floorMapFocus: number | null = null;
   private showBag = false;
   private bagCursor = 0;
@@ -220,6 +222,21 @@ export class BattleRenderer {
   }
 
   /** 秘境图开关；关掉时清掉悬停高亮，避免下次打开残留上次的格子 */
+  /**
+   * 帮助面板（D190）。它没有 HudButtonId —— 入口是底部「?」按钮与 H 键，
+   * 因为顶部按钮条已经 11 个，再加会把左列法宝面板压掉（D187）。
+   */
+  toggleHelp(): boolean {
+    const next = !this.showHelp;
+    if (next) this.closeAllPanels();
+    this.showHelp = next;
+    return this.showHelp;
+  }
+
+  get helpVisible(): boolean {
+    return this.showHelp;
+  }
+
   toggleFloorMap(): boolean {
     this.showFloorMap = !this.showFloorMap;
     if (!this.showFloorMap) this.floorMapFocus = null;
@@ -359,6 +376,7 @@ export class BattleRenderer {
     this.showBag = false;
     this.showAchievements = false;
     this.skillCursor = null;
+    this.showHelp = false;
   }
 
   /**
@@ -462,6 +480,12 @@ export class BattleRenderer {
     if (this.savePaint !== null) {
       drawSavePanel(this.ctx, BATTLE_W, BATTLE_H, this.savePaint.phase, this.savePaint);
     }
+    // 帮助面板盖在最上层：它是「我在哪、我在干嘛」的出口，任何面板开着时都要能盖上来
+    if (this.showHelp) {
+      drawHelpPanel(this.ctx, BATTLE_W, BATTLE_H);
+    }
+    // 底部「?」入口常驻（帮助面板开着时靠它关）
+    drawHelpButton(this.ctx, BATTLE_W, BATTLE_H, this.showHelp);
     drawHudButtons(this.ctx, BATTLE_W, { text: C.text, dim: C.dim, edge: C.barEdge, frame: C.gold }, this.activeButtons());
     this.drawOfflineReport(s);
   }

@@ -152,6 +152,9 @@ $probes = @(
   # 28th: bag panel (40-cell grid, D187). 15 items.
   # Geometry comes from bagCells(); the probe never hardcodes cell coordinates.
   'F:\dsh-work\zhuoxian\tools\probe-bag.mjs',
+  # 29th: help panel (D190). 12 items. Opened by H / ? / the bottom-right "?" button;
+  # asserts battle is NOT paused while it is open (a paused idle game is lost progress).
+  'F:\dsh-work\zhuoxian\tools\probe-help.mjs',
   # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'
