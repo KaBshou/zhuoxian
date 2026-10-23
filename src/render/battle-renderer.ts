@@ -34,6 +34,7 @@ import { drawCodexPanel } from './codex-panel';
 import { drawAchievementPanel } from './achievement-panel';
 import { drawMarksPanel } from './marks-panel';
 import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-panel';
+import { bossBarGeometry, bossBarVisible, bossPercentText } from './boss-bar';
 import type { SkillCursor } from './skill-panel';
 import { drawTutorial } from './tutorial-overlay';
 import { drawClassSelect } from './class-select';
@@ -646,11 +647,26 @@ export class BattleRenderer {
     ctx.restore();
 
     // 血条（掉血后才画，满血的怪不画，否则画面一片条形码）
-    if (m.hp < m.maxHp) {
+    // 镇守例外（D183）：条更宽、位置更高、右端贴百分比 —— 层 1 的镇守要打 100 多秒，
+    // 只有一根 4px 的小条玩家分不清「在打」和「卡住了」。
+    if (m.rarity === 'boss') {
+      if (bossBarVisible(m.hp, m.maxHp)) {
+        const geo = bossBarGeometry(m.x, m.y, r);
+        ctx.fillStyle = 'rgba(0,0,0,0.72)';
+        ctx.fillRect(geo.barX, geo.barY, geo.w, geo.h);
+        ctx.fillStyle = '#e05a4a';
+        ctx.fillRect(geo.barX, geo.barY, geo.w * Math.max(0, Math.min(1, m.hp / m.maxHp)), geo.h);
+        ctx.fillStyle = 'rgba(255,220,150,0.95)';
+        ctx.font = '600 10px "Noto Sans SC", system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(bossPercentText(m.hp, m.maxHp), geo.pctX, geo.pctBaseline);
+      }
+    } else if (m.hp < m.maxHp) {
       const w = r * 2;
       ctx.fillStyle = 'rgba(0,0,0,0.62)';
       ctx.fillRect(m.x - w / 2, m.y - r - 8, w, 4);
-      ctx.fillStyle = m.rarity === 'boss' ? '#e05a4a' : C.hpGood;
+      ctx.fillStyle = C.hpGood;
       ctx.fillRect(m.x - w / 2, m.y - r - 8, w * Math.max(0, Math.min(1, m.hp / m.maxHp)), 4);
     }
 
@@ -684,7 +700,11 @@ export class BattleRenderer {
       // 精英只写妖纹（「凶煞·厚皮」），怪名在战斗日志/图鉴里都有；这样一行放得下
       const base = isBoss ? m.name : monsterAffixSuffix(m.affixIds).replace(/^ · /, '');
       const label = m.variant === true ? `异变·${base}` : base;
-      if (label) ctx.fillText(label, m.x, m.y - r - 12);
+      if (label) {
+        // 镇守的名字要让到加宽的血条 + 百分比上方（D183），否则字压在条上
+        const nameY = isBoss ? bossBarGeometry(m.x, m.y, r).nameY : m.y - r - 12;
+        ctx.fillText(label, m.x, nameY);
+      }
     }
   }
 
