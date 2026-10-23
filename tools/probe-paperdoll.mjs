@@ -15,11 +15,16 @@ import path from 'node:path';
 import os from 'node:os';
 
 const PORT = 9379;
-const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5292/';
 const CHROME =
   process.env.CHROME_PATH ??
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const SHOT = process.argv[2] ?? 'docs/probe-paperdoll.png';
+// 盘子用 `node probe.mjs <baseUrl>` 调用 ⇒ argv 顺序不可信。
+// 只认以 http 开头的当 URL、以 .png 结尾的当截图；环境变量优先（手工跑最省事）。
+const ARGV = process.argv.slice(2);
+const BASE =
+  process.env.PROBE_URL ?? (process.env.BASE_URL || undefined) ?? ARGV.find((a) => a.startsWith('http')) ?? 'http://127.0.0.1:5292/';
+const SHOT =
+  process.env.PROBE_SHOT ?? ARGV.find((a) => a.endsWith('.png')) ?? 'docs/probe-paperdoll.png';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0;
@@ -205,6 +210,7 @@ try {
   ok('关面板后画面恢复（暗像素变少）', after.dark < covered.dark, `${covered.dark} → ${after.dark}`);
 
   console.log(`\n=== ${pass}/${pass + fail} ===`);
+console.log(`结果：${pass}/${pass + fail}`);
   process.exitCode = fail === 0 ? 0 : 1;
 } catch (err) {
   console.error('探针异常：', err.message);

@@ -16,9 +16,14 @@ import path from 'node:path';
 import os from 'node:os';
 
 const PORT = Number(process.env.PROBE_PORT ?? 9389);
-const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5292/';
 const CHROME = process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const SHOT = process.argv[2] ?? 'docs/probe-audio.png';
+// 盘子用 `node probe.mjs <baseUrl>` 调用 ⇒ argv 顺序不可信。
+// 只认以 http 开头的当 URL、以 .png 结尾的当截图；环境变量优先（手工跑最省事）。
+const ARGV = process.argv.slice(2);
+const BASE =
+  process.env.PROBE_URL ?? (process.env.BASE_URL || undefined) ?? ARGV.find((a) => a.startsWith('http')) ?? 'http://127.0.0.1:5292/';
+const SHOT =
+  process.env.PROBE_SHOT ?? ARGV.find((a) => a.endsWith('.png')) ?? 'docs/probe-audio.png';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0;
@@ -255,4 +260,5 @@ try {
 
 const total = pass + fail;
 console.log(`\n=== ${pass}/${total} ===`);
+console.log(`结果：${pass}/${total}`);
 process.exitCode = fail === 0 ? 0 : 1;

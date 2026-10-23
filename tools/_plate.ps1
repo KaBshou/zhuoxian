@@ -134,6 +134,19 @@ $probes = @(
   'F:\dsh-work\zhuoxian\tools\probe-save-panel.mjs',
   # 25th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
+  # 25th: audio engine + mute (D181) + volume axis (D182). 22 items.
+  # Proves the *mechanism* (engine called, state saved, button highlighted) -- never "can you hear it":
+  # a headless browser has no speakers and AudioContext still reports fine.
+  'F:\dsh-work\zhuoxian\tools\probe-audio.mjs',
+  # 26th: idle-grim style paperdoll on the main screen (D178). 9 items.
+  # Reads cell geometry from paperdollCells(); the first version hardcoded coordinates and went 假红.
+  'F:\dsh-work\zhuoxian\tools\probe-paperdoll.mjs',
+  # 27th: boss HP bar width + percent text (D183). 8 items.
+  # Sampling must multiply by viewport().ratio: after D175 canvas.width != 960, so logical coordinates
+  # feed getImageData the wrong region.
+  'F:\dsh-work\zhuoxian\tools\probe-boss-bar.mjs',
+  # 28th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
+  # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'
 )
 "# probe plate @ $(Get-Date -Format o) base=$base" | Out-File -FilePath $out -Encoding utf8

@@ -1,0 +1,685 @@
+﻿# probe plate @ 2026-10-24T04:16:32.1608125+08:00 base=http://127.0.0.1:5292/
+状态快照 t2：
+{
+  "time": 19.533333333333506,
+  "kills": 4,
+  "xpGained": 8,
+  "deaths": 0,
+  "damageTaken": 5,
+  "revive": 0,
+  "hp": 130,
+  "maxHp": 130,
+  "damage": 5,
+  "turbid": 32.800000000000935,
+  "phase": "calm",
+  "monsterCount": 4,
+  "monsters": [
+    {
+      "uid": 9,
+      "name": "尸解仆",
+      "x": 504,
+      "y": 394,
+      "hp": 46,
+      "maxHp": 81,
+      "d": 126,
+      "range": 30
+    },
+    {
+      "uid": 10,
+      "name": "碑林书吏",
+      "x": 685,
+      "y": 294,
+      "hp": 61,
+      "maxHp": 61,
+      "d": 206,
+      "range": 36
+    },
+    {
+      "uid": 11,
+      "name": "断枪鬼",
+      "x": 639,
+      "y": 277,
+      "hp": 55,
+      "maxHp": 55,
+      "d": 159,
+      "range": 38
+    },
+    {
+      "uid": 12,
+      "name": "锈剑傀",
+      "x": 428,
+      "y": 390,
+      "hp": 45,
+      "maxHp": 45,
+      "d": 131,
+      "range": 40
+    }
+  ],
+  "nonFinite": [],
+  "wave": 2,
+  "floor": 1,
+  "dropsFound": 4,
+  "groundCount": 0,
+  "bagCount": 0,
+  "pocketCount": 0,
+  "gemCount": 0,
+  "step": 0,
+  "xp": 8,
+  "breakthroughs": 0,
+  "floats": 0,
+  "logLines": 5,
+  "equipment": [
+    {
+      "slot": "sword",
+      "name": "铁剑",
+      "rarity": "fan"
+    }
+  ],
+  "bagTop": []
+}
+
+画面统计：亮 242691 / 中亮 15700 / 青 1402 / 暖 2025（共 518400 像素）
+截图：F:\dsh-work\zhuoxian\docs\probe-battle.png
+
+── 断言 ──
+PASS  页面挂上了调试钩子
+PASS  玩家挨过打（累计入伤 > 0）
+PASS  时间在推进
+PASS  19 秒推进了约 19 秒（没有被节流）
+PASS  有浊物出场
+PASS  打死了怪
+PASS  拿到修为
+PASS  浊气涨了（命中会攒浊气）
+PASS  新手期不该被秒（19 秒内没死）
+PASS  血量没溢出也没负数
+PASS  状态里没有 NaN
+PASS  怪在往玩家靠近（400ms 内同一只怪变近了，或已经贴到攻击距离）
+PASS  波次在推进
+PASS  发生过掉落掷骰（dropsFound = 每杀一次掷骰，不是收货数）
+PASS  掉落被捡起来（地上不会永远堆着）
+PASS  背包或身上收到了东西（法宝/通货/玉简任一）
+PASS  修为累积到了角色上
+PASS  浮字在产出也会消失（没有无限堆积）
+PASS  日志不超过 6 行
+PASS  画面不是一片黑
+PASS  画面上有青色的玩家
+PASS  画面上有浊物（暖色）
+PASS  画面有层次（中亮像素，不是纯黑或纯灰）
+PASS  画面在变化（不是静态一张图）
+PASS  控制台无报错
+
+总计 25/25 通过
+
+== probe-battle.mjs exit=0 dur=33.6s [ok] n/a
+
+=== 存档 / 闭关 探针 ===
+PASS  页面挂上了调试钩子  ["ok"]
+PASS  关页面/导航时会自动存档（pagehide flush）  [saveRawLen=659]
+PASS  新号没有闭关摘要  [null]
+PASS  玩一会儿真的杀了怪  [kills=1 waited=5s]
+PASS  场上有怪（正在打）  [monsters=3]
+PASS  手动存档返回 true  [true]
+PASS  存档写进了 localStorage  [saveRawLen=675]
+PASS  存档版本是 1  [1]
+PASS  reload 后还是同一层  [1 -> 1]
+PASS  reload 后还是同一波（±1，重建时回到波开头）  [1 -> 1]
+PASS  reload 后境界没退  [0 -> 0]
+PASS  reload 后背包/通货/玉简都没丢  [bag 0->0 pocket 0->0 gems 0->0]
+PASS  reload 后装备坑数不变  [1 -> 1]
+PASS  reload 后战斗统计从 0 重算（kills 是运行时态）  [kills 1 -> 0]
+PASS  成功给新页面注入 3 小时时间偏移  [{"identifier":"1"}]
+PASS  3 小时后回来弹出了闭关摘要  [{"minutes":180,"kills":2628,"xp":8863,"items":271,"currency":343,"gems":98,"capped":false,"age":2.5}]
+PASS  闭关时长≈180 分钟  [180 min]
+PASS  闭关有击杀  [kills=2628]
+PASS  闭关有修为  [xp=8863]
+PASS  闭关有三类产出  [法宝271 通货343 玉简98]
+PASS  3 小时没触发 12 小时上限  [false]
+PASS  闭关后境界或修为有增长  [step 0->13 xp 2->520 pocket 0->343]
+PASS  刚存完档立刻刷新 → 不重复结算闭关  [null]
+PASS  6 小时档的摘要时长达 360 分钟  [{"minutes":360,"kills":5256,"xp":17674,"items":597,"currency":712,"gems":201,"capped":false,"age":1.7}]
+PASS  闭关面板真的画在屏幕上（金色描边 + 文字像素）  [{"gold":668,"brightish":1840,"w":320,"h":105}]
+PASS  控制台无报错  [ok]
+
+结果：26/26 通过   截图：F:\dsh-work\zhuoxian\docs\probe-save.png
+
+
+== probe-save.mjs exit=0 dur=17.4s [ok] n/a
+PASS  调试钩子挂上了（window.__zhuoxian.session）  [true]
+PASS  新号在第 1 层  [floor=1]
+PASS  新号可选层上限 = 1（不许跳关）  [max=1]
+PASS  选没到过的第 2 层被拒绝  [selectFloor(2)=false]
+PASS  选当前层返回 false（不是错误，是没必要）  [selectFloor(1)=false]
+PASS  选越界层被拒绝  [selectFloor(99)=false]
+PASS  被拒绝后层数没变  [floor=1]
+PASS  按 → 有反馈日志（不是静默无反应）  ["第 2 层还没到过（当前最深 1 层）"]
+PASS  刷新后层数与可选上限都还在档里  [{"floor":1,"max":1}]
+PASS  画布还在（截图有效）  [true]
+PASS  控制台无报错  [ok]
+
+结果：11/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+
+== probe-floor.mjs exit=0 dur=3.9s [ok] n/a
+PASS  打出了第一下（lastBreakdown 有值）
+PASS  拆解结构完整（label/amount/steps）  [{"label":"浊焰咒 → 断枪鬼","amount":14,"steps":5,"crit":false}]
+PASS  调用 toggleBreakdown 返回 true（已打开）  [true]
+PASS  打开面板后近黑底板真的盖上来了（暗像素计数）  [dark off 18067 → on 19539（avg 24.0 → 21.5）]
+PASS  面板里有文字像素（亮像素明显增加）  [401 → 866]
+PASS  再按一次能关掉（暗像素回落）  [dark on 19539 → off 18067]
+PASS  控制台无报错  [ok]
+
+结果：7/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+
+== probe-breakdown.mjs exit=0 dur=2.8s [ok] n/a
+PASS  身上至少有起始法器（详情面板有东西可画）  [1 件]
+PASS  调试钩子暴露 toggleDetail
+      注入第 2 件（灵品·探针戒 · 2 条灵纹）→ 卡片 2 张
+PASS  调用 toggleDetail 返回 true（已打开）  [true]
+PASS  打开后中心区域整体压暗（全屏遮罩生效）  [off 33.9 → on 17.5]
+PASS  卡片文字真的画出来了（低饱和亮像素 ≥24，卡片 2 张）  [关闭态 128 → 打开态 377]
+PASS  详情开着战斗仍在推进（不是暂停画面）  [击杀 14→16　波次 4→5]
+PASS  再按一次能关掉  [on 17.5 → off 34.0]
+PASS  控制台无报错  [ok]
+
+结果：8/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+
+== probe-detail.mjs exit=0 dur=73.2s [ok] n/a
+PASS  调试钩子存在
+PASS  满级前不产渊痕 · marks=0 step=0
+PASS  按 1 扣 36 万渊痕（D81 重锚） · 1800000 → 1440000
+PASS  按 1 洗灵石 +1 · 0 → 1
+PASS  按 1 写了日志 · 道统既定：御剑堂　入九幽魔渊 | 聚灵（换一块洗灵石）
+PASS  造出可回刷的深层（只为确认它不再是定渊的判据）
+PASS  按 2 是「一次性解锁定渊」：diveLockUnlocked=true，且**不再跳层**（D137 语义） · unlocked=true floor 1→1
+PASS  按 2 扣 72 万渊痕（1800000 − 360000 聚灵 − 720000 定渊 = 720000） · marks=720000
+PASS  按 2 写了定渊日志（买下即永久，不是跳层提示） · 聚灵（换一块洗灵石） | 定渊（设下次闭关起点层）
+PASS  渊痕不足时按 3 被拒绝（渊痕不减少 + 日志写明「渊痕不足」；轮询最多重按一次） · marks=720000 · 最后一条「渊痕不足：需要 3,600,000，现有 720,000」
+PASS  存档带 marks · saved=777777
+PASS  刷新后渊痕还在 · marks=777777
+PASS  刷新后最深可达层还在 · max=5
+PASS  控制台无报错
+
+14/14 通过
+
+== probe-marks.mjs exit=0 dur=12s [ok] n/a
+PASS  调试钩子存在
+PASS  按 T 后面板盖上来（中心平均亮度下降） · 34.4 → 20.1
+PASS  已点节点是实心仙金（找到暖金像素） · gold=3165
+PASS  可点节点有青色描边 · teal=1074
+PASS  再按 T 恢复战斗画面（亮度回升） · 20.1 → 34.1
+PASS  控制台无报错
+
+结果：6/6 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+
+== probe-talent.mjs exit=0 dur=7.9s [ok] n/a
+PASS  调试钩子存在
+PASS  新号从第 0 重开始 · step=0
+PASS  按 G 后面板盖上来（平均亮度下降） · 32.9 → 18.2
+PASS  五行色神通名画出来了（暖色像素） · warm=3263
+PASS  说明文字画出来了（米白像素） · pale=1347
+PASS  面板上出现未解锁行（暗色，比战斗画面更暗） · mean=18.2
+PASS  第 30 重后暖色像素更多（6 条神通全解锁） · 3263 → 4966
+PASS  再按 G 恢复战斗画面（亮度回升） · 23.1 → 33.1
+PASS  控制台无报错
+
+结果：9/9 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+
+== probe-skill.mjs exit=0 dur=8s [ok] n/a
+PASS  调试钩子存在
+PASS  新号进的是「选道统」阶段 · phase=select
+PASS  六名候选道统都在 · yujian,yushou,fenyin,xuanshui,houtu,ruijin
+PASS  默认高亮第 1 张 · pick=0
+PASS  选道统画面是很暗的遮罩（平均亮度 < 22） · mean=12.6
+PASS  高亮卡片有金色描边/文字 · gold=1448
+PASS  卡片文字画出来了（米白像素） · pale=2087
+PASS  按 → 高亮移到第 2 张 · pick=1
+PASS  按 4 直选第 4 张 · pick=3
+PASS  按下 ↓ 跨行（3 → 0 回绕到同列第一行） · pick=0
+PASS  回车后进入游戏 · phase=play
+PASS  选的道统真的生效（Digit6 → ruijin） · classId=ruijin
+PASS  进游戏就开好第一波了 · monsters=4
+PASS  画面切回战斗（平均亮度回升） · 12.6 → 27.9
+PASS  刷新后直接进游戏（不再问道统） · phase=play
+PASS  刷新后道统还在 · classId=ruijin
+PASS  控制台无报错
+
+结果：17/17 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+
+== probe-class.mjs exit=0 dur=9.9s [ok] n/a
+PASS  调试钩子存在
+PASS  新号从第 1 条开始（tutorialStep=0） · step=0
+PASS  底部画出了引导条（暖金边/标题像素） · bottom.gold=1650
+PASS  引导条上有米白正文 · bottom.cream=516
+PASS  引导条在底部，不压战斗区（底部仙金密度明显高于中心） · bottom=0.0278 center=0.0082
+PASS  挂机 9 秒引导自动推进（放置游戏不能靠按键才动） · 0 → 1
+PASS  按过 G 之后不再教「按 G 看神通」（停在周天图那条） · step=4
+PASS  刷新之后接着讲，不回到第 1 条 · 4 → 4
+PASS  走完后不再显示引导（底部仙金像素大幅减少） · 1716 → 118
+PASS  走完后 tutorialStep 到底（=11） · step=11 / len=11
+PASS  tutorialStep 进了存档（刷新才不重讲） · saved=11 / len=11
+PASS  控制台无报错
+
+结果：12/12 通过   截图：F:\dsh-work\zhuoxian\docs\probe-onboarding.png
+
+== probe-onboarding.mjs exit=0 dur=18.8s [ok] n/a
+  OK   A 注入一件带传奇的仙品成功 — {"legendary":"taiyi","rarity":"xian","affixes":4}
+  OK   A 钩子能读到该件 legendary 字段 — legendary=taiyi
+  OK   A 仙品仍是 4 条灵纹（传奇不占灵纹位） — affixes=4
+  OK   B 面板打开的确实是一张卡片（亮文字像素明显多于关闭态） — 关闭 562 → 打开 1117
+  OK   B 传奇效果真占一行文字（描述色 #c9a06a：有 ≥150 且比无传奇多 ≥60） — 描述色 有传奇 251 / 无传奇 108（差 143）· 全画布米白 1117 vs 1095 · 最大单行差 3
+  OK   C 仙品标题橙金色真的画出来了（≥20 像素） — 橙金像素=521
+  OK   D 开关面板后 legendary 没被渲染层改掉 — legendary=taiyi
+  OK   D 未知传奇 id 不崩、面板照画 — legendary=not-a-real-legendary-id 新增错误=0
+  OK   E 全程无控制台错误 — 0 条
+
+通过 9/9
+
+== probe-legendary.mjs exit=0 dur=8.1s [ok] n/a
+  OK   reset() 后回到「选道统」阶段 — phase=select
+  OK   真新号的引导从第 0 条开始 — tutorialStep=0
+  OK   选完道统进入战斗，引导仍停在 0 — phase=play step=0
+  OK   底部出现「引路」金色条带 — 底部金色像素=3305
+  OK   挂机 9 秒后引导自己往前走（step ≥ 1） — step 0 → 1
+  OK   引导推进不影响战斗（等到真的击杀） — kills 0 → 1（30s 等待）
+  OK   按 G 后引导不倒退 — step 3 → 4
+  OK   事实补齐后按 G 能吃掉「按 G 看神通」这一条（step 越过 panel-skill） — kills=3 drops=3 step 3 → 4（panel-skill 的下标是 3，越过它应 ≥4）
+  OK   按 T 后引导不倒退 — step 4 → 5
+  OK   G/T 两条面板引导被吃掉（step 越过 panel-talent） — 挂机时 1 → 按完 G/T 5（panel-talent 下标 4，越过它应 ≥5）
+  OK   reload 后直接进战斗（不再选道统） — phase=play
+  OK   reload 后引导不重讲（进度不回 0） — step 5 → 5
+  OK   finishTutorial() 把引导推到末条（tutorialLength） — step=11 / tutorialLength=11
+  OK   引导走完后底部条带没有残留高亮（金色像素低） — 走完后 152（阈值 600，条带存在时实测 3000+）
+  OK   引导结束后战斗照常推进（击杀继续涨） — kills 0 → 1（30s 窗口）
+  OK   选道统画面有两行世界观文字（米白文字像素） — 米白文字像素=2095（阈值 120，实测请勿低于它太多）
+  OK   switch-floor 那条能按 → 推进（不靠 12 秒兜底） — step 8 → 9
+  OK   tier 那条能把引导推到末条（灌层 10 后 step → tutorialLength） — step=10 / tutorialLength=11
+  OK   控制台无报错（含 reset/选道统/按键/灌层全流程） — 干净
+
+通过 19/19
+
+== probe-onboarding-indep.mjs exit=0 dur=34.9s [ok] n/a
+PASS  调试钩子存在（gems / skillRows / skillCursor）
+PASS  面板行序读得到（不写死 id） · rows=6
+PASS  第 30 重时全部神通已解锁 · 6/6
+PASS  按 G 后画面变暗（面板盖上来） · 33.0 → 23.2
+PASS  面板文字上屏（米白像素） · pale=2317
+PASS  光标初始在 (0,0) · {"skill":0,"slot":0}
+PASS  光标框真的画了（金色描边像素） · gold=761
+PASS  ↓ 移动技能光标 · {"skill":1,"slot":0}
+PASS  → 移动槽位光标 · {"skill":1,"slot":1}
+PASS  空格真的换了玉简（装配变化） · "jixie" → "kuosan"
+PASS  换完仍然合法（≤4 条、无重复）
+PASS  刷新后装配还在（改动真的入了档） · reload=["kaopi","kuosan","jixie","wanhui"]
+PASS  R 恢复自动：覆盖项被删掉
+PASS  恢复自动后装配非空（默认装配兜底） · ["kaopi","jixie","wanhui","zhuo-huo"]
+PASS  面板关闭后 → 仍然是回刷层（旧键位没被吃掉） · 1 → 1
+PASS  控制台无报错
+
+结果：16/16 通过   截图：F:\dsh-work\zhuoxian\docs\probe-gem.png
+
+== probe-gem.mjs exit=0 dur=11.7s [ok] n/a
+PASS  调试钩子存在（codex / codexRows / unlockCodex / codexCursor）
+PASS  图鉴行数读得到（不写死 24） · rows=34
+PASS  图鉴进度自洽（got == 已解锁行数 · percent == got/total 取整），未解锁行不剧透 · got=0 已解锁行=0 percent=0（期望 0）total=34 未解锁行「尚未遭遇」
+PASS  图鉴行数 = 内容模块导出（浊物 MONSTERS+BOSSES / ALL_LEGENDARY_DEFS / 变异体 CODEX_VARIANT_TOTAL） · 浊物 21/21 · 传奇 12/12（基础 9 + 深层 3）· 变异体 1/1 · 合计 34（CODEX_TOTAL=34）
+      图鉴进度钩子实测结构：{"monsters":{"got":0,"total":21},"legendaries":{"got":0,"total":12},"total":{"got":0,"total":34},"percent":0}
+PASS  图鉴总行数 = 进度钩子 codex().total.total（别写死 34） · 钩子 total=34 · 行数 34 · 已收录 0
+PASS  杀一只异变体就能收录（产品路径，不经过任何钩子）：未收录说「尚未遭遇」，收录后 detail 含「额外 1 条同类妖纹」 · 收录前「尚未遭遇」→ 收录后「深层异变 · 额外 1 条同类妖纹 · 掉落数量 +10%」（击杀 xiecheng-shiwei，6 帧）
+PASS  钩子直通也能收录异变体（D170 修的 unlockCodex variant 分支；构造边界用，不是主路径） · 清空后未收录=true → 钩子后 unlocked=true（「深层异变 · 额外 1 条同类妖纹 · 掉落数量 +10%」）
+PASS  行里浊物与传奇都有，名字非空 · monster=21 legendary=12
+PASS  按 K 后画面变暗（面板盖上来） · 32.9 → 17.9
+PASS  面板文字上屏（米白像素） · pale=630（关面板 854）
+PASS  标题/边框/键位提示是金色（暖色像素） · 1090 → 1525（下限 900 绝对量；HUD 自身金色随局面漂移，故不用 +200 相对量）
+PASS  光标初始在第 0 行 · 0
+PASS  ↓ 移动图鉴光标 · 0 → 1
+PASS  收录后进度上涨（注入的浊物 + 传奇都变成已解锁） · 总 0 → 3/34 · 8%
+PASS  收录的那条变成已解锁 · 坊市怨客
+PASS  已解锁的浊物有阶位/五行描述（不剧透未收录的） · 1 阶 · 土行 · 气血 ×1.33 · 攻伐 ×0.80 · 护体 5
+PASS  未收录的仍然不剧透 · 尚未遭遇
+PASS  深层传奇 detail 以 desc 开头（不写死整句文案） · yuanhen:伤害更多 45%（深层专属，… · shenyuan:护体提高 400%（深层专属… · changye:破绽率 +18%（深层专属，…
+PASS  深层传奇 detail 标明「层 ≥40 才可掉」且「不是替换」（两条机制文案都在） · 缺门槛 无 · 缺并存说明 无 · 基准行「伤害更多 45%（深层专属，比太一余烬更重）　｜　层 ≥40 才可掉；与基础传奇同时可掉（不是替换）」
+PASS  再按 K 关闭后亮度回升 · 17.9 → 33.4
+PASS  刷新后收录还在（真的入了档） · 保留 2/2 · 总 6/34
+PASS  面板关闭后 → 仍然走回刷层（旧键位没被吃掉） · 1 → 1
+PASS  控制台无报错
+
+结果：23/23 通过   截图：F:\dsh-work\zhuoxian\docs\probe-codex.png
+
+== probe-codex.mjs exit=0 dur=10.5s [ok] n/a
+PASS  钩子存在（复用 session().character.marks，未新增产品侧钩子）
+PASS  marks 字段可读写（undefined 自动落 0，不依赖建号默认值）　—　typeof marks=number
+PASS  已在 play 阶段（?cls= 直达，不是选道统卡住）　—　phase=play
+PASS  按 M 后全屏压暗（面板 + 遮罩生效）　—　关闭 28.0 → 打开 15.9（取样 520×158）
+PASS  面板左上金色竖条出现（只属于面板的像素，不受 HUD 金色干扰）　—　关闭 0 → 打开 474（6px 窄带金色像素，理论 3×158≈474）
+PASS  面板区域金色像素总量足够（标题 / 价 / 边框）　—　打开态金色 578（关闭态 HUD 也有金色：223，故只卡绝对量）
+PASS  marks=0 时出现「还差」的暗红文字（买不起状态画出来了）　—　关闭 251 → 打开 1052（暗红像素）
+PASS  marks=0 时绿色「可换」几乎不出现（三档都买不起）　—　关闭 13 → 打开 0（绿像素）
+PASS  改成 400 万后绿色「可换」出现（买得起状态真的随数值变）　—　0 里 0 → 400 万里 372（绿像素）
+PASS  改成 400 万后米白文字出现（买得起那几行的档位名用 C.text）　—　打开态米白 778（marks=0 时为 106，配色本就无米白）
+PASS  改成 400 万后暗红「还差」退场　—　0 里 1052 → 400 万里 612（暗红像素）
+PASS  再按 M 能关掉（亮度回升）　—　打开 16.2 → 关闭 28.2
+PASS  Escape 也能关（面板开着 → Escape → 亮度回升）　—　开 16.3 → Esc 后 28.3
+PASS  面板关着时 Digit1 仍走渊痕换（买 1 块洗灵石，-360k）　—　1000000 → 640000，洗灵石 0 → 1
+PASS  面板开着时 Digit1 也没被吃掉（只读面板不拦键位）　—　1000000 → 640000，洗灵石 1 → 2
+PASS  未解锁定渊：diveLock 关闭 · setDiveLock 被拒（返回 false，不许白拿）　—　unlocked=false active=false setDiveLock(true)=false
+PASS  未解锁时按 L 不改状态（键位有门槛，不是按了就生效）　—　unlocked=false active=false
+PASS  解锁后刷新：钩子重新可用（页面回到 play 阶段）　—　back=true
+PASS  一次性解锁真的入档（刷新后 unlocked 仍为 true）　—　unlocked=true active=false
+PASS  解锁后按 L 真的切换（开 → 关，产品键位与钩子同源）　—　开=true → 关=false
+PASS  控制台无报错　—　ok
+
+结果：21/21 通过   截图：F:\dsh-work\zhuoxian\docs\probe-marks-panel.png
+
+== probe-marks-panel.mjs exit=0 dur=14s [ok] n/a
+PASS  调试钩子存在（hudButtons / panelsOpen / classCards）
+PASS  新号（或清档后）停在选道统阶段 · phase=select
+PASS  六张卡片矩形都读得到 · cards=6
+PASS  点卡片直接进入战斗（不用按 Enter） · phase=play
+PASS  点的是哪张就选哪个道统（不是默认第一个） · cls=fenyin
+PASS  点空白处推进一条引导（手机的"空格"） · 0 → 1
+PASS  点面板按钮不会顺手跳掉引导 · 1 → 1
+PASS  按钮都在画布内（数量从产品钩子读，不写死） · 9 个：detail,breakdown,talent,skill,codex,achievement,marks,save,sound
+PASS  按钮互不重叠、id 不重复（点得中，不会两个按钮抢同一块） · 无重叠，9 个唯一 id
+PASS  点「图鉴」按钮打开了图鉴面板 · ["codex"]
+PASS  面板压上来画面变暗（平均亮度降） · 27.9 → 18.7
+PASS  再点同一个按钮关掉面板（点得进也点得出） · []
+PASS  开着一个面板再点另一个：只留下新的那个（不叠面板） · ["talent"]
+PASS  每个面板按钮点开后只开它自己那块面板、再点关掉（数量与 id 都从产品钩子读） · detail:ok breakdown:ok talent:ok skill:ok codex:ok achievement:ok marks:ok save:ok
+PASS  「音效」按钮是开关不是面板（点一次切静音、不弹遮罩，再点切回） · muted false → true → false，open=[]
+PASS  全部面板都能点关闭（清场） · []
+PASS  按钮下方（战斗区域）点击不会误开面板 · []
+PASS  画布被 CSS 缩放（缩放后 width 变化） · 928 → 587px
+PASS  缩放 60% 后点「渊痕」按钮仍打开面板（坐标换算正确） · ["marks"]
+PASS  键盘 K 仍能开关图鉴（键盘与点击共用 activatePanel） · ["codex"]
+PASS  未开定渊时按 L 不生效（diveLock 保持关闭，钩子有门槛） · unlocked=false active false→false
+PASS  解锁后键盘 L 真的开/关锁层（键盘→diveLock 钩子同源） · 开=true → 关=false
+PASS  截图已写出 · F:\dsh-work\zhuoxian\docs\probe-touch.png
+PASS  控制台零报错、零 4xx
+
+结果：24/24
+
+== probe-touch.mjs exit=0 dur=15.1s [ok] n/a
+PASS  调试钩子存在（achievements / achievementRows / achievementFacts / achievementCursor）
+PASS  成就行读得到（不写死 20） · rows=27
+PASS  条数与奖励总额都等于模块导出（不写死 20 / 385000） · ACHIEVEMENT_TOTAL=27=rows 27? · ACHIEVEMENT_REWARD_TOTAL=585000 vs 行合计 585000
+PASS  行字段齐全（id/name/desc/target/reward），id 不重复
+PASS  奖励有界（正数 · ≤50000 · 档位 ≤6；D87：只发渊痕、有界） · 档位 5000/15000/30000/50000
+PASS  新号：一条成就都没达成 · 0/27
+PASS  事实钩子返回 8 个字段（包括 deaths / xianEquipped） · kills,maxFloor,clearedFloors,codexMonsters,codexLegendaries,step,deaths,xianEquipped,xianFound,cycle
+PASS  按 J 画面变暗（面板盖上来） · 27.9 → 19.8
+PASS  面板左缘 3px 金条（结构像素 > 调色板像素，D91.2） · 关闭 31 → 打开 1010
+PASS  按 J 打开的是成就面板（不是渊痕价目表） · ["achievement"]
+PASS  光标初始在第 0 行 · 0
+PASS  ↓ 移动成就光标（方向键被面板接管，不会去回刷层） · 0 → 1
+PASS  面板开着时 ↑↓ 不会改层号 · 1 → 1
+PASS  真打到门槛后成就解锁（走 session 的结算，不是直接改状态） · kill-1 got=1/27 3%（解锁 0→1）
+PASS  解锁发的是渊痕（marks 增加 ≥ 该成就奖励） · 0 → 5000（奖励 5000）
+PASS  解锁不动修为（D87：只发渊痕，禁给修为/战力/掉率） · xp 2 → 2
+PASS  事实钩子含 xianFound 轴（D168：累计仙品件数，不是装备数） · xianFound=0 · 字段 10 个
+PASS  「仙缘不浅」（xian-80，目标 80 件仙品）真能解锁：发 30000 渊痕且不动修为 · marks 5000 → 35000（奖励 30000）· xp 2 → 2
+PASS  日志里播报了成就与渊痕奖励 · 成就 · 仙缘不浅　+30000 渊痕 | 成就 · 开刃　+5000 渊痕 | 图鉴：遭遇 锈剑傀 | 道统既定：御剑堂　入九幽魔渊 | 打开成就（再按 J 或点按钮关闭）
+PASS  再按 J 关闭：亮度回升且金条消失 · 19.8 → 28.2，金条 1010 → 22
+PASS  刷新后成就还在（真的入了档） · 仍解锁 2 条
+PASS  面板关着时 → 仍走回刷层（旧键位没被吃掉） · 1 → 1
+PASS  控制台无报错
+
+23/23 通过
+
+== probe-achievement.mjs exit=0 dur=10.4s [ok] n/a
+PASS  钩子可用（session().battle 可读）
+PASS  A 真实页面稀有度分布（180s 采样，层1~9，仅判上限）　—　magic 18.92%（≤35%）· rare 0.00%（≤15%）· n=37（normal 29/magic 7/rare 0）
+PASS  页面内可动态 load 战斗模块（spawnMonster/spawnRing/tickBattle/MONSTER_AFFIX_DEFS）　—　妖纹 11 条 · 类别 ["damage","defense","speed","economy"]
+PASS  A3 主线层（≤27）抽 2000 只不出现深层专属妖纹　—　主线层 27：深层条目 0 条 / 越界 0 例 · 见过 7 种
+PASS  A3 深层（40）出现深层专属妖纹且都满足各自 minFloor　—　深层 40：深层条目 4 条（shi-deep,man,chi,pan）· 越界 0 例 · 门槛 28
+PASS  A4 异变体：层 28 的 wave%4===0 每一波恰好 1 只（不传波号就永远出不来）　—　24 波里 24 波带异变体、单波最多 1 只（合计 24 只）
+PASS  A4 异变体：非 4 的倍数波（wave=3）、层门槛以下（层 27 波 4）都不出异变体　—　wave=3 → 0 只 · 层 27 wave=4 → 0 只 · 层 40 wave=8 → 12 只（应 >0）
+PASS  A4 异变体：带两条同类妖纹（同 category 出现 ≥2 次）　—　5/5 只成立 · 样本 [["damage","damage"],["defense","defense"],["economy","economy"],["speed","speed"],["speed","speed"]]
+PASS  A4 异变体：深层（层 40 wave=8）也照同一规则出　—　12 波里 12 波带异变体 · 合计 12 只
+PASS  A2 层1~9 稀有度带（spawnRing 真生成 500 只）　—　magic 9.20%（8~16%）· rare 0.60%（≤5%）· normal 451/magic 46/rare 3/boss 0
+      A2 分段实测：层1~9 magic 9.20% / rare 0.60%（n=500）　·　层10~18 magic 11.00% / rare 1.80%（n=500）　·　层19~27 magic 12.20% / rare 2.00%（n=500）　·　层28~46 magic 14.00% / rare 4.20%（n=500）
+PASS  B1 结构不变量：没有任何怪带两条同类妖纹　—　0 例
+PASS  B2 结构不变量：妖纹条数与稀有度匹配（normal/boss 0、magic 1~2、rare 3~4）　—　0 例
+PASS  C 向后兼容：不传 rarity/affixIds 与显式 (normal, []) 逐位相同　—　13 个数值/身份字段全同（maxHp 213 · damage 1.3416800886728006 · armor 5）
+PASS  B0 每个妖纹类别至少 1 条（不钉具体条数，条数由内容侧调）　—　分类条数 {"damage":3,"defense":4,"speed":1,"economy":3}
+PASS  D1（TTK 口径：harness 玩家 1e9 血不死，只量「玩家杀怪要多久」）没有纯亏妖纹　—　11 条全部换到东西（普通 TTK 11.40s · outDps 1.47）
+PASS  D2 至少一条妖纹让精英明显更耐打（TTK +5% 以上）　—　最耐打 jian(+45.3%) pan(+136.0%) · 最大倍率 2.360×
+PASS  D3 rare（4 类各一条）整体不比普通轻松（TTK +5% 或 outDps +5% 至少一项）　—　rare TTK 11.40s vs 普通 11.40s · rare outDps 2.40 vs 普通 1.47（妖纹 sha+hou+xun+tan）
+PASS  D4（TTK 口径）掉血的妖纹必须用更高输出换（血不是白掉的）　—　无掉血词条（全部 ≥ 普通血量）
+PASS  D6 妖纹不改移速（speed 通道已删；改移速=死词条）　—　11 条全部 speed=34（与普通同速）
+PASS  D5 rare 至少一项明显更强（更耐打或更疼，不许「四合一反而更好打也不更疼」）　—　rare TTK 11.40s · outDps 2.40（普通 11.40s / 1.47）
+PASS  控制台零报错　—　0 条
+PASS  截图落盘（精英名字/血条可肉眼复核）　—　F:\dsh-work\zhuoxian\docs\probe-monster-affix.png 195044B
+
+通过 22/22
+
+== probe-monster-affix.mjs exit=0 dur=198.3s [ok] n/a
+PASS  调试钩子存在（fragments / setFragmentAim / session）
+PASS  新号碎片余额全 0 且未定向 · metal=0 fire=0 water=0 aim=null
+PASS  F 键循环四态（金→火→水→未定向） · 序列 metal → fire → water → null
+PASS  setFragmentAim 能直接设成火行 · aim=fire
+PASS  按 M 面板盖上来（平均亮度下降） · 28.2 → 15.9
+PASS  碎片行真的画出了文字像素 · fragText=80
+PASS  按 M 之后只有渊痕面板开着（互斥）
+PASS  Escape 能关掉面板且碎片行文字消失 · fragText 80 → 0
+PASS  面板数字跟着角色状态走（金 7） · hook.metal=7 fragText 80 → 79
+PASS  F 只改定向、不动余额（定向不消耗碎片） · 金 7→7 · 火 8→8 · 水 9→9 · aim=fire
+PASS  能在真 session 里造一只 1 血镇守（走 spawnMonster，不伪造击杀事件） · {"ok":true,"floor":1,"uid":900129}
+PASS  镇守必掉 1 颗碎片（层 1 镇守 ⇒ 金行，真击杀派发） · 金 1 · 火 0 · 水 0（层 1）
+PASS  元素映射按阶（1~9 金 / 10~18 火 / 19~27 水）、无尽按 (floor-28)%3 轮转 · 1:metal 9:metal 10:fire 18:fire 19:water 27:water 28:metal 29:fire 30:water 46:metal 47:fire 60:water 76:metal
+PASS  碎片走独立槽：不进 pocket（pocket 只有 huang/mie/xi） · pocket keys=["huang","mie","xi"]
+PASS  控制台零报错
+
+15/15 通过 · EXIT=0
+
+== probe-fragments.mjs exit=0 dur=8.9s [ok] n/a
+
+threat 常量：FROM=22 MUL=3.5 SLOPE=0.2 BOSS_EXTRA=1.5 ENABLED=true
+层21: 普通 ×1.00 / 镇守 ×1.00　·　层22: 普通 ×1.00 / 镇守 ×1.50　·　层23: 普通 ×1.20 / 镇守 ×1.80　·　层27: 普通 ×2.00 / 镇守 ×3.00　·　层30: 普通 ×2.60 / 镇守 ×3.90　·　层34: 普通 ×3.40 / 镇守 ×5.10　·　层41: 普通 ×3.50 / 镇守 ×5.25　·　层42: 普通 ×3.50 / 镇守 ×5.25　·　层46: 普通 ×3.50 / 镇守 ×5.25　·　层76: 普通 ×3.50 / 镇守 ×5.25
+PASS  层 21 及以下不吃威胁（×1.00）　—　层21 = ×1.00
+PASS  层 22 是斜坡起点（×1.00，不是一步吃到封顶）　—　层22 = ×1.00
+PASS  斜坡单调不减且封顶 = DEEP_THREAT_MUL　—　峰值 = ×3.50
+PASS  镇守额外 ×1.5（层 22+ 同层普通与镇守之比恒 1.5）　—　层46 普通 ×3.50 / 镇守 ×5.25　·　层21 是例外（<22 早退，镇守也不加）: 普通 ×1.00 / 镇守 ×1.00
+
+spawnMonster damage（fangshi-yuanke）：层21 4.2367 · 层22 4.3638 · 层34 21.1540 · 层76 75.3609
+比值 22/21 = 1.030（理论 1.030 = 层曲线 ×1.03 × threat ×1.00）　34/21 = 4.993（理论 4.993）　76/21 = 17.788（理论 17.788）
+PASS  层 22 只吃层曲线、没提前吃威胁（22/21 = 层曲线比）　—　实测 1.0300 vs 理论 1.0300
+PASS  层 34 与层 21 的伤害比 = 层曲线比 × threat(34)　—　实测 4.9930 vs 理论 4.9930
+PASS  层 76 也吃到 threat（封顶 = DEEP_THREAT_MUL）　—　实测 17.7875 vs 理论 17.7875
+PASS  血量不吃威胁（只抬伤害，不拖 TTK）　—　maxHp 76/34 = 54.765（理论 54.764，差在 maxHp 取整）
+
+死亡前后：层 2 → 2　波次 3 → 1　deaths=1　reviveCooldown(死亡当帧)=6.00　修为 50 → 45
+PASS  REVIVE_COOLDOWN = 6 秒　—　const = 6
+PASS  死亡后本层回到第 1 波（s.wave === 1）　—　wave = 1（死前 3）
+PASS  死亡不降层　—　层 2 → 2
+PASS  死亡当帧 reviveCooldown 被设成 6　—　实测 6.00
+PASS  死亡只掉当前台阶存量的 10%（不是全身）　—　修为 50 → 45
+PASS  setFloor 能把角色放到层 5（逃生阀测试前置）　—　setFloor(5) = true, floor = 5
+
+逃生阀：层 5 连死 3 次 → 层 4　escapeValveCount 0 → 1　（ESCAPE_VALVE_DEATHS=3 / ESCAPE_VALVE_LAYERS=1）
+PASS  同层连死 3 次后逃生阀触发、退回 1 层　—　层 5 → 4，阀门 0 → 1，实测死亡 3 次
+PASS  逃生阀把本层死亡计数清零（不会一退再退）　—　floorDeaths = 0
+
+层 1 连死 4 次：floor=1　escapeValveCount=1
+PASS  层 1 无处可退时不退到 0 层　—　层 1 连死多次后仍在层 1
+PASS  成就表条数 = 模块派生量 ACHIEVEMENT_TOTAL（不写死 20）　—　DEFS=27 · ACHIEVEMENT_TOTAL=27
+PASS  floor-46 已不存在　—　含 floor-46 = false
+PASS  floor-76 存在且 target=76 / reward=50000　—　{"id":"floor-76","name":"渊底","desc":"走到魔渊最深处（第七十六层）。","target":76,"reward":50000}
+
+通过 20/20
+
+== probe-death-mechanics.mjs exit=0 dur=0.7s [ok] n/a
+PASS  调试钩子存在（cycleInfo / prestige / session）
+PASS  新号 cycle=0 · 名称来自 cycleName(0) · ready=false · cycle=0 name=初临 ready=false
+PASS  第 0 周目倍率全 1（hpMul/dmgMul/marksMul 与 cycles.ts 一致） · hp=1 dmg=1 marks=1
+PASS  未满级 prestige() 返回 false 且 floor/wave/step/xp/marks/bag/装备 一个都没变 · ret=false · {"cycle":0,"floor":1,"wave":1,"step":0,"xp":0,"marks":0,"bag":0,"equipped":1,"logLines":1} → {"cycle":0,"floor":1,"wave":1,"step":0,"xp":0,"marks":0,"bag":0,"equipped":1,"logLines":1}
+PASS  边界：step=79 → ready=false（差一步不算满级） · ready=false
+PASS  边界：step=80 → ready=true（isMaxStep 含端点） · ready=true
+PASS  边界：满级但 reviveCooldown>0 → ready=false（死亡冷却中不许轮回） · ready=false
+PASS  按 N 真的轮回：cycle 递增到 1（名称 = cycleName(1)） · cycle=1 name=第 1 周目
+PASS  轮回后境界归零（step=0）· 层 1 · 波 1 · step=0 floor=1 wave=1
+PASS  轮回后背包清空（bag=0），渊痕只增不减（跨帧只断方向，不断等值） · bag=0 · marks 0 → 15000
+PASS  轮回后战斗态真的按新周目重建（怪 >0 且总血量 >0） · monsters=4 ΣmaxHp=256
+PASS  轮回倍率按 cycles.ts 生效（hp=cycleHpMul(1) · dmg=cycleDmgMul(1) · marks=cycleMarksMul(1)） · hp=1.35/1.35 dmg=1/1 marks=2/2
+PASS  轮回日志写进会话日志（含 cycleName(1)；不限「最后一条」，成就日志会插在后面） · 命中「轮回：初临 → 第 1 周目」
+PASS  刷新后周目号仍在（cycle=1，周目号已入档） · cycle=1 name=第 1 周目 step=0
+PASS  prestige() 同帧：渊痕原样保留、装备回到新号那套、背包清空（不跨帧读 marks） · ok=true marks 1234567→1234567 · 装备 1→1（开局 1）· bag 0→0 · cycle=2
+PASS  未满级按 N 不改状态（cycle/floor/step/marks/bag 全等） · {"cycle":2,"floor":1,"wave":1,"step":0,"xp":0,"marks":1234567,"bag":0,"equipped":1,"logLines":1} → {"cycle":2,"floor":1,"wave":1,"step":0,"xp":0,"marks":1234567,"bag":0,"equipped":1,"logLines":2}
+PASS  未满级按 N 在日志里解释条件（含「轮回需先满级」） · 「轮回需先满级（第九境渡劫）」
+PASS  第 3 周目倍率与 cycles.ts 一致（hp/dmg 乘方 · marks 有钳制） · hp=2.4603750000000004/2.4603750000000004 dmg=1/1 marks=4/4 name=第 3 周目
+PASS  控制台零报错
+
+19/19 通过 · EXIT=0
+
+== probe-cycle.mjs exit=0 dur=11.2s [ok] n/a
+# 24h 周目链验收（D138）
+
+| 周目 | 满级中位(min) | (h) | min/max | 死亡中位 | 首次撞墙层 | 来源 |
+|---|---:|---:|---|---:|---:|---|
+| c0 | 273.0 | 4.55 | 232.4/296.2 | 3.5 | 53 | base-c0.json |
+| c1 | 298.9 | 4.98 | 271.6/321.7 | 22.5 | 37 | base-c1.json |
+| c2 | 369.4 | 6.16 | 318.3/409.5 | 57 | 29 | base-c2.json |
+| c3 | 506.6 | 8.44 | 382.6/695.9 | 88 | 30 | base-c3.json |
+
+- 累计：**24.13h**（4 轮）｜目标 24h，窗口 [20.4, 27.6]h → **通过**
+- 说明：单轮满级窗口只对 c0 生效（c≥1 只记录），因为 260min 是初临的目标；周目的需求是「24h 之后还有内容」，判的是累计。
+- 死亡时间占比（**D150 记录项，同量纲**）：c0 1.2% / c1 6.7% / c2 13.3% / c3 15.3%（分子分母都是分钟；c4+ 超 30% 才是「该动机制」的信号，c0~c3 只记录）
+
+- 单调线（硬线，D140）：相邻周目比值 ≥ 1.05
+  - c0 → c1：1.095 ✓
+  - c1 → c2：1.236 ✓
+  - c2 → c3：1.371 ✓
+- 死亡比例（硬线，D141）：≤ 15 次/小时
+  - c0：0.77 次/小时 ✓
+  - c1：4.52 次/小时 ✓
+  - c2：9.26 次/小时 ✓
+  - c3：10.42 次/小时 ✓
+
+通过 1/1  24h 周目链（累计 / 单调 / 死亡比例）
+
+== probe-cycle-24h.mjs exit=0 dur=0.2s [ok] n/a
+PASS  调试钩子齐全（探针不靠点文件选择器） · {"ok":true,"savePanel":true,"exportSaveText":true,"stageImportText":true,"confirmImport":true,"hudButtons":true,"panelsOpen":true}
+PASS  新号：面板关着、状态 idle、没有待导入 · {"phase":"idle","status":"","pending":false,"visible":false}
+PASS  按 S 打开存档面板 · panelsOpen=["save"]
+PASS  面板真的画出来了（亮度下降） · 27.9 → 16.0
+PASS  左侧结构金条（结构像素，比金色总量可靠） · 关 5 → 开 719
+PASS  导出文本是带信封的 JSON（magic + save） · {"len":1313,"magic":"zhuoxian-save","hasSave":true}
+PASS  暂存自己的存档：解码成功 + 进入确认阶段（不直接覆盖） · 练气·一重　第 1 层　初临　渊痕 0
+PASS  暂存垃圾文件：判否 + 给一句人话 + 不进入确认阶段 · 这里不是存档文件（读不出内容）。
+PASS  确认阶段有两个按钮，且来自渲染器的同一份布局 · ["confirm","cancel"]
+PASS  点「确认导入」真的执行了导入（待导入被消费、面板关闭） · pending=false visible=false step 0 → 0
+PASS  HUD 有「存档」按钮（手机没有 S 键） · key=S
+PASS  点 HUD「存档」按钮能打开面板 · {"phase":"idle","status":"","pending":false,"visible":true}
+PASS  面板开着时点面板外空白不穿透 · {"phase":"idle","status":"","pending":false,"visible":true}
+PASS  Escape 能关掉面板 · {"phase":"idle","status":"","pending":false,"visible":false}
+PASS  存档键里有内容（导入/自动存档都写这条键） · {"has":true}
+PASS  刷新后游戏还在跑、面板是关着的 · {"ok":true,"step":0,"savePanel":{"phase":"idle","status":"","pending":false,"visible":false}}
+PASS  控制台零报错
+
+17/17 通过 · F:\dsh-work\zhuoxian\docs\probe-save-panel.png
+EXIT=0
+
+== probe-save-panel.mjs exit=0 dur=12.8s [ok] n/a
+
+=== 音效（D181）真机 ===
+
+  [PASS] 调试钩子存在  — {"audio":"function","toggle":"function"}
+  [PASS] 新号默认不静音  — {"muted":false,"volume":0.45,"played":1,"failed":0}
+  [PASS] 战斗里真的播了音效  — played=8
+  [PASS] 没有音频异常  — failed=0
+  [PASS] 按钮条最后一个按钮是「音效」  — {"id":"sound","gold":0}
+  [PASS] 按 V 能关静音（muted=true）  — {"muted":true,"volume":0.45,"played":8,"failed":0}
+  [PASS] 关掉时有日志反馈
+  [PASS] 静音状态进了存档
+  [PASS] 静音时按钮高亮（金框变多）  — 0 → 123
+  [PASS] 静音期间不再播  — 8 → 8
+  [PASS] 刷新后仍然是静音  — {"muted":true,"volume":0.45,"played":0,"failed":0}
+  [PASS] 存档里的角色也记着静音  — true
+  [PASS] 再切一次回到不静音  — false
+  [PASS] 打开后继续播  — played=4
+  [PASS] 默认音量是 45%  — 0.45
+  [PASS] 按 ] 音量升一档（+10%）  — 0.55
+  [PASS] 调音量有日志反馈
+  [PASS] 按 [ 音量降回来  — 0.45
+  [PASS] 音量状态进了存档
+  [PASS] 刷新后音量还在  — 0.45
+  [PASS] 音量 0 不等于静音（静音是独立开关）  — {"vZero":0,"mutedAtZero":false}
+  [PASS] 控制台零报错  — 0 条
+node.exe : node:fs:621
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:158 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (node:fs:621:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  return binding.open(
+                 ^
+
+Error: ENOENT: no such file or directory, open 'F:\dsh-work\zhuoxian\http:\127.0.0.1:5292'
+    at Object.openSync (node:fs:621:18)
+    at Object.writeFileSync (node:fs:2496:35)
+    at file:///F:/dsh-work/zhuoxian/tools/probe-audio.mjs:243:6
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'F:\\dsh-work\\zhuoxian\\http:\\127.0.0.1:5292'
+}
+
+Node.js v24.22.0
+
+== probe-audio.mjs exit=1 dur=22.6s [RED] n/a
+
+=== 纸娃娃真机体检：http://127.0.0.1:5292/ ===
+
+  [PASS] 调试钩子存在 — typeof = object
+  [PASS] 进入战斗（phase=play） — phase = play
+  [PASS] 钩子给出 10 个格子 — n = 10
+  [PASS] 第一格是法器且尺寸合理 — slot=sword 92x34
+  [PASS] 至少 1 格画出内容（起手法器） — lit = 2/10
+  [PASS] 点格子打开详情 — open = true
+  [PASS] 详情高亮那一格 — focus = sword
+  [PASS] 详情面板压暗了战斗画面 — dark = 151010
+node.exe : 探针异常： ENOENT: no such file or directory, open 'F:\dsh-work\zhuoxian\http:\127.0.0.1:5292'
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:158 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针异常： ENOENT: n...127.0.0.1:5292':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+== probe-paperdoll.mjs exit=1 dur=7.5s [RED] n/a
+
+=== 镇守血条（D183）真机 ===
+
+  [PASS] 调试钩子存在  — true
+  [PASS] 进到镇守波并出现镇守  — {"x":660.9000000000044,"y":270,"size":56,"hp":1700,"maxHp":1700,"name":"市侩鬼"}
+  [PASS] 镇守已经开始掉血（条该画出来）  — 1676/1700
+  [PASS] 画布有像素比信息（取样要按它换算）  — {"logicalW":960,"logicalH":540,"ratio":1.3333333333333333}
+  [PASS] 镇守条位置有锈红像素（条真的画了）  — {"red":882,"gold":0,"n":896}
+  [PASS] 条右侧有百分比文字像素  — {"red":26,"gold":103,"n":1113}
+  [PASS] 镇守条比普通怪小条宽  — r=28 w=96.0
+  [PASS] 控制台零报错  — 0 条
+
+  截图：F:\dsh-work\zhuoxian\docs\probe-boss-bar.png
+
+=== 8/8 ===
+
+== probe-boss-bar.mjs exit=0 dur=29.2s [ok] n/a
+PASS  子路径下 index.html 打开了 · 400 chars
+PASS  资源 URL 都带子路径前缀（base: './' 生效） · assets=2
+PASS  没有任何 4xx/403（favicon 除外） · 4 次请求
+PASS  canvas 真的画了东西（不是白屏也不是全黑） · mean=12.6 lit=30197/518400
+PASS  生产构建不带调试钩子（玩家打不开后门） · hooks 未暴露，符合预期
+PASS  按 Enter 能进入战斗（选道统界面确实过了） · mean 12.6 → 27.9
+PASS  游戏循环在跑（6 秒内画面像素变化） · hash 1334200192 → 2429373832
+PASS  子路径 origin 下写出了存档（localStorage 键名 zhuoxian.save.v1） · savedAt=2026-10-23T20:26:23.247Z
+PASS  reload 后存档仍在同 origin（子路径部署不会丢档） · savedAt 1792787183247 → 1792787186825
+PASS  存储键不越界（只有本游戏自己的键） · zhuoxian.save.v1
+PASS  手机路径起点确实是选道统界面（档真清掉了） · mean=12.6
+PASS  手机路径：点屏幕中间能选道统并进战斗（dist 里没有键盘） · 点 y=0.3 后亮度 12.6 变化
+PASS  点进来的战斗确实在跑（2.5 秒像素变化） · hash 1559987326 → 418461528
+PASS  控制台零报错
+
+14/14 通过 · EXIT=0
+
+== probe-dist.mjs exit=0 dur=21s [ok] n/a
+== TOTAL 0/0

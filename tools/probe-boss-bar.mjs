@@ -264,6 +264,7 @@ async function main() {
     fs.writeFileSync(SHOT, Buffer.from(shot.data, 'base64'));
     console.log(`\n  截图：${path.resolve(SHOT)}`);
     console.log(`\n=== ${pass}/${pass + fail} ===`);
+console.log(`结果：${pass}/${pass + fail}`);
     if (fail > 0) process.exitCode = 1;
   } finally {
     try {

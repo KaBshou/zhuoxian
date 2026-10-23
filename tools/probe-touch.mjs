@@ -170,9 +170,19 @@ try {
   await cdp.eval('(()=>{window.__zhuoxian?.reset();return true})()');
   await sleep(2500);
 
-  const hooked = await cdp.eval(
-    'Boolean(window.__zhuoxian && window.__zhuoxian.hudButtons && window.__zhuoxian.panelsOpen && window.__zhuoxian.classCards)',
-  );
+  // 轮询等钩子：reset() 之后是一整页 reload，冷启动时 Vite 首次 transform 可能要 3~5 秒。
+  // 固定 sleep 2.5s 会让「冷启动慢」看起来像「钩子不存在」—— 这是探针的假红，不是产品的 bug。
+  const hookExpr =
+    'Boolean(window.__zhuoxian && window.__zhuoxian.hudButtons && window.__zhuoxian.panelsOpen && window.__zhuoxian.classCards)';
+  let hooked = false;
+  for (let i = 0; i < 25 && !hooked; i++) {
+    try {
+      hooked = await cdp.eval(hookExpr);
+    } catch {
+      hooked = false;
+    }
+    if (!hooked) await sleep(400);
+  }
   check('调试钩子存在（hudButtons / panelsOpen / classCards）', hooked);
   if (!hooked) throw new Error('no hook');
 
@@ -273,8 +283,12 @@ try {
   // 契约（main.ts activatePanel）：点谁 → panelsOpen() 恰好等于 [那个 id]；再点 → 空。
   // ⚠ 不写死名单/数量：D93 加了「成就 J」后，写死的版本当天就假红。
   //   "点谁开谁"这条能抓到的真 bug 是「新按钮忘了在 activatePanel 里分支」（实测抓到过）。
+  // 「音效」是开关不是面板（D181）：点它只切静音、不打开遮罩，所以不能混进「开/关面板」那组。
+  const panelBtns = btns.filter((b) => b.id !== 'sound');
+  const soundBtn = btns.find((b) => b.id === 'sound');
+
   const openedOk = [];
-  for (const b of btns) {
+  for (const b of panelBtns) {
     const p = toClient(b.x + b.w / 2, b.y + b.h / 2);
     await cdp.click(p.x, p.y);
     const open = await cdp.eval('(()=>window.__zhuoxian.panelsOpen())()');
@@ -286,10 +300,28 @@ try {
   }
   const allOpened = openedOk.every((s) => s.endsWith('ok'));
   check(
-    '每个按钮点开后只开它自己那块面板、再点关掉（数量与 id 都从产品钩子读）',
+    '每个面板按钮点开后只开它自己那块面板、再点关掉（数量与 id 都从产品钩子读）',
     allOpened,
     openedOk.join(' '),
   );
+
+  // 「音效」按钮：点一次切静音（不产生面板），再点一次切回来
+  if (soundBtn) {
+    const sp = toClient(soundBtn.x + soundBtn.w / 2, soundBtn.y + soundBtn.h / 2);
+    const muted0 = await cdp.eval('(()=>window.__zhuoxian.audio().muted)()');
+    await cdp.click(sp.x, sp.y);
+    const afterClickMuted = await cdp.eval('(()=>window.__zhuoxian.audio().muted)()');
+    const openAfterSound = await cdp.eval('(()=>window.__zhuoxian.panelsOpen())()');
+    await cdp.click(sp.x, sp.y);
+    const mutedBack = await cdp.eval('(()=>window.__zhuoxian.audio().muted)()');
+    check(
+      '「音效」按钮是开关不是面板（点一次切静音、不弹遮罩，再点切回）',
+      afterClickMuted === !muted0 && openAfterSound.length === 0 && mutedBack === muted0,
+      `muted ${muted0} → ${afterClickMuted} → ${mutedBack}，open=${JSON.stringify(openAfterSound)}`,
+    );
+  } else {
+    check('「音效」按钮存在（D181 新增）', false, '按钮条里找不到 sound');
+  }
 
   // 收尾：确保没有残留面板（只按「当前开着的」去关，不依赖名单）
   for (const b of [...btns].reverse()) {
