@@ -1,0 +1,198 @@
+/**
+ * 离线收益（闭关）—— 玩家关掉页面到再打开之间，产生了多少收益。
+ *
+ * 【为什么不是"跑一遍真实 session"】
+ * 12 小时 = 43200 秒 = 2 592 000 个 1/60 帧，或者 172 800 个 0.25 秒粗帧。
+ * 每次读档都跑一遍会让打开游戏卡几秒到几十秒（手机上更糟），而玩家只是想玩。
+ * 所以用**闭式公式 + 真实掉落掷骰**：
+ * - 修为/掉落量按 BALANCE 的「按层击杀数」表 × 时长算
+ * - 掉落种类仍然走真的 rollLoot / rollCurrency / rollGemDrop —— 保证离线出的装备
+ *   和在线出的装备走同一条生成管线（这是"离线不会刷出非法装备"的保证）
+ *
+ * 【已知偏差（必须记账，不许当作没发生）】
+ * 闭式公式假设"击杀率恒定"，但真实 session 的击杀率随层数、装备、突破而变。
+ * 实测层 1 的击杀率是层 27 的 1.05 倍（14.6 vs 14.4），27 层全程平均 19.03/分，
+ * 而单层稳态在 12.3~29.7 之间。所以离线收益只在**当前层**上算，不模拟推进。
+ *
+ * 【两条设计决定】
+ * 1. 离线**不推层**：闭关是在当前层重复刷，醒来还在这一层。否则离线一周直接通关，
+ *    而且玩家看不到过程（"我睡一觉怎么跑到层 27 了"）。
+ * 2. 离线**不死**：挂机死了会打断收益，那是惩罚不是放置。生存线由在线部分的
+ *    波末回气负责（BALANCE §8），离线不给它加保险。
+ */
+import type { AffixDef } from '../data/affix-def';
+import type { ItemBaseDef } from '../data/bases';
+import type { CurrencyId } from '../data/currency';
+import { rollCurrency } from '../data/currency';
+import { rollGemDrop } from '../data/gem-drops';
+import { bossXpMulOfTier, monstersOfTier, tierOfFloor, xpPerKill } from '../data/monsters';
+import { unlockedGems } from './skills-runtime';
+import type { CharacterState } from './character';
+import { liveMonsters } from './session';
+import { characterStats } from './character';
+import type { GameSession } from './session';
+import { rollDropGate, rollMonsterDropAll } from './drop';
+import type { Item } from './item';
+import type { Rng } from './rng';
+
+/** 不足这个秒数不结算（切个标签页回来不该弹窗） */
+export const OFFLINE_MIN_SECONDS = 60;
+
+/** 12 小时封顶（DECISIONS 默认值） */
+export const OFFLINE_MAX_SECONDS = 12 * 3600;
+
+/** 超过封顶的部分按这个比例给（减半，不是归零——玩家不该因为多挂一天反而亏） */
+export const OFFLINE_OVERFLOW_RATE = 0.5;
+
+/**
+ * 按层击杀数（BALANCE §20.1 `KILLS_PER_MIN_BY_FLOOR`，typical 口径中位数）。
+ * 索引 = 层 - 1；超出 27 层按最后一档（等无尽层开了再延长）。
+ */
+export const OFFLINE_KILLS_PER_MIN: readonly number[] = [
+  14.6, 14.7, 21.8, 20.4, 18.3, 22.0, 22.0, 28.1, 29.7,
+  21.2, 22.0, 21.3, 21.9, 18.7, 21.6, 22.0, 21.3, 20.8,
+  15.3, 15.9, 17.5, 15.2, 14.6, 13.3, 13.0, 12.3, 14.4,
+];
+
+/** 每波里镇守的占比：一层 10 波，其中 1 波镇守（BOSS_EVERY=10） */
+const BOSS_WAVE_SHARE = 0.1;
+
+export function killsPerMinute(floor: number): number {
+  const f = Number.isFinite(floor) ? Math.floor(floor) : 1;
+  const idx = Math.min(OFFLINE_KILLS_PER_MIN.length - 1, Math.max(0, f - 1));
+  return OFFLINE_KILLS_PER_MIN[idx];
+}
+
+/** 该层普通浊物的平均修为赏金系数（xpMul 均值） */
+export function avgXpMulOfFloor(floor: number): number {
+  const defs = monstersOfTier(tierOfFloor(floor));
+  if (defs.length === 0) return 1;
+  return defs.reduce((s, d) => s + d.xpMul, 0) / defs.length;
+}
+
+/**
+ * 一次离线闭关的结算结果。
+ * 全部是**增量**，由调用方决定加到哪（session 的 character / pocket / gemPouch / bag）。
+ */
+export interface OfflineGain {
+  /** 实际结算的秒数（封顶 + 溢出折算后） */
+  readonly effectiveSeconds: number;
+  /** 原始离线秒数 */
+  readonly rawSeconds: number;
+  /** 是否被 12 小时封顶截断 */
+  readonly capped: boolean;
+  readonly minutes: number;
+  readonly kills: number;
+  readonly xp: number;
+  readonly items: readonly Item[];
+  readonly currency: Readonly<Partial<Record<CurrencyId, number>>>;
+  readonly gems: Readonly<Record<string, number>>;
+}
+
+/** 封顶 + 溢出折算：返回等价收益秒数 */
+export function effectiveOfflineSeconds(rawSeconds: number): number {
+  if (!Number.isFinite(rawSeconds) || rawSeconds <= 0) return 0;
+  if (rawSeconds <= OFFLINE_MAX_SECONDS) return rawSeconds;
+  return OFFLINE_MAX_SECONDS + (rawSeconds - OFFLINE_MAX_SECONDS) * OFFLINE_OVERFLOW_RATE;
+}
+
+/**
+ * 结算离线收益。
+ *
+ * `rng` 必须来自存档里的 rng 状态（不是 Date.now），否则玩家能靠反复刷新读档刷掉落。
+ */
+export function simulateOffline(
+  s: GameSession,
+  rawSeconds: number,
+  rng: Rng,
+): OfflineGain {
+  const effectiveSeconds = effectiveOfflineSeconds(rawSeconds);
+  const minutes = effectiveSeconds / 60;
+  const floor = Math.max(1, Math.floor(s.floor));
+  const kills = Math.max(0, Math.round(killsPerMinute(floor) * minutes));
+
+  const tier = tierOfFloor(floor);
+  const perKillXp = xpPerKill(floor) * avgXpMulOfFloor(floor);
+  // 镇守波贡献：血量 ×25、修为按阶系数（D33），所以它单位时间的修为远高于普通怪。
+  // 这里按"每 10 波 1 个镇守、镇守占该层时长的比例"折算成等效击杀数。
+  const bossXp = perKillXp / Math.max(0.01, avgXpMulOfFloor(floor)) * bossXpMulOfTier(tier);
+  const bossKills = Math.max(0, Math.round(kills * BOSS_WAVE_SHARE * 0.25));
+  const xp = Math.round(kills * perKillXp + bossKills * bossXp);
+
+  const items: Item[] = [];
+  const currency: Partial<Record<CurrencyId, number>> = {};
+  const gems: Record<string, number> = {};
+  const gemStep = unlockedGems(s.character).reduce((m, g) => Math.max(m, g.unlockStep), 0);
+
+  // 掉落分成与在线完全一致（session.ts 的三分类），只是不落地、直接进袋。
+  // D46.1：闸在分流之前 —— 先问「这一击掉不掉」，再问「掉哪一类」。
+  for (let i = 0; i < kills; i++) {
+    if (!rollDropGate(rng, 'normal')) continue;
+    const r = rng.float(0, 1);
+    if (r < 0.475) {
+      const c = rollCurrency(rng, floor);
+      if (c) currency[c.id] = (currency[c.id] ?? 0) + 1;
+    } else if (r < 0.6) {
+      const g = rollGemDrop(rng, gemStep);
+      if (g) gems[g.id] = (gems[g.id] ?? 0) + 1;
+    } else {
+      // D39：离线产出也要吃「仙缘」（lootRarity），否则闭关出货质量会低于在线
+      const dropped = rollMonsterDropAll(
+        'normal',
+        floor,
+        'normal',
+        rng,
+        s.tables,
+        characterStats(s.character).lootRarity,
+        true,
+      );
+      for (const it of dropped) items.push(it);
+    }
+  }
+
+  return {
+    effectiveSeconds,
+    rawSeconds,
+    capped: rawSeconds > OFFLINE_MAX_SECONDS,
+    minutes: Math.round(minutes * 10) / 10,
+    kills,
+    xp,
+    items,
+    currency,
+    gems,
+  };
+}
+
+/** 离线结算要不要弹窗（返回 null = 不弹） */
+export function offlineGainIsNoteworthy(rawSeconds: number): boolean {
+  return Number.isFinite(rawSeconds) && rawSeconds >= OFFLINE_MIN_SECONDS;
+}
+
+/**
+ * 把离线收益并进 session（原地）。
+ *
+ * 修为走 addXp（会正确处理连破 / 满级溢出），装备走 pickup 的背包逻辑，
+ * 通货/玉简直接记账 —— 全部复用在线的同一批函数，不另写一套。
+ */
+export function applyOfflineGain(
+  s: GameSession,
+  gain: OfflineGain,
+  addXpFn: (ch: CharacterState, amount: number) => CharacterState,
+  pickupFn: (ch: CharacterState, bag: readonly Item[], item: Item) => { character: CharacterState; bag: Item[]; message: string; equipped: boolean },
+): void {
+  if (gain.xp > 0) {
+    s.character = addXpFn(s.character, gain.xp);
+  }
+  for (const it of gain.items) {
+    const r = pickupFn(s.character, s.bag, it);
+    s.character = r.character;
+    s.bag = r.bag;
+    s.dropsFound += 1;
+  }
+  for (const [id, n] of Object.entries(gain.currency)) {
+    s.pocket[id as CurrencyId] = (s.pocket[id as CurrencyId] ?? 0) + (n ?? 0);
+  }
+  for (const [id, n] of Object.entries(gain.gems)) {
+    s.gemPouch[id] = (s.gemPouch[id] ?? 0) + n;
+  }
+}

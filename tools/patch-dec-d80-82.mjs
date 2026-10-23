@@ -1,0 +1,75 @@
+// 追加 D80 / D81 / D82 到 docs/DECISIONS.md（写盘前留 _bak 快照 + 长度断言）
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+
+const FILE = 'docs/DECISIONS.md';
+const raw = readFileSync(FILE, 'utf8');
+const before = raw.length;
+
+const lines = [];
+lines.push('');
+lines.push('### D80（段④「仙品/3h」定为主口径：停留层 46 的入包量 ÷ 停留层 46 的分钟数）');
+lines.push('');
+lines.push('- **问题**：这一列原来除的是「满级后窗口长度」，于是任何**与掉率无关**的加速改动都会让它涨。');
+lines.push('  D78 只改代码（`castSpeed` 接进神通冷却）：窗口 560 → 602min，读数 7.7 → 13.8（+79%），掉率一点没变。');
+lines.push('  这是**口径事故**，不是记账：同一个掉率得出两个「内容长度」，差一倍。');
+lines.push('- **定稿（shuzhi v4.38）**：`仙品/3h(层46) = 满级后停留层 46 时入包的仙品 ÷ 停留层 46 的分钟数`；');
+lines.push('  未到层 46 的种子记 `—`（不当 0）。旧列只作对照，**不得引用**；口径改好前一律写「≈10.6h」。');
+lines.push('- **落地**：`tools/session-runner.mjs` 的 `postCap` 已按层 46 停留时长统计，`run-timeline` 表 2d 打「主口径」与「旧口径」两列。');
+lines.push('- **实测（6 种子，`tmp\\v439.log`）**：主口径 **12.3 件/3h**（229 件合计、旗子 38.0% 对设计 33.3%）⇒ 25.46 件约 **6.2h**，');
+lines.push('  与 shuzhi 解析锚 7.2 件/3h（⇒ 10.6h）差 1.7 倍。**已交 shuzhi 判**：认实测 12.3（段④ ≈6h），还是解析式漏了 `depthRarityBonus` 的实际分布。');
+lines.push('  在判定前：**12.3 与 6.2h 都标「待重标口径，不得引用」**，报告结论仍写 ≈10.6h。');
+lines.push('');
+lines.push('### D81（渊痕定价重锚：10 843 → 15 627 渊痕/分，三档 ×1.44）');
+lines.push('');
+lines.push('- **触发**：D78 修好 `castSpeed` 后击杀变快 ⇒ 渊痕/分上涨。定价锚的是**分钟数**（§21.10），速率一变三档价格必须同倍缩放，');
+lines.push('  否则「3h 能买一次」的心理账户静默失真（不报错，只是玩家觉得渊痕莫名其妙变多变少）。');
+lines.push('- **落地**：`src/data/marks.ts` 的 `MARKS_PER_MINUTE = 15_627`；三档 `setStartFloor 720_000`（45.5min）/');
+lines.push('  `rerollCurrency 360_000`（22.7min）/ `divineReforge 3_600_000`（230.6min，「唯一需要跨天」的一档：3h 挂机产 2.81M，差一点，刻意如此）。');
+lines.push('- **外层探针同步**：`F:\\dsh-work\\tools\\probe-marks.mjs`（**注意它在 `F:\\dsh-work\\tools\\`，不在本项目 `tools/`**）：');
+lines.push('  种子渊痕 1 800 000、聚灵扣 360 000、定渊扣 720 000、夺造化买不起必须被拒（终值 720 000）。');
+lines.push('- **遗留（已问 shuzhi）**：本轮 6 种子实测渊痕 **15 032/分**（比 15 627 低 3.8%）。差在噪声内，我倾向保持 15 627（保守，玩家多攒 4%），');
+lines.push('  等她确认后再决定是否追一次三档价格。**纪律**：以后改掉落 / 修为曲线 / 战斗速度，必须重跑 `--post-cap` 并同步 `MARKS_PER_MINUTE`。');
+lines.push('');
+lines.push('### D82（死属性穷举审计 → 靴子整个部位是空的 → 换身份）');
+lines.push('');
+lines.push('- **怎么发现的（不是撞运气）**：新写 `tools/audit-stats.mjs`，27 个 StatKey 全扫，');
+lines.push('  判定口径 = **只看会改变游戏行为的消费者**（`battle/damage/character/session/drop/offline/crafting/talents-runtime/gem-power`），');
+lines.push('  **排除 `src/core/inventory.ts`**——`itemPower` 权重只把数字抬高，不是消费，这正是 `xpGain` 当年的陷阱。');
+lines.push('  结论：**0 行真消费 = 3 个**：`moveSpeed`、`projectileSpeed`、`xpGain`。');
+lines.push('  `moveSpeed` 有 3 个基底主属性 + 3 条词缀 + 3 个天赋节点在发，`projectileSpeed` 有 2 条词缀（其一还是天阶 `more 0.12`），');
+lines.push('  而战斗里**玩家从不移动**（只有怪朝玩家走）、神通即时结算无投射物 ⇒ 靴子 6 条词缀里 5 条是废的，只有身法 1 条真。');
+lines.push('- **更大的连带伤害**：`STAT_WEIGHT` 里 `moveSpeed: 60` 是全表最高 ⇒ 自动换装与段② 判据 C 都会被「看起来很值钱的废件」带偏。');
+lines.push('- **选择（shuzhi 拍 (1) 换身份）**：否 (2) 给玩家加位移（「那是加一个系统，不是修 bug」）；');
+lines.push('  否 (3) 删 StatKey（动存档兼容 + 天赋树形状 + 60 条词缀总数，成本最高；键留着 + 权重零 + 禁止引用成本近零，`xpGain` 已有先例）。');
+lines.push('- **替换表**：靴子主属性 `moveSpeed → armor`（`mainFlat` 12/20/34，`mainPerIlvl` 0.36/0.60/1.02 = 道袍的 48%，避免护甲供给翻倍）；');
+lines.push('  踏云 → 金抗 `increased 0.08`、遁影 → 水抗 `increased 0.08`、惊鸿 → 火抗 `increased 0.14`、');
+lines.push('  缩地 → 护甲 `increased 0.24`（必须低于太清 `.35`）、御风 → 护甲 **`more` 0.15**（凹函数自带递减）；身法不动。');
+lines.push('  天赋 `b-foot-1/2/3` → 护甲 `increased .04/.04/.06`；`b-foot-6` 占位开关 `speed-demon` → **`resist-cap-plus`**。');
+lines.push('- **顺手补掉一个「面板看得见、实战不生效」的坑**：抗性上限若只在面板夹，`characterStats` 会被 `clampStat` 夹回 0.75，');
+lines.push('  于是「上限 +5%」本身成了新死属性。加 `ResolveOptions.resistCapBonus` 一路传到 `clampStat`（只放开五行抗性的 max，不动破绽率/护体）；');
+lines.push('  `stats.ts` 里 `RESIST_CAP_BONUS_MAX = 0.05`。3 条单测钉住：真放到 0.80 / 不放开破绽率 / 未点亮不产字段。');
+lines.push('- **影响量化（shuzhi）**：灵蕴 99 靴 = `34 + 1.02×98 = 134.0` 护甲 vs 道袍 275.8 ⇒ +49%；层 27（`k = 50+10×27`）减伤 0.463→0.561（+9.8pp）；');
+lines.push('  经 D19 的 0.3 权重 ⇒ 入伤 ×0.971，抗性期望 −7% ⇒ 合计 **−10%（安全方向）**，§16 不重标；60 条词缀总数与阶位分布不变。');
+lines.push('- **验收（6 种子 900min `--post-cap --talents=off`，`tmp\\v439.log|json`，EXIT=0）**：');
+lines.push('  满级 min 272.8 / 中位 **302.9（+1.0%）** / max 341.8（窗口 [270,345] 内、副红线 272.8 ≥ 250）；');
+lines.push('  段② C4 中位 **177.3（−4.7%）· 6/6**、相对线 中位 61.3% 最差 82.0%；九境量级 通过；一阶/二阶/19→28 = 40.6/45.4/46.6 全 PASS；');
+lines.push('  三阶 71.0%；死亡 0×6；`tsc 0` / **vitest 534 passed / 35 files**；`tools/gen-slot-base.mjs` 已重跑（靴子 ilvl99 = 53.9，此前被 `moveSpeed` 权重虚高）。');
+lines.push('  落点在安全方向（+1.0% 远小于 D64 棘轮刹车的 5%）⇒ 不触发重标。');
+lines.push('- **遗留（已问 shuzhi）**：①四段第 4 段（层28→满级）中位 **164.8 < 180 门槛 → FAIL**，是满级 330→300 后 band 没跟着缩的必然结果，');
+lines.push('  我拒绝用 `180×300/330≈164` 线性拍脑袋，请她给新 band 并考虑「绑满级比例」只维护一个数；');
+lines.push('  ②法宝/分 从 1.04 涨到 1.31（+26%），我没改掉率，怀疑上轮低报，待她确认是否也改「按停留层归属」的主口径。');
+lines.push('');
+
+const block = lines.join('\n');
+if (!raw.includes('### D79')) throw new Error('MISS anchor D79');
+// 注意：这里的内容是 markdown 行数组（单引号字符串），反引号是正文的一部分，不能当模板字符串写。
+const out = raw + block;
+if (out.length < before + 2000) throw new Error(`输出太短：${before} → ${out.length}`);
+if (!out.includes('### D82（死属性穷举审计')) throw new Error('D82 标题缺失');
+
+mkdirSync('tools/_bak', { recursive: true });
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+copyFileSync(FILE, `tools/_bak/DECISIONS.md.${stamp}.bak`);
+writeFileSync(FILE, out, 'utf8');
+console.log(`ok: ${FILE} ${before} → ${out.length} chars（+${out.length - before}）· bak=tools/_bak/DECISIONS.md.${stamp}.bak`);

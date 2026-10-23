@@ -1,0 +1,382 @@
+/**
+ * 角色状态 —— 玩家这一局拥有的全部东西。
+ *
+ * 一条纪律：**这个对象必须能被 JSON.stringify → JSON.parse 完整还原**。
+ * 所以里面不许放函数、不许放 Map/Set/Date、不许放循环引用。
+ * 存档系统直接把它序列化，读回来直接当状态用。
+ *
+ * 另一条：**能从别的字段算出来的，一律不存。**
+ * 反例（idle-grim 的教训）：把 `xpNext`（下一级所需修为）也存进档，
+ * 结果改升级曲线之后，所有老存档读回来还是旧门槛 —— 实测差 61.7 倍，
+ * 老玩家的一级要杀 425 只怪。现在规则是：门槛永远由 `xpForStep(step)` 现算。
+ */
+
+import { equipmentModifiers, maxAffixes, rollAffixInstances, type Item } from './item';
+import {
+  aggregate,
+  resolveAllStats,
+  type Modifier,
+} from './modifier';
+import { addXp, xpForStep, type XpGainResult } from './progression';
+import { createTurbid, type TurbidState } from './turbid';
+import { spentIds, switchOverridesFor, talentModifiers } from './talents-runtime';
+import {
+  attributeModifiers,
+  getClass,
+  type Attributes,
+  type ClassId,
+} from '../data/classes';
+import type { AffixDef } from '../data/affix-def';
+import type { FragmentState } from '../data/fragments';
+import { SLOT_ID_TO_KIND, type SlotId } from '../data/slots';
+import type { StatKey } from '../data/stats';
+import type { Rng } from './rng';
+import { GEM_SLOTS, SUPPORT_GEMS } from '../data/support-gems';
+import { getActiveSkill } from '../data/skills';
+import { gemAffects } from '../data/support-gems';
+
+/** 每突破一重，三主属性各自自动成长多少 */
+export const ATTR_PER_STEP = 1;
+/** 主属性额外再成长多少（每重） */
+export const PRIMARY_ATTR_PER_STEP = 1;
+
+/**
+ * 角色状态 —— 只存**不可再算出来**的东西。
+ *
+ * 三主属性**故意不在状态里**：它们完全由「道统 + 台阶数」决定，
+ * 所以是派生值，用 `characterAttrs()` 现算。
+ * 存进去的唯一后果是——以后调整成长曲线时，老存档读回来还是旧属性，
+ * 而且你永远说不清是曲线生效了还是没生效（idle-grim 的 `xpNext` 就是这么炸的）。
+ */
+export interface CharacterState {
+  /** 每神通各自的装配表（D14 拍板：每神通 4 槽，不是全局共享 4 槽——
+   *  shuzhi 实测共享 4 槽火系只保 57%，装不下三套配置）。
+   *  key = 神通 id，value = 辅助玉简 id 列表（最多 GEM_SLOTS=4 条）。
+   *  不填该神通 = 按解锁自动填默认装配（characterGemLoadout 兜底）。
+   *  可选字段：老存档没有它也能读，读回来按 characterGemLoadout 归一。 */
+  gemLoadouts?: Record<string, string[]>;
+  readonly classId: ClassId;
+  /** 境界台阶 0~80 */
+  readonly step: number;
+  /** 当前台阶上已累积的修为 */
+  readonly xp: number;
+  /** 已选的浊气觉醒（每条线一个，第一版） */
+  readonly ascendancyId: string | null;
+  /** 装备：10 个坑 */
+  readonly equipment: Partial<Record<SlotId, Item>>;
+  /** 浊气状态 */
+  readonly turbid: TurbidState;
+  /**
+   * 渊痕（满级后的积累物，D36-A）。由满级后的击杀修为 1:1 转换而来。
+   * **绝不影响面板属性** —— 见 src/data/marks.ts 的三条铁律。
+   * 可选字段：老存档没有它也能读。
+   */
+  readonly marks?: number;
+  /**
+   * 定渊是否已解锁（D137 方案 d）。一次性永久：花 720k 渊痕解锁「锁层挂机」。
+   *
+   * 为什么不再是「跳层」：跳级会**买走时长**（24h 预算靠每轮 4~6h），而且全重置后
+   * 从深层起跑等于自杀（c2 已证明层 1 都能死）。实测携带 3000 万渊痕时长一动不动 ⇒
+   * 时长不由渊痕决定 ⇒ 渊痕的出口应服务「质量/效率」，不是「跳过量」。
+   */
+  readonly diveLockUnlocked?: boolean;
+  /**
+   * 五行碎片（D104）：打造时用来把对应五行的灵纹权重 ×4。
+   * 与渊痕一样是**可选字段**（老档没有也能读），但必须入档 ——
+   * 不入档等于每次刷新吞掉玩家攒的定向工具。
+   */
+  readonly fragments?: FragmentState;
+  /** 已点的周天图节点 id（可选：老档没有也能读）。
+   *  只存「点了什么」；点数余额 = 收入（纯函数）- 已花，不入档。 */
+  readonly talentIds?: string[];
+}
+
+// ────────────────────────────────────────────────────────────
+// 创建
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 三主属性（派生值，不入档）。
+ *
+ * 成长规则故意做到"不用玩家操作"：每突破一重，三属性各 +1，主属性再 +1。
+ * 放置游戏不该要求玩家去点属性点 —— 那不是决策，是杂活。
+ * 真正的决策应该发生在「换哪件装备 / 浊气什么时候停 / 走哪条天赋」上。
+ */
+export function characterAttrs(ch: CharacterState): Attributes {
+  const def = getClass(ch.classId);
+  const base = def ? def.baseAttrs : { body: 10, agility: 10, spirit: 10 };
+  const primary: keyof Attributes = def ? def.primary : 'body';
+  const step = Number.isFinite(ch.step) ? Math.max(0, Math.floor(ch.step)) : 0;
+  const common = step * ATTR_PER_STEP;
+  const bonus = step * PRIMARY_ATTR_PER_STEP;
+  return {
+    body: base.body + common + (primary === 'body' ? bonus : 0),
+    agility: base.agility + common + (primary === 'agility' ? bonus : 0),
+    spirit: base.spirit + common + (primary === 'spirit' ? bonus : 0),
+  };
+}
+
+/**
+ * 起始法器。
+ *
+ * 必须给 —— 不给的话玩家开局是拳脚 5 点伤害，打一只 60 血的浊物要 12 下，
+ * 而六只怪围上来 16 秒就能把人打死（这是真机实测出来的，不是估的）。
+ * 给一把白板剑把开局 DPS 拉到两位数，玩家才有「我打得动」的正反馈。
+ *
+ * 刻意做成凡品（0 条灵纹）：第一件装备不该有词条，
+ * 否则玩家会对"词条"这件事的第一印象变成"装备天生带词条"。
+ */
+export function startingSword(): Item {
+  return {
+    uid: 'start-sword',
+    slot: 'sword',
+    rarity: 'fan',
+    ilvl: 1,
+    name: '铁剑',
+    base: [{ stat: 'damage', op: 'flat', value: 8 }],
+    affixes: [],
+  };
+}
+
+export function createCharacter(classId: ClassId): CharacterState {
+  const def = getClass(classId);
+  if (!def) throw new Error(`未知道统：${classId}`);
+  return {
+    classId,
+    step: 0,
+    xp: 0,
+    ascendancyId: null,
+    equipment: { sword: startingSword() },
+    turbid: createTurbid(),
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// 修正器与属性
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 角色身上所有修正器的汇总（不含浊气）。
+ *
+ * 浊气**故意不在这里**：它不是一条"属性加成"，而是战斗中的动态倍率，
+ * 由 `turbidMultiplier()` 在伤害管线里单独相乘。
+ * 混进来的话，界面上会显示"我的伤害 1.5 倍"，但那个 1.5 会随浊气跳来跳去，
+ * 玩家会以为面板坏了。
+ *
+ * 觉醒加成**必须判断是否已选**：没选之前就生效的话，
+ * 「选择浊气觉醒」这个关键时刻就不存在了，面板也说不清那 35% 从哪来的。
+ */
+export function characterModifiers(ch: CharacterState): Modifier[] {
+  const out: Modifier[] = [];
+  out.push(...attributeModifiers(characterAttrs(ch)));
+  out.push(...equipmentModifiers(ch.equipment));
+  const def = getClass(ch.classId);
+  if (def && ch.ascendancyId === def.ascendancy.id) {
+    out.push(...def.ascendancy.effects);
+  }
+  out.push(...talentModifiers(ch));
+  return out;
+}
+
+/** 最终属性面板 */
+/**
+ * 全部属性（面板与战斗共用）。
+ *
+ * 周天图的 `resist-cap-plus` 是**改系统上限**而不是改属性，所以它不走 Modifier，
+ * 而是从开关覆盖值里取 `resistCapBonus` 传进 clampStat —— 否则「抗性上限 +5%」
+ * 会在 0.75 处被夹掉，变成又一个面板看得见、实战不生效的死属性。
+ */
+export function characterStats(ch: CharacterState): Record<StatKey, number> {
+  const overrides = switchOverridesFor(spentIds(ch));
+  return resolveAllStats(characterModifiers(ch), { resistCapBonus: overrides.resistCapBonus ?? 0 });
+}
+
+/** 只看某个来源的加成（面板上"装备贡献"那一列用） */
+export function statsBySource(
+  ch: CharacterState,
+  stat: StatKey,
+): { base: number; equip: number; ascend: number } {
+  const mods = characterModifiers(ch);
+  const equipMods = equipmentModifiers(ch.equipment);
+  const def = getClass(ch.classId);
+  const ascendMods = def ? def.ascendancy.effects : [];
+  return {
+    base: aggregate(mods, stat).increased,
+    equip: aggregate(equipMods, stat).flat + aggregate(equipMods, stat).increased,
+    ascend: aggregate(ascendMods, stat).flat + aggregate(ascendMods, stat).increased,
+  };
+}
+
+// ────────────────────────────────────────────────────────────
+// 成长
+// ────────────────────────────────────────────────────────────
+
+/**
+ * 加修为。连破多重的处理在 `addXp` 里。
+ * 返回新状态 + 这次突破了几重（界面上要弹「突破！金丹·二重」）。
+ */
+export function gainXp(ch: CharacterState, gain: number): CharacterState & XpGainResult {
+  const res = addXp(ch.step, ch.xp, gain);
+  // 属性不需要在这里发 —— 它们是台阶的派生值，`characterAttrs()` 现算。
+  // 少一次写入，就少一处"属性和台阶对不上"的 bug。
+  return { ...ch, step: res.step, xp: res.xp, breakthroughs: res.breakthroughs };
+}
+
+/** 选浊气觉醒（只能选一次，选了不能换 —— 换要洗点道具，第一版不做） */
+export function chooseAscendancy(ch: CharacterState, ascendancyId: string): CharacterState {
+  const def = getClass(ch.classId);
+  if (!def) return ch;
+  if (ch.ascendancyId !== null) return ch; // 已选过
+  if (def.ascendancy.id !== ascendancyId) return ch; // 不是本道统的
+  return { ...ch, ascendancyId };
+}
+
+/** 该角色目前的浊气觉醒是否已选 */
+export function hasAscendancy(ch: CharacterState): boolean {
+  return ch.ascendancyId !== null;
+}
+
+// ────────────────────────────────────────────────────────────
+// 装备
+// ────────────────────────────────────────────────────────────
+
+export interface EquipResult {
+  readonly character: CharacterState;
+  /** 被换下来的那件（进背包）；原来这个坑是空的 → undefined */
+  readonly replaced: Item | undefined;
+  readonly ok: boolean;
+  readonly message: string;
+}
+
+/**
+ * 穿装备。
+ *
+ * 这里必须校验「这件东西能不能进这个坑」：
+ * 戒指能进 ring1 / ring2，剑不能。校验漏了的话，
+ * 玩家能把法器戴在手上当戒指，属性直接失衡，而且很难在测试里发现。
+ */
+export function equip(ch: CharacterState, slot: SlotId, item: Item): EquipResult {
+  if (SLOT_ID_TO_KIND[slot] !== item.slot) {
+    return {
+      character: ch,
+      replaced: undefined,
+      ok: false,
+      message: `这件${item.name}不能装在这个位置`,
+    };
+  }
+  const replaced = ch.equipment[slot];
+  return {
+    character: { ...ch, equipment: { ...ch.equipment, [slot]: item } },
+    replaced,
+    ok: true,
+    message: `已装备 ${item.name}`,
+  };
+}
+
+/** 卸下某个坑 */
+export function unequip(ch: CharacterState, slot: SlotId): { character: CharacterState; removed: Item | undefined } {
+  const removed = ch.equipment[slot];
+  if (!removed) return { character: ch, removed: undefined };
+  const next = { ...ch.equipment };
+  delete next[slot];
+  return { character: { ...ch, equipment: next }, removed };
+}
+
+/** 全身装备的列表（不含空坑） */
+export function equippedItems(ch: CharacterState): { slot: SlotId; item: Item }[] {
+  const out: { slot: SlotId; item: Item }[] = [];
+  for (const key of Object.keys(ch.equipment) as SlotId[]) {
+    const item = ch.equipment[key];
+    if (item) out.push({ slot: key, item });
+  }
+  return out;
+}
+
+/** 给一件掉落的法宝补满灵纹（Boss 掉落 / 稀有怪奖励用） */
+export function fillAffixes(
+  item: Item,
+  pool: readonly AffixDef[],
+  rng: Rng,
+): Item {
+  const max = maxAffixes(item.rarity);
+  const missing = max - item.affixes.length;
+  if (missing <= 0) return item;
+  const extra = rollAffixInstances(pool, item.slot, item.ilvl, missing, rng, item.affixes);
+  return { ...item, affixes: [...item.affixes, ...extra] };
+}
+
+/** 下一重所需修为（给 UI 用，不存进状态） */
+export function nextStepXp(ch: CharacterState): number | null {
+  const need = xpForStep(ch.step);
+  return Number.isFinite(need) ? need : null;
+}
+
+/**
+ * 没拿法器时的拳脚基础伤害。
+ *
+ * 为什么必须有这个值：`stats.damage` 是**加成项**（百分比/附加），不是基础伤害。
+ * 如果玩家开局手上没东西，基础伤害就是 0，伤害管线最后只剩保底的 1 点，
+ * 打一只 60 血的浊物要 60 下 —— 看起来像"游戏卡住了"，其实是数值漏了一层。
+ *
+ * 5 点是个刻意的低值：打得动，但明显想让你去捡把剑。
+ */
+export const UNARMED_DAMAGE = 5;
+
+/**
+ * 玩家的基础伤害 = 拳脚。
+ *
+ * ⚠️ 法器 base 里的 flat damage **不在这里算** —— 它由 itemModifiers() 转成
+ * flat 修正器、走全项目唯一的伤害管线结算。之前这里把 base 也加了一遍
+ * （5+8=13），管线里又加一遍（+8=21），铁剑伤害凭空多了 60%。
+ * 教训：一个数值只能有一个来源。基础值归基础值，加成归修正器。
+ */
+export function baseDamage(): number {
+  return UNARMED_DAMAGE;
+}
+
+/** 装配表归一：只留已解锁 + 去重 + 截到 GEM_SLOTS 条。
+ *  老存档带未知 id 直接丢弃，不让脏数据进战斗。
+ *  D14-2：没装配（或装配不足）时按解锁自动填默认装配——
+ *  「不装 = TTK×2.63」不能是玩家的默认体验，默认体验必须是有装配的。 */
+export function characterGemLoadout(ch: CharacterState, skillId: string): string[] {
+  const raw = ch.gemLoadouts?.[skillId];
+  const out: string[] = [];
+  for (const id of raw ?? []) {
+    const def = SUPPORT_GEMS.find((g) => g.id === id);
+    if (!def || ch.step < def.unlockStep) continue;
+    if (!out.includes(id)) out.push(id);
+    if (out.length >= GEM_SLOTS) break;
+  }
+  // **显式装配优先，包括「显式清空」**：以前这里写 `out.length > 0` 才返回，
+  // 意味着玩家把 4 条玉简全摘光之后会被自动装配悄悄填回去 —— 面板上点了「清空」却
+  // 什么都没变，是最糟的那类交互 bug（`gem-edit.ts` 的编辑功能因此做不出来）。
+  // 默认体验的保护改由「没写过该字段（raw === undefined）才自动填」承担：
+  // 玩家不碰它 → 永远是最优默认；玩家碰了 → 他说的算。
+  if (raw !== undefined) return out;
+  return defaultGemLoadout(ch, skillId, out);
+}
+
+/** 默认装配（解锁自动填）：按技能标签优先级选「命中该神通」的已解锁玉简。
+ *  价值序由 shuzhi 实测定稿（见下方 priority 注释）。
+ *  已经装配进去的（out 里的）不算重，只补空位。 */
+export function defaultGemLoadout(ch: CharacterState, skillId: string, already: string[] = []): string[] {
+  const skill = getActiveSkill(skillId);
+  if (!skill) return already.slice(0, GEM_SLOTS);
+  // 价值序（shuzhi m05012 实测定稿）：拷皮(more 0.15)第一 → 猛攻/急切(速度，每条神通
+  //  只命中 attack/spell 其一，两条连排 = 速度优先) → 万汇(more 0.30 排第 4——它带
+  //  costMul 1.5，顶最前会让"真元不够"成为开局第一印象；排在元素前保证 AoE 法系
+  //  不把元素挤掉) → 三元素 → 扩散 → 破绽两条(导数仅 +2.8%/+3.8%，垫底) → 回气/驭魔。
+  //  旧序的体验 bug：step9 解锁贯头/断筋后默认装配 DPS 从 1.921 掉到 1.599（-17%），
+  //  step18 只有最优的 67%。新序 step18/27 六条神通全 2.484×（100% 最优）。
+  const priority = ['kaopi', 'mengong', 'jixie', 'wanhui', 'cuijin', 'zhuo-huo', 'hanbing', 'kuosan', 'guantou', 'duanjin', 'huitou', 'yuanmo'];
+  const out = [...already];
+  for (const id of priority) {
+    if (out.length >= GEM_SLOTS) break;
+    if (out.includes(id)) continue;
+    const def = SUPPORT_GEMS.find((g) => g.id === id);
+    if (!def || ch.step < def.unlockStep) continue;
+    if (!gemAffects(def, skill.tags)) continue;
+    out.push(id);
+  }
+  return out.slice(0, GEM_SLOTS);
+}

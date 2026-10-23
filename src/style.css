@@ -1,0 +1,40 @@
+/* ─────────────────────────────────────────────────────────
+   浊仙 · 全局样式
+   这一步只做「让画面居中、去掉浏览器默认白边」。
+   界面布局等有东西可显示之后再写。
+   ───────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* 暗黑风底色：几乎纯黑，带一点点暖调，避免死黑显得廉价 */
+  background: #0b0a0c;
+  color: #d8d3c4;
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  /* 放置游戏经常被误拖选文字，关掉 */
+  user-select: none;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* 画布：宽度自适应，但不超过 960（设计分辨率），也不超过屏幕高度 */
+#stage {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  background: #0b0a0c;
+  /* 1px 暗金描边，让画面有个边界感，像一块碑 */
+  border: 1px solid #2a2419;
+}

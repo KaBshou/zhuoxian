@@ -1,0 +1,730 @@
+import { readFileSync } from 'node:fs';
+
+/**
+ * session-runner.mjs —— 「真实 session 全程模拟」的共用执行器（tools/ 内部件）
+ *
+ * 为什么需要它：
+ *   - `run-timeline.mjs`（24h 时间线验收）和 `craft-econ.mjs`（2h 通货收支）都要
+ *     「真跑 tickSession」，而且都要**精确拆分掉落三类**（法宝/通货/玉简）和**通货产出/花掉**。
+ *   - session 内部的自动打造（CRAFT_TICK=15s 调 runCraftPlan）会把 pocket 花掉，
+ *     导致「掉落产出」和「口袋变化」对不上，没法算花掉率。
+ *   - 所以这里把自动打造**从 session 内部挪到本执行器的循环里**（同一套
+ *     `craftPlanFromPocket` + `runCraftPlan` + 同一 rng 顺序），行为等价但可观测：
+ *       · 压制内部：每帧 tickSession 前把 s.craftTimer 置 0（永不达 CRAFT_TICK）
+ *       · 自己每 CRAFT_TICK 秒跑一次与 session.ts:340-352 相同的计划执行
+ *       · pocket 的逐帧增量 = 通货产出；执行计划时扣掉的 = 花掉
+ *       · 玉简只进不出（gemPouch 不被打造消费）⇒ ΣgemPouch 增量 = 玉简产出
+ *       · 法宝数 = dropsFound − 通货产出 − 玉简产出
+ *
+ * 语义差异（写进报告）：打造 rng 调用从「tick 内」挪到「tick 后」，同种子逐帧序列会变，
+ * 统计量（产出/花掉/到达时间）不受影响；不要拿它跟真机存档逐帧对照。
+ */
+
+/**
+ * 「该层修为/分」标尺（farm=best 的排序依据，也是报告里「为什么选这层」的证据）。
+ * 量全部取自 `src/core/offline.ts`：`KILLS_PER_MIN_BY_FLOOR` + `每杀修为 × 该阶赏金均值` + 镇守波折算。
+ *
+ * 与 offline.ts:114-119 的唯一差异：镇守击杀数**不做 round**（离线是一次性结算，取整无害；
+ * 这里是跨层排序，2.5% 的取整会在 kills≈20 时把 0.51 变成 1/0，产生「层 4 比层 5 富」的假排序）。
+ */
+export function xpPerMinuteOfFloorWith(mods, floor) {
+  const { offlineMod, monstersMod } = mods;
+  const tierOfFloor = monstersMod.tierOfFloor;
+  const kills = offlineMod.killsPerMinute(floor);
+  const avgMul = Math.max(0.01, offlineMod.avgXpMulOfFloor(floor));
+  const perKillXp = monstersMod.xpPerKill(floor) * avgMul;
+  const bossXpEach = (perKillXp / avgMul) * monstersMod.bossXpMulOfTier(tierOfFloor(floor));
+  return kills * perKillXp + kills * 0.1 * 0.25 * bossXpEach;
+}
+
+/**
+ * 部位基准表（判据 C 的分母）：每个部位在给定灵蕴下「一件宝品」的 itemPower 中位。
+ *
+ * 为什么要这张表：`itemPower` 的量纲因部位而异（玉佩中位是戒指的 7.4 倍，见 BALANCE §5.4），
+ * 所以「全身 ≥ 某个绝对战力」这种全局阈值判据一定错，必须**按部位归一**。
+ * 基准值随灵蕴非线性上涨（ilvl 20 时按 99 线性外推会高估 50~98%），所以只能分档插值。
+ * 表由 `tools/gen-slot-base.mjs` 离线生成（固定种子、可复现），运行时零成本。
+ */
+let cachedBaseTable = null;
+function loadBaseTable() {
+  if (cachedBaseTable) return cachedBaseTable;
+  try {
+    const url = new URL('./slot-power-base.json', import.meta.url);
+    cachedBaseTable = JSON.parse(readFileSync(url, 'utf8'));
+  } catch {
+    cachedBaseTable = null;
+  }
+  return cachedBaseTable;
+}
+
+/** 某部位在给定灵蕴下的「宝品中位战力」；表缺失时返回 0（调用方据此跳过判据 C） */
+export function slotBasePower(slotKind, ilvl) {
+  const table = loadBaseTable();
+  if (!table) return 0;
+  const arr = table.slots[slotKind];
+  if (!arr || arr.length === 0) return 0;
+  const grid = table.grid;
+  if (ilvl <= grid[0]) return arr[0];
+  const last = grid.length - 1;
+  if (ilvl >= grid[last]) return arr[last];
+  for (let i = 1; i <= last; i++) {
+    if (ilvl <= grid[i]) {
+      const t = (ilvl - grid[i - 1]) / (grid[i] - grid[i - 1]);
+      return arr[i - 1] + (arr[i] - arr[i - 1]) * t;
+    }
+  }
+  return arr[last];
+}
+
+/**
+ * @param {object} mods
+ * @param {any} mods.sessionMod
+ * @param {any} mods.craftMod
+ * @param {any} mods.progMod
+ * @param {object} opts
+ * @param {import('../src/data/classes').ClassId} opts.classId
+ * @param {number} opts.seed
+ * @param {{bases: readonly any[], affixes: readonly any[]}} opts.tables
+ * @param {readonly string[]} [opts.talentIds]
+ * @param {boolean} [opts.autoTalents]  是否让 session 自动点天赋（不传 = src 默认 true）
+ * @param {'off'|'deepest'|'best'} [opts.farmMode] 选层策略（T2）：
+ *   off     = 一路只下潜（默认，历史口径）
+ *   deepest = 到过 `farmFrom` 层后冻结、原地重复刷
+ *   best    = 到过 `farmFrom` 层后，在「已到过的层」里挑修为/分最高的一层刷
+ * @param {number} [opts.farmFrom] 策略生效层（deepest 同时是冻结层；默认 MAX_FLOOR = 27）
+ * @param {number} opts.minutes   模拟上限（分钟）
+ * @param {number} opts.dt        每帧秒数
+ * @param {boolean} [opts.stopAtMaxStep] 满级（step 80）即停
+ */
+export function runInstrumentedSession(mods, opts) {
+  const { sessionMod, craftMod, progMod, monstersMod, offlineMod, inventoryMod } = mods;
+  const { classId, seed, tables, talentIds = [], autoTalents, minutes, dt, stopAtMaxStep = true } = opts;
+  const FARM_MODE = opts.farmMode ?? 'off';
+  const CRAFT_TICK = sessionMod.CRAFT_TICK;
+  if (FARM_MODE !== 'off' && FARM_MODE !== 'deepest' && FARM_MODE !== 'best') {
+    throw new Error(`未知的 farmMode: ${FARM_MODE}（只支持 off|deepest|best）`);
+  }
+  if (FARM_MODE === 'best' && !offlineMod) {
+    throw new Error('farm=best 需要 mods.offlineMod（按层修为/分要从 src/core/offline.ts 的 KILLS_PER_MIN 表算）');
+  }
+  const MAX_STEP = progMod.TOTAL_STEPS - 1; // 80
+  const REALM_COUNT = progMod.REALM_COUNT;
+  const BANDS = [
+    { id: '层 1~9', lo: 1, hi: 9 },
+    { id: '层 10~18', lo: 10, hi: 18 },
+    { id: '层 19~27', lo: 19, hi: 27 },
+  ];
+  // 按「阶」（monsters.ts 的 tierOfFloor，每阶 9 层）分列掉落，供「每阶法宝/分」验收用。
+  // 传了 monstersMod 就用线上真函数，没传则用同一规则的兜底（27 层模型：1~9 / 10~18 / 19~27）。
+  const tierOfFloor =
+    monstersMod?.tierOfFloor ?? ((floor) => (floor <= 9 ? 1 : floor <= 18 ? 2 : 3));
+
+  const MAX_FLOOR = monstersMod?.MAX_FLOOR ?? 27;
+  // farm=deepest 的冻结层：默认 MAX_FLOOR（此时与 off 等价，到顶本来就不再多下潜）
+  const FARM_FROM = Math.max(1, Math.min(MAX_FLOOR, Math.round(opts.farmFrom ?? MAX_FLOOR)));
+
+  /**
+   * farm=best 的排序依据，复用上面的导出版本（同一份公式，报告外部也能直接验算）。
+   * 只用于选层，不参与任何收益结算。
+   */
+  const xpPerMinuteCache = new Map();
+  const xpPerMinuteOfFloor = (floor) => {
+    let v = xpPerMinuteCache.get(floor);
+    if (v !== undefined) return v;
+    v = xpPerMinuteOfFloorWith(mods, floor);
+    xpPerMinuteCache.set(floor, v);
+    return v;
+  };
+
+  /**
+   * farm=best：在「已到过的层」里挑修为/分最高的一层（同分取更深的层）。
+   * 只在**到过 FARM_FROM 层之后**生效——否则「最佳层」会在早期把玩家锁在最浅的几层
+   * （未到过的层不能选），永远见不到三阶，比出来的三阶占比没有意义。
+   */
+  const bestSelectableFloor = () => {
+    const top = sessionMod.floorSelectableMax(s);
+    let best = 1;
+    let bestXp = -Infinity;
+    for (let f = 1; f <= top; f++) {
+      const xp = xpPerMinuteOfFloor(f);
+      if (xp >= bestXp) {
+        bestXp = xp;
+        best = f;
+      }
+    }
+    return best;
+  };
+
+  const s = sessionMod.createSession({
+    classId,
+    seed,
+    tables,
+    talentIds,
+    ...(autoTalents === undefined ? {} : { autoTalents }),
+  });
+  sessionMod.startWave(s);
+  // D105：扫描入伤倍率（默认 1 = 线上）。只影响玩家受到的伤害，不改怪的血/攻。
+  if (Number.isFinite(opts.incomingMul) && opts.incomingMul !== 1) {
+    for (const st of [s.battle]) if (st) st.incomingMul = opts.incomingMul;
+  }
+
+  const cumOf = (ch) => progMod.totalXpToStep(ch.step) + ch.xp;
+  const gemTotal = () => Object.values(s.gemPouch).reduce((a, b) => a + b, 0);
+  const bandOf = (floor) => BANDS.find((b) => floor >= b.lo && floor <= b.hi) ?? BANDS[BANDS.length - 1];
+
+  const currencyProduced = { huang: 0, mie: 0, xi: 0 };
+  const currencySpent = { huang: 0, mie: 0, xi: 0 };
+  const bandStats = new Map(
+    BANDS.map((b) => [
+      b.id,
+      {
+        id: b.id,
+        minutes: 0,
+        kills: 0,
+        itemDrops: 0,
+        produced: { huang: 0, mie: 0, xi: 0 },
+        spent: { huang: 0, mie: 0, xi: 0 },
+        gems: 0,
+      },
+    ]),
+  );
+
+  const tierStats = new Map(
+    [1, 2, 3].map((tier) => [
+      tier,
+      { tier, minutes: 0, kills: 0, itemDrops: 0, currency: 0, gems: 0 },
+    ]),
+  );
+
+  // 按层记账（通货来源审计用：可以回答「洗灵石首次出现在第几层」这种问题）
+  const floorStats = new Map();
+  const floorRow = (floor) => {
+    let row = floorStats.get(floor);
+    if (!row) {
+      row = { floor, minutes: 0, kills: 0, produced: { huang: 0, mie: 0, xi: 0 }, drops: 0 };
+      floorStats.set(floor, row);
+    }
+    return row;
+  };
+
+  const realmArrivals = new Array(REALM_COUNT).fill(NaN);  realmArrivals[0] = 0;
+  const realmCumXp = new Array(REALM_COUNT).fill(NaN);
+  realmCumXp[0] = cumOf(s.character);
+  const floorTrail = [];
+  const deathEvents = [];
+  const craftLog = { ticks: 0, executed: 0, failedTicks: 0 };
+
+  let prevPocket = { ...s.pocket };
+  let prevGems = gemTotal();
+  let prevDrops = 0;
+  let prevKills = s.kills;
+  let prevDeaths = 0; // 累计死亡（`s.deaths`，只增不减；`s.floorDeaths` 会被逃生阀清零）
+
+  // ── D105 生存性观测窗 ──
+  // 为什么是「首次到达那一层的 N 分钟」而不是「在那一层随便挑一段时间」：
+  //   「典型装备」的唯一定义是**玩家第一次走到这里时的装备**；事后回到层 27 时玩家已经
+  //   是满级装备，量出来的 μ 会小一个量级，那种数只能证明「后期很安全」，谁都早知道。
+  // 为什么按时间积分不按波平均：按波平均会漏掉死亡波（`floorDeaths` 只记次数，`takenWaves` 只统计清完的非镇守波）。
+  const SURVIVAL_WINDOWS = Array.isArray(opts.survivalWindows) ? opts.survivalWindows.filter((f) => Number.isFinite(f)) : [];
+  const SURVIVAL_MINUTES = Number.isFinite(opts.survivalMinutes) ? opts.survivalMinutes : 3;
+  const INCOMING_MUL = Number.isFinite(opts.incomingMul) ? opts.incomingMul : 1;
+  const survivalSamples = [];
+  const survivalOpen = new Map();
+  let prevTakenForWindow = 0;
+  let prevFloor = s.floor;
+  let craftTimer = 0;
+  let t = 0;
+  let farmSnaps = 0;
+  let maxedAt = NaN;
+  let marksAtMax = NaN;
+  let atMax = null;
+  let prevStep = s.character.step;
+
+  // ── 法宝数：**扫 s.ground 真实落地物**，不做「总数减去通货/玉简」的减法 ──
+  // 为什么（lead m02515 / shuzhi 代码级证据）：session.ts:416 的 `s.dropsFound += 1`
+  // 是「每次击杀 +1」，三分类在击杀上掷骰；法宝支还要再过 DROP_CHANCE[rarity]
+  // （normal 0.28）。所以 `dropsFound − 通货 − 玉简` 会把**法宝支掷失败的 72% 也算成法宝**，
+  // 高估约 2.5 倍（真值 0.89~1.03/分，减法口径 3.5/分）。地面物用 `GroundDrop.id`
+  // 去重（id 单调、不复用），拾取延迟 0.9s 保证 30fps 下每件至少被扫到 ~27 帧。
+  const seenGroundIds = new Set();
+  // 段④ 度量（D57/D63）：满级之后的**仙品件数**。段④ 没有「长度」可量（修为直接丢弃、层 46 封顶），
+  // 唯一诚实的产出就是装备 —— 而且按 6 数值 : 3 旗子 分开记，因为「数值传奇」和「机制传奇」
+  // 对玩家的吸引力不同，混成一个数会看不出结构。
+  let postCapXian = 0;
+  let postCapFlagXian = 0;
+  // 段④ 新口径（v4.38 / shuzhi D81）：只统计「停留层 46 时入包的仙品」与「停留层 46 的分钟数」。
+  // 旧口径（窗口内总件数 ÷ 窗口）的分母是窗口长度，任何加速爬层的改动都会让它涨，方向与真实掉率相反。
+  const F46 = 46;
+  let xianAtF46 = 0;
+  let f46Minutes = 0;
+  const postCapXianByFloor = new Map();
+  const FLAG_LEGENDARY_IDS = new Set(['xueji', 'zhuopo', 'shuangying']);
+  let itemLandedTotal = 0;
+
+  // ── 段② 毕业装（D46 重判）──
+  // 「毕业装 = 9 部位各 1 件宝品以上且 ≥2 条对口」。灵纹池本身按槽位过滤过
+  // （胸甲不会出武器攻击力），所以「对口」在生成时就成立，这里退化为「≥2 条灵纹」。
+  // 只做记录，不判成败；「9 件全仙品」= 段④ 长线，也记录。
+  const EQUIP_SLOTS = ['sword', 'relic', 'crown', 'robe', 'bracer', 'boots', 'belt', 'ring1', 'ring2', 'pendant'];
+  /** 判据 C 的门槛倍率：1.0 = 每件都追平「同部位同灵蕴宝品中位」（shuzhi v4.27 标定，中位 290min） */
+  const FORMED_POWER_RATIO = 1.0;
+  // C4（D68）：9/10 部位过线 + 最差部位下限 0.70。
+  // 为什么要有下限：纯 9/10 允许那一个部位是空槽（ratio 0）或骰烂 50%，
+  // 「9 个部位成型了」这句话就撑不住；下限只用来挡住「根本没穿」和「烂到不配叫成型」。
+  const FORMED_MIN_SLOTS = 9;
+  const FORMED_WORST_FLOOR = 0.7;
+  // 持续窗口：判据 C 不是单调量（首次达成后会跌破），所以「成型」= 连续 30 分钟不跌破。
+  const FORMED_SUSTAIN_MIN = 30;
+  // 三个里程碑，判据只差「≥N 条对口」：
+  //   成型 formed    = 各部位 1 件宝品+ 且 ≥1 条灵纹   ← 段② 的唯一门禁（≤420min）
+  //   毕业 graduated = 各部位 1 件宝品+ 且 ≥2 条灵纹   ← 记录项（D50 重判：真值 17.1h）
+  //   全仙品 allXian = 各部位 1 件仙品                  ← 记录项（约 21h）
+  // 为什么要分成三档：shuzhi v4.25 的「毕业 6.2h」漏乘了集齐 9 部位的优惠券系数 H(9)=2.83，
+  // 真值 17.1h。拿一个 17h 的判据当「6h 段落」的门禁，必然 0/3 永远红 —— 这是判据错，不是数值错。
+  let formedAt = NaN;
+  let graduatedAt = NaN;
+  let allXianAt = NaN;
+  /** 备选判据 A：10 部位每件 ≥2 条灵纹（= 至少灵品满条） */
+  let formedAffixAt = NaN;
+  /** 备选判据 B：10 部位每件灵蕴 ≥90 */
+  let ilvl90At = NaN;
+  /** 判据 C（定稿）：每部位 itemPower ≥ 同部位同灵蕴宝品中位（NaN = 没达成） */
+  let formedPowerAt = NaN;
+  /** 当前这一轮「连续满足」的起点（分钟）。跌破即清空 = 重新计时 */
+  let formedRunSince = NaN;
+  /** 判据 C 的采样统计（诊断用：有多少次采样是满足的） */
+  let powerChecks = 0;
+  let powerChecksOk = 0;
+  /** 判据 C 连续满足的最长一段（分钟），用来判断 30min 窗口是否过紧 */
+  let powerBestRun = 0;
+  /** 判据 C 的「最差部位比值」（每模拟秒刷新一次，诊断用） */
+  let minPowerRatio = Number.POSITIVE_INFINITY;
+  let lastPowerCheck = -1;
+  /** 每 30 分钟的装备分布轨迹（诊断「宝品以上部位数」的爬升曲线） */
+  const gearTrail = [];
+  let nextGearSampleAt = 30;
+  const rarityRank = (r) => (r === 'xian' ? 3 : r === 'bao' ? 2 : r === 'ling' ? 1 : 0);
+  const checkGear = (ch, minute) => {
+    if (Number.isFinite(formedAt) && Number.isFinite(graduatedAt) && Number.isFinite(allXianAt) && Number.isFinite(formedAffixAt) && Number.isFinite(ilvl90At)) return;
+    let formedOk = true;
+    let gradOk = true;
+    let xianOk = true;
+    for (const slot of EQUIP_SLOTS) {
+      const it = ch.equipment[slot];
+      if (!it) {
+        formedOk = false;
+        gradOk = false;
+        xianOk = false;
+        break;
+      }
+      const rank = rarityRank(it.rarity);
+      if (rank < 2 || it.affixes.length < 1) formedOk = false;
+      if (rank < 2 || it.affixes.length < 2) gradOk = false;
+      if (rank < 3) xianOk = false;
+    }
+    // 判据备选：不看品阶、看「每件 ≥2 条灵纹」。灵品上限 2、宝品下限 3，
+    // 所以这条等价于「至少灵品满条」——它单调跟战力走，不会被「高战力灵品顶掉低战力宝品」打穿
+    let affix2Ok = true;
+    let ilvl90Ok = true;
+    for (const slot of EQUIP_SLOTS) {
+      const it = ch.equipment[slot];
+      if (!it || it.affixes.length < 2) affix2Ok = false;
+      if (!it || it.ilvl < 90) ilvl90Ok = false;
+    }
+    if (affix2Ok && !Number.isFinite(formedAffixAt)) formedAffixAt = minute;
+    if (ilvl90Ok && !Number.isFinite(ilvl90At)) ilvl90At = minute;
+    if (formedOk && !Number.isFinite(formedAt)) formedAt = minute;
+    if (gradOk && !Number.isFinite(graduatedAt)) graduatedAt = minute;
+    if (xianOk && !Number.isFinite(allXianAt)) allXianAt = minute;
+
+    // 判据 C（shuzhi v4.27 定稿）：每部位 itemPower ≥ 该部位「同灵蕴宝品中位」× RATIO。
+    // 为什么不用「宝品以上」：品阶不是战力的单调代理（31.7% 的灵品强过宝品中位），
+    // 所以按品阶判会来回震荡（真跑 210min 10/10 → 390min 5/10）；而 itemPower 是连续量、
+    // 在同一部位内可比 —— 判据必须建在**单调量**上（教训第二十二次）。
+    // 需要 `mods.inventoryMod`（itemPower 的真源）；表缺失/未传时跳过，返回 NaN。
+    if (inventoryMod && !Number.isFinite(formedPowerAt) && minute - lastPowerCheck >= 1 / 60) {
+      lastPowerCheck = minute;
+      let worst = Number.POSITIVE_INFINITY;
+      let passing = 0;
+      for (const slot of EQUIP_SLOTS) {
+        const it = ch.equipment[slot];
+        const kind = slot.startsWith('ring') ? 'ring' : slot;
+        const base = slotBasePower(kind, it ? it.ilvl : 1);
+        if (!it || base <= 0) {
+          worst = 0;
+          continue;
+        }
+        const ratio = inventoryMod.itemPower(it) / base;
+        if (ratio < worst) worst = ratio;
+        if (ratio >= FORMED_POWER_RATIO) passing += 1;
+      }
+      minPowerRatio = worst;
+      powerChecks += 1;
+      // C4：过线部位数 ≥9 且最差部位 ≥0.70（挡空槽与烂骰）
+      const powerOk = passing >= FORMED_MIN_SLOTS && worst >= FORMED_WORST_FLOOR;
+      if (powerOk) {
+        powerChecksOk += 1;
+        if (!Number.isFinite(formedRunSince)) formedRunSince = minute;
+        powerBestRun = Math.max(powerBestRun, minute - formedRunSince);
+        // 连续 30 分钟不跌破 → 成型时刻 = 这一段**起点**（不是确认时刻）
+        if (!Number.isFinite(formedPowerAt) && minute - formedRunSince >= FORMED_SUSTAIN_MIN) {
+          formedPowerAt = formedRunSince;
+        }
+      } else {
+        formedRunSince = NaN;
+      }
+    }
+  };
+
+  // 毕业装诊断：满级那一刻每个部位到底什么水平（rui/词缀数），
+  // 用来说明「段② 未达成」是卡在「没出宝品」还是「出了但没落在对的槽」。
+  const gearSnapshot = (ch) =>
+    EQUIP_SLOTS.map((slot) => {
+      const it = ch.equipment[slot];
+      return { slot, rarity: it ? it.rarity : null, affixes: it ? it.affixes.length : 0, ilvl: it ? it.ilvl : null, name: it ? it.name : null };
+    });
+
+  const totalFrames = Math.round((minutes * 60) / dt);
+  for (let i = 0; i < totalFrames; i++) {
+    // 压制 session 内部自动打造（见文件头说明）
+    s.craftTimer = 0;
+    if (SURVIVAL_WINDOWS.length && survivalSamples.length >= SURVIVAL_WINDOWS.length) break;
+    sessionMod.tickSession(s, dt);
+    t += dt;
+
+    // D105：观测窗（首次到达 → 连续 SURVIVAL_MINUTES 分钟）
+    if (SURVIVAL_WINDOWS.length) {
+      const b = s.battle;
+      if (b) {
+        const taken = b.damageTaken;
+        const dTaken = Math.max(0, taken - prevTakenForWindow);
+        for (const floor of SURVIVAL_WINDOWS) {
+          let w = survivalOpen.get(floor);
+          if (!w && s.floor === floor && !survivalSamples.some((x) => x.floor === floor)) {
+            w = { floor, startT: t, minutes: 0, taken: 0, lifeSeconds: 0, hits: 0, maxHit: 0, shieldAbsorbed: 0, shieldRecharges: 0, deaths: 0, waves: 0 };
+            survivalOpen.set(floor, w);
+            // 开窗那一帧把累积量对齐，避免把「到这一层之前挨的打」算进来
+            w.baselineTaken = taken;
+            w.baselineAbsorbed = b.shieldAbsorbed ?? 0;
+            w.baselineRecharges = b.shieldRecharges ?? 0;
+            w.baselineDeaths = s.floorDeaths;
+            w.baselineWave = s.wave;
+          }
+          // 观测窗期间把层钉住：玩家原本会继续下潜，窗口一旦离开这一层就凑不满 3 分钟。
+          // 这里不是「作弊跳过进度」，而是把「这一层的 3 分钟」量完再放行。
+          if (w && s.floor !== floor && sessionMod.setFloor(s, floor)) {
+            /* 钉层成功，继续累计 */
+          }
+          if (w && s.floor === floor) {
+            w.minutes += dt / 60;
+            w.lifeSeconds += b.player.maxHp * dt;
+            w.taken = Math.max(0, taken - w.baselineTaken);
+            w.shieldAbsorbed = Math.max(0, (b.shieldAbsorbed ?? 0) - w.baselineAbsorbed);
+            w.shieldRecharges = Math.max(0, (b.shieldRecharges ?? 0) - w.baselineRecharges);
+            w.deaths = Math.max(0, s.floorDeaths - w.baselineDeaths);
+            w.waves = Math.max(0, s.wave - w.baselineWave);
+            if (b.maxHit > w.maxHit) w.maxHit = b.maxHit;
+            if (w.minutes >= SURVIVAL_MINUTES) {
+              survivalSamples.push({
+                floor, minutes: w.minutes, taken: w.taken, lifeMax: b.player.maxHp,
+                muPctPerSec: w.lifeSeconds > 0 ? (w.taken / w.lifeSeconds) * 100 : NaN,
+                waves: w.waves, deaths: w.deaths, maxHit: w.maxHit,
+                hitsPerWave: w.waves > 0 ? w.taken / w.waves : NaN,
+                shieldAbsorbed: w.shieldAbsorbed,
+                shieldShare: w.taken + w.shieldAbsorbed > 0 ? w.shieldAbsorbed / (w.taken + w.shieldAbsorbed) : NaN,
+                shieldRecharges: w.shieldRecharges,
+                shieldPerWave: w.waves > 0 ? w.shieldRecharges / w.waves : NaN,
+                hitsToDie: w.maxHit > 0 ? b.player.maxHp / w.maxHit : NaN,
+              });
+              survivalOpen.delete(floor);
+            }
+          }
+        }
+        prevTakenForWindow = taken;
+      }
+    }
+
+    // 1b) 选层策略（T2）：tick 之后立即修正「这一帧农哪层」
+    //   off     = 不干预（session 自己清镇守波下潜）
+    //   deepest = 到过 FARM_FROM 层后冻结，不再往下
+    //   best    = 到过 FARM_FROM 层后，在「已到过的层」里挑修为/分最高的一层
+    //   注：策略在 FARM_FROM 之前不生效 —— 未到过的层不能选，早期就挑「最佳层」会把玩家锁在浅层。
+    let farmMoved = false;
+    if (FARM_MODE !== 'off' && s.maxFloorReached >= FARM_FROM) {
+      const target = FARM_MODE === 'deepest' ? FARM_FROM : bestSelectableFloor();
+      if (target !== s.floor && sessionMod.setFloor(s, target)) {
+        farmMoved = true;
+        farmSnaps += 1;
+      }
+    }
+
+    const band = bandStats.get(bandOf(s.floor).id);
+    band.minutes += dt / 60;
+    floorRow(s.floor).minutes += dt / 60;
+
+    // 本帧产出快照（此刻还没打造）
+    const pocketNow = { ...s.pocket };
+    const gemsNow = gemTotal();
+    const producedThisFrame =
+      Math.max(0, pocketNow.huang - prevPocket.huang) +
+      Math.max(0, pocketNow.mie - prevPocket.mie) +
+      Math.max(0, pocketNow.xi - prevPocket.xi);
+    const gemsThisFrame = Math.max(0, gemsNow - prevGems);
+    const dDrops = s.dropsFound - prevDrops;
+
+    // 1) 通货 / 玉简产出
+    for (const id of ['huang', 'mie', 'xi']) {
+      const d = Math.max(0, pocketNow[id] - prevPocket[id]);
+      if (d > 0) {
+        currencyProduced[id] += d;
+        band.produced[id] += d;
+        const fr = floorRow(s.floor);
+        fr.produced[id] += d;
+      }
+    }
+    if (gemsThisFrame > 0) band.gems += gemsThisFrame;
+
+    // 2) 法宝数 = 本帧新落到地上的法宝件数（按 GroundDrop.id 去重）
+    let itemLandedThisFrame = 0;
+    for (const g of s.ground) {
+      if (!seenGroundIds.has(g.id)) {
+        seenGroundIds.add(g.id);
+        itemLandedThisFrame += 1;
+        // 段④：只统计**满级之后**落地的仙品（maxedAt 已定 = 已经过了满级那一帧）
+        if (Number.isFinite(maxedAt) && g.item.rarity === 'xian') {
+          postCapXian += 1;
+          if (s.floor === F46) xianAtF46 += 1;
+          if (g.item.legendary && FLAG_LEGENDARY_IDS.has(g.item.legendary)) postCapFlagXian += 1;
+          postCapXianByFloor.set(s.floor, (postCapXianByFloor.get(s.floor) ?? 0) + 1);
+        }
+      }
+    }
+    itemLandedTotal += itemLandedThisFrame;
+    band.itemDrops += itemLandedThisFrame;
+    if (dDrops > 0) floorRow(s.floor).drops += dDrops;
+    prevDrops = s.dropsFound;
+    prevGems = gemsNow;
+
+    // 2a) 段④ 新口径的分母：只累加「满级后且停留在层 46」的帧（v4.38）。
+    //     没到 46 的种子 f46Minutes = 0 ⇒ 输出记 "—"，不当 0（否则会把「没到」算成「产出极低」）。
+    if (Number.isFinite(maxedAt) && s.floor === F46) f46Minutes += dt / 60;
+
+    // 2b) 同一帧的掉落按「当前层所属阶」再记一份（每阶法宝/分 验收要用）
+    {
+      const tierRow = tierStats.get(tierOfFloor(s.floor));
+      tierRow.minutes += dt / 60;
+      const dKills = Math.max(0, s.kills - prevKills);
+      tierRow.kills += dKills;
+      // 按层真实击杀数（KILLS_PER_MIN_BY_FLOOR 的 real 列要用，BALANCE §21.11）
+      if (dKills > 0) floorRow(s.floor).kills += dKills;
+      tierRow.currency += producedThisFrame;
+      tierRow.gems += gemsThisFrame;
+      tierRow.itemDrops += itemLandedThisFrame;
+    }
+    prevKills = s.kills;
+
+    // 2c) 段② 毕业装检测（见上方 checkGear 注释）
+    checkGear(s.character, t / 60);
+
+    // 2d) 每 30 分钟记一次「身上装备分布」——给「成型档 0/3」留证据链。
+    // 取样太密会把 900min 的跑批变慢；30min 足够看清曲线（宝品以上部位数怎么涨）。
+    if (t / 60 >= nextGearSampleAt) {
+      nextGearSampleAt += 30;
+      let baoPlus = 0;
+      let xianCount = 0;
+      let withAffix = 0;
+      for (const slot of EQUIP_SLOTS) {
+        const it = s.character.equipment[slot];
+        if (!it) continue;
+        const rank = rarityRank(it.rarity);
+        if (rank >= 2) baoPlus += 1;
+        if (rank >= 3) xianCount += 1;
+        if (it.affixes.length >= 1) withAffix += 1;
+      }
+      // 判据 C 的逐部位战力比（itemPower / 同部位同灵蕴宝品中位）。
+      // 最小值就是「成型」的瓶颈部位 —— 记下来，否则报告里只能看到「未达成」，
+      // 看不出是 10 个部位都差一点，还是 9 个都过线、就一个部位在拖。
+      const ratios = {};
+      let worstSlot = null;
+      let worstRatio = Number.POSITIVE_INFINITY;
+      if (inventoryMod) {
+        for (const slot of EQUIP_SLOTS) {
+          const it = s.character.equipment[slot];
+          const kind = slot.startsWith('ring') ? 'ring' : slot;
+          const base = slotBasePower(kind, it ? it.ilvl : 1);
+          const ratio = it && base > 0 ? inventoryMod.itemPower(it) / base : 0;
+          ratios[slot] = Math.round(ratio * 1000) / 1000;
+          if (ratio < worstRatio) {
+            worstRatio = ratio;
+            worstSlot = slot;
+          }
+        }
+      }
+      gearTrail.push({ minute: Math.round(t / 60), baoPlus, xianCount, withAffix, ratios, worstSlot, worstRatio });
+    }
+
+    // 3) 死亡事件
+    if (s.deaths !== prevDeaths) {
+      deathEvents.push({ minute: t / 60, floor: s.floor, step: s.character.step, realm: progMod.realmIndexOf(s.character.step) + 1 });
+      prevDeaths = s.deaths;
+    }
+
+    // 4) 落层轨迹 / 境界到达
+    if (s.floor !== prevFloor) {
+      floorTrail.push({
+        floor: s.floor,
+        minute: t / 60,
+        step: s.character.step,
+        via: farmMoved ? (s.floor > prevFloor ? 'farm-forward' : 'farm-back') : 'advance',
+      });
+      prevFloor = s.floor;
+    }
+    if (s.character.step !== prevStep) {
+      prevStep = s.character.step;
+      const realm = progMod.realmIndexOf(s.character.step);
+      for (let k = 0; k < REALM_COUNT; k++) {
+        if (!Number.isFinite(realmArrivals[k]) && realm >= k) {
+          realmArrivals[k] = t / 60;
+          realmCumXp[k] = cumOf(s.character);
+        }
+      }
+    }
+
+    // 5) 自动打造（等价 session.ts:340-352，但可观测）
+    craftTimer += dt;
+    if (craftTimer >= CRAFT_TICK) {
+      craftTimer = 0;
+      craftLog.ticks += 1;
+      const plan = sessionMod.craftPlanFromPocket(s.pocket);
+      if (Object.keys(plan.counts).length > 0) {
+        const out = craftMod.runCraftPlan(s.character, s.bag, plan, s.tables.affixes, s.rng);
+        s.character = out.character;
+        s.bag = out.bag;
+        let any = false;
+        for (const id of ['huang', 'mie', 'xi']) {
+          const sp = out.spent[id] ?? 0;
+          if (sp > 0) {
+            s.pocket[id] = Math.max(0, (s.pocket[id] ?? 0) - sp);
+            currencySpent[id] += sp;
+            band.spent[id] += sp;
+            any = true;
+          }
+        }
+        if (any) craftLog.executed += 1;
+        else craftLog.failedTicks += 1;
+      }
+    }
+    // 口袋基线必须在打造扣款之后取，否则下一帧的增量会把「花掉」再算回产出
+    prevPocket = { ...s.pocket };
+
+    if (stopAtMaxStep && s.character.step >= MAX_STEP) {
+      maxedAt = t / 60;
+      break;
+    }
+    // 满级后继续跑（--post-cap）：只记下满级时刻，不中断，用于量「满级后还有多少内容」
+    // （D36-A 的验收判据之一是满级后还有 3h；此时修为 1:1 转渊痕）
+    if (Number.isNaN(maxedAt) && s.character.step >= MAX_STEP) {
+      maxedAt = t / 60;
+      marksAtMax = Math.max(0, Math.floor(s.character.marks ?? 0));
+      // 满级瞬间的累计快照：--post-cap 时总量会被满级后挂机污染，
+      // 「满级前节奏」必须用这些快照算，不能拿终点值除 maxedAt。
+      atMax = {
+        kills: s.kills,
+        dropsFound: s.dropsFound,
+        itemDrops: itemLandedTotal,
+        currencyProduced: { ...currencyProduced },
+        gemProduced: gemTotal(),
+        tierMinutes: [...tierStats.values()].map((x) => ({ tier: x.tier, minutes: x.minutes, kills: x.kills, itemDrops: x.itemDrops })),
+        deaths: s.deaths,
+        formedAt,
+        formedAffixAt,
+        ilvl90At,
+        formedPowerAt,
+        minPowerRatio,
+        powerChecks,
+        powerChecksOk,
+        powerBestRun,
+        graduatedAt,
+        allXianAt,
+        gearTrail: [...gearTrail],
+        gear: gearSnapshot(s.character),
+      };
+      if (stopAtMaxStep) break;
+    }
+  }
+
+  const producedTotal = currencyProduced.huang + currencyProduced.mie + currencyProduced.xi;
+  const gemProduced = gemTotal();
+
+  return {
+    seed,
+    minutes: t / 60,
+diag: { killsByRarity: { ...s.diag.killsByRarity }, itemsByRarity: { ...s.diag.itemsByRarity }, currencyByRarity: { ...s.diag.currencyByRarity }, gemByRarity: { ...s.diag.gemByRarity } },
+    maxedAt,
+    marks: Math.max(0, Math.floor(s.character.marks ?? 0)),
+    marksAtMax: Number.isFinite(marksAtMax) ? marksAtMax : null,
+    atMax,
+    step: s.character.step,
+    realm: progMod.realmIndexOf(s.character.step) + 1,
+    stage: progMod.stageIndexOf(s.character.step) + 1,
+    cumXp: Math.round(cumOf(s.character)),
+    floor: s.floor,
+    wave: s.wave,
+    deaths: s.deaths,
+    farmMode: FARM_MODE,
+    farmFrom: FARM_MODE === 'deepest' ? FARM_FROM : null,
+    farmSnaps,
+    survival: survivalSamples,
+    farmFloorXpPerMin: FARM_MODE !== 'off' && offlineMod ? Math.round(xpPerMinuteOfFloor(s.floor)) : null,
+    maxFloorReached: sessionMod.highestFloorReached(s),
+    dropsFound: s.dropsFound,
+    // 法宝数 = 真实落地件数（扫 s.ground 去重），**不是** dropsFound 减法（见上方注释）
+    itemDrops: itemLandedTotal,
+    /** 段② 成型档达成分钟（各部位 1 件宝品以上且 ≥1 条灵纹；NaN = 没达成）。段② 的唯一门禁 */
+    formedAt,
+    /** 判据 C（D68 / C4）：9/10 部位 itemPower ≥ 同部位同灵蕴宝品中位 ×1.0 且最差部位 ≥0.70，
+     * 并连续 30 分钟不跌破，取这一段**起点**（判据 C 不是单调量，跌破会重新计时） */
+    formedPowerAt,
+    /** 判据 C 的最差部位比值（满级那刻的值，>1 = 全身达标） */
+    minPowerRatio,
+    /** 判据 C 的采样统计：采样次数 / 满足次数（诊断「30min 窗口是否过紧」用） */
+    powerChecks,
+    powerChecksOk,
+    /** 判据 C 连续满足的最长一段（分钟） */
+    powerBestRun,
+    /** 备选判据 A：10 部位每件 ≥2 条灵纹达成分钟（NaN = 没达成） */
+    formedAffixAt,
+    /** 备选判据 B：10 部位每件灵蕴 ≥90 达成分钟（NaN = 没达成） */
+    ilvl90At,
+    /** 每 30 分钟的装备分布轨迹（诊断用） */
+    gearTrail: [...gearTrail],
+    /** 段② 记录项：毕业装达成分钟（各部位 1 件宝品以上且 ≥2 条灵纹；NaN = 没达成） */
+    graduatedAt,
+    /** 段④ 记录项：9 部位全仙品达成分钟（NaN = 没达成） */
+    allXianAt,
+    currencyProduced: { ...currencyProduced },
+    currencySpent: { ...currencySpent },
+    gemProduced,
+    pocketEnd: { ...s.pocket },
+    gemPouchEnd: { ...s.gemPouch },
+    craftLog,
+    /** 段④ 度量（D57/D63）：满级后的仙品产出。minutes = 满级后实际跑的分钟数 */
+    postCap: {
+      minutes: Number.isFinite(maxedAt) ? Math.max(0, t / 60 - maxedAt) : 0,
+      xian: postCapXian,
+      flagXian: postCapFlagXian,
+      xianAtF46,
+      f46Minutes,
+      // 每 3h 的仙品件数（分母只算层 46 停留时间）；f46Minutes=0 → NaN，输出方记 "—"
+      xianPer3hAtF46: f46Minutes > 0 ? (xianAtF46 / f46Minutes) * 60 * 3 : NaN,
+      byFloor: [...postCapXianByFloor.entries()].map(([floor, xian]) => ({ floor, xian })).sort((a, b) => a.floor - b.floor),
+    },
+    bandStats: [...bandStats.values()],
+    tierStats: [...tierStats.values()],
+    floorStats: [...floorStats.values()].sort((a, b) => a.floor - b.floor),
+    realmArrivals,
+    realmCumXp,
+    floorTrail,
+    deathEvents,
+  };
+}

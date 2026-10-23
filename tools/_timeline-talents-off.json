@@ -1,0 +1,1712 @@
+{
+  "generatedAt": "2026-10-22T00:46:13.361Z",
+  "params": {
+    "seeds": 3,
+    "baseSeed": 20261021,
+    "minutes": 500,
+    "dt": 0.03333333333333333,
+    "classId": "yujian",
+    "talents": [],
+    "talentMode": "off",
+    "autoTalents": false
+  },
+  "targets": {
+    "maxMinutes": 406,
+    "maxTolerance": 0.1,
+    "realmTolerance": 0.15,
+    "realmMinutes": [
+      32,
+      47,
+      70,
+      104,
+      139,
+      179,
+      224,
+      304,
+      406
+    ]
+  },
+  "verdict": {
+    "pass": true,
+    "allMaxed": true,
+    "maxedMin": 359.5499999975728,
+    "maxedMed": 405.1394444413538,
+    "maxedMax": 424.4605555521838,
+    "dev": -0.002119594972034934,
+    "deaths": [
+      0,
+      0,
+      0
+    ]
+  },
+  "runs": [
+    {
+      "seed": 20261021,
+      "minutes": 424.4605555521838,
+      "maxedAt": 424.4605555521838,
+      "step": 80,
+      "realm": 9,
+      "stage": 9,
+      "cumXp": 2302917,
+      "floor": 27,
+      "wave": 868,
+      "deaths": 0,
+      "dropsFound": 3213,
+      "itemDrops": 1267,
+      "currencyProduced": {
+        "huang": 740,
+        "mie": 596,
+        "xi": 219
+      },
+      "currencySpent": {
+        "huang": 740,
+        "mie": 596,
+        "xi": 219
+      },
+      "gemProduced": 391,
+      "pocketEnd": {
+        "huang": 0,
+        "mie": 0,
+        "xi": 0
+      },
+      "gemPouchEnd": {
+        "mengong": 41,
+        "jixie": 35,
+        "hanbing": 31,
+        "cuijin": 31,
+        "zhuo-huo": 44,
+        "kaopi": 30,
+        "kuosan": 34,
+        "guantou": 31,
+        "duanjin": 26,
+        "huitou": 36,
+        "wanhui": 27,
+        "yuanmo": 25
+      },
+      "craftLog": {
+        "ticks": 1694,
+        "executed": 843,
+        "failedTicks": 2
+      },
+      "bandStats": [
+        {
+          "id": "层 1~9",
+          "minutes": 42.2516666666547,
+          "kills": 0,
+          "itemDrops": 124,
+          "produced": {
+            "huang": 88,
+            "mie": 64,
+            "xi": 10
+          },
+          "spent": {
+            "huang": 88,
+            "mie": 63,
+            "xi": 10
+          },
+          "gems": 47
+        },
+        {
+          "id": "层 10~18",
+          "minutes": 50.02333333334743,
+          "kills": 0,
+          "itemDrops": 119,
+          "produced": {
+            "huang": 76,
+            "mie": 73,
+            "xi": 23
+          },
+          "spent": {
+            "huang": 76,
+            "mie": 74,
+            "xi": 23
+          },
+          "gems": 42
+        },
+        {
+          "id": "层 19~27",
+          "minutes": 332.1855555544113,
+          "kills": 0,
+          "itemDrops": 1024,
+          "produced": {
+            "huang": 576,
+            "mie": 459,
+            "xi": 186
+          },
+          "spent": {
+            "huang": 576,
+            "mie": 459,
+            "xi": 186
+          },
+          "gems": 302
+        }
+      ],
+      "tierStats": [
+        {
+          "tier": 1,
+          "minutes": 42.2516666666547,
+          "kills": 333,
+          "itemDrops": 124,
+          "currency": 162,
+          "gems": 47
+        },
+        {
+          "tier": 2,
+          "minutes": 50.02333333334743,
+          "kills": 333,
+          "itemDrops": 119,
+          "currency": 172,
+          "gems": 42
+        },
+        {
+          "tier": 3,
+          "minutes": 332.1855555544113,
+          "kills": 2547,
+          "itemDrops": 1024,
+          "currency": 1221,
+          "gems": 302
+        }
+      ],
+      "floorStats": [
+        {
+          "floor": 1,
+          "minutes": 4.39611111111161,
+          "produced": {
+            "huang": 13,
+            "mie": 7,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 2,
+          "minutes": 5.050000000000601,
+          "produced": {
+            "huang": 12,
+            "mie": 6,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 3,
+          "minutes": 5.566111111111793,
+          "produced": {
+            "huang": 5,
+            "mie": 4,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 4,
+          "minutes": 5.976111111111857,
+          "produced": {
+            "huang": 5,
+            "mie": 9,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 5,
+          "minutes": 4.702777777778325,
+          "produced": {
+            "huang": 11,
+            "mie": 5,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 6,
+          "minutes": 3.73444444444484,
+          "produced": {
+            "huang": 11,
+            "mie": 7,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 7,
+          "minutes": 3.787222222222626,
+          "produced": {
+            "huang": 16,
+            "mie": 8,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 8,
+          "minutes": 4.375555555556051,
+          "produced": {
+            "huang": 7,
+            "mie": 9,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 9,
+          "minutes": 4.663333333333874,
+          "produced": {
+            "huang": 8,
+            "mie": 9,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 10,
+          "minutes": 7.207222222223161,
+          "produced": {
+            "huang": 8,
+            "mie": 11,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 11,
+          "minutes": 7.5211111111120985,
+          "produced": {
+            "huang": 8,
+            "mie": 7,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 12,
+          "minutes": 5.2172222222228495,
+          "produced": {
+            "huang": 5,
+            "mie": 9,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 13,
+          "minutes": 4.767222222222779,
+          "produced": {
+            "huang": 10,
+            "mie": 8,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 14,
+          "minutes": 4.06333333333378,
+          "produced": {
+            "huang": 6,
+            "mie": 9,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 15,
+          "minutes": 4.404444444444945,
+          "produced": {
+            "huang": 10,
+            "mie": 7,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 16,
+          "minutes": 4.814444444445009,
+          "produced": {
+            "huang": 8,
+            "mie": 7,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 17,
+          "minutes": 5.94000000000074,
+          "produced": {
+            "huang": 8,
+            "mie": 6,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 18,
+          "minutes": 6.088333333334097,
+          "produced": {
+            "huang": 13,
+            "mie": 9,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 19,
+          "minutes": 4.075000000000449,
+          "produced": {
+            "huang": 7,
+            "mie": 6,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 20,
+          "minutes": 4.603333333333865,
+          "produced": {
+            "huang": 15,
+            "mie": 4,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 21,
+          "minutes": 4.267777777778257,
+          "produced": {
+            "huang": 10,
+            "mie": 3,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 22,
+          "minutes": 4.731111111111662,
+          "produced": {
+            "huang": 9,
+            "mie": 9,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 23,
+          "minutes": 5.27833333333397,
+          "produced": {
+            "huang": 4,
+            "mie": 9,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 24,
+          "minutes": 5.549444444445124,
+          "produced": {
+            "huang": 11,
+            "mie": 6,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 25,
+          "minutes": 5.36000000000065,
+          "produced": {
+            "huang": 12,
+            "mie": 8,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 26,
+          "minutes": 6.412222222223036,
+          "produced": {
+            "huang": 7,
+            "mie": 6,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 27,
+          "minutes": 291.9083333335994,
+          "produced": {
+            "huang": 501,
+            "mie": 408,
+            "xi": 161
+          },
+          "drops": 2251
+        }
+      ],
+      "realmArrivals": [
+        0,
+        30.106111111094684,
+        49.444444444410436,
+        73.33444444445784,
+        107.54055555600449,
+        139.998333334101,
+        178.969444444645,
+        224.0144444439895,
+        312.915555553807
+      ],
+      "realmCumXp": [
+        0,
+        2853,
+        9740,
+        32990,
+        144785,
+        318077,
+        546795,
+        862097,
+        1488932
+      ],
+      "floorTrail": [
+        {
+          "floor": 2,
+          "minute": 4.396666666666571,
+          "step": 0
+        },
+        {
+          "floor": 3,
+          "minute": 9.44666666666903,
+          "step": 1
+        },
+        {
+          "floor": 4,
+          "minute": 15.01277777777508,
+          "step": 2
+        },
+        {
+          "floor": 5,
+          "minute": 20.988888888880755,
+          "step": 4
+        },
+        {
+          "floor": 6,
+          "minute": 25.691666666654257,
+          "step": 7
+        },
+        {
+          "floor": 7,
+          "minute": 29.426111111095302,
+          "step": 8
+        },
+        {
+          "floor": 8,
+          "minute": 33.21333333331408,
+          "step": 10
+        },
+        {
+          "floor": 9,
+          "minute": 37.58888888886566,
+          "step": 11
+        },
+        {
+          "floor": 10,
+          "minute": 42.25222222219475,
+          "step": 13
+        },
+        {
+          "floor": 11,
+          "minute": 49.45944444441042,
+          "step": 18
+        },
+        {
+          "floor": 12,
+          "minute": 56.98055555551469,
+          "step": 20
+        },
+        {
+          "floor": 13,
+          "minute": 62.19777777773217,
+          "step": 22
+        },
+        {
+          "floor": 14,
+          "minute": 66.96499999995005,
+          "step": 24
+        },
+        {
+          "floor": 15,
+          "minute": 71.02833333331736,
+          "step": 26
+        },
+        {
+          "floor": 16,
+          "minute": 75.43277777781789,
+          "step": 27
+        },
+        {
+          "floor": 17,
+          "minute": 80.24722222232364,
+          "step": 27
+        },
+        {
+          "floor": 18,
+          "minute": 86.18722222239927,
+          "step": 28
+        },
+        {
+          "floor": 19,
+          "minute": 92.27555555581013,
+          "step": 29
+        },
+        {
+          "floor": 20,
+          "minute": 96.35055555586202,
+          "step": 31
+        },
+        {
+          "floor": 21,
+          "minute": 100.95388888925396,
+          "step": 34
+        },
+        {
+          "floor": 22,
+          "minute": 105.22166666708608,
+          "step": 35
+        },
+        {
+          "floor": 23,
+          "minute": 109.95277777825744,
+          "step": 36
+        },
+        {
+          "floor": 24,
+          "minute": 115.23111111165798,
+          "step": 38
+        },
+        {
+          "floor": 25,
+          "minute": 120.78055555617308,
+          "step": 40
+        },
+        {
+          "floor": 26,
+          "minute": 126.14055555624132,
+          "step": 42
+        },
+        {
+          "floor": 27,
+          "minute": 132.5527777785452,
+          "step": 44
+        }
+      ],
+      "deathEvents": [],
+      "wallMs": 579
+    },
+    {
+      "seed": 20262034,
+      "minutes": 405.1394444413538,
+      "maxedAt": 405.1394444413538,
+      "step": 80,
+      "realm": 9,
+      "stage": 9,
+      "cumXp": 2302917,
+      "floor": 27,
+      "wave": 862,
+      "deaths": 0,
+      "dropsFound": 3190,
+      "itemDrops": 1333,
+      "currencyProduced": {
+        "huang": 638,
+        "mie": 597,
+        "xi": 215
+      },
+      "currencySpent": {
+        "huang": 637,
+        "mie": 596,
+        "xi": 215
+      },
+      "gemProduced": 407,
+      "pocketEnd": {
+        "huang": 1,
+        "mie": 1,
+        "xi": 0
+      },
+      "gemPouchEnd": {
+        "mengong": 31,
+        "hanbing": 29,
+        "zhuo-huo": 35,
+        "cuijin": 50,
+        "jixie": 46,
+        "kaopi": 25,
+        "kuosan": 35,
+        "huitou": 30,
+        "guantou": 28,
+        "yuanmo": 33,
+        "duanjin": 28,
+        "wanhui": 37
+      },
+      "craftLog": {
+        "ticks": 1616,
+        "executed": 787,
+        "failedTicks": 0
+      },
+      "bandStats": [
+        {
+          "id": "层 1~9",
+          "minutes": 44.11777777777207,
+          "kills": 0,
+          "itemDrops": 156,
+          "produced": {
+            "huang": 57,
+            "mie": 60,
+            "xi": 20
+          },
+          "spent": {
+            "huang": 56,
+            "mie": 60,
+            "xi": 20
+          },
+          "gems": 42
+        },
+        {
+          "id": "层 10~18",
+          "minutes": 64.4122222222793,
+          "kills": 0,
+          "itemDrops": 129,
+          "produced": {
+            "huang": 69,
+            "mie": 69,
+            "xi": 28
+          },
+          "spent": {
+            "huang": 70,
+            "mie": 69,
+            "xi": 28
+          },
+          "gems": 38
+        },
+        {
+          "id": "层 19~27",
+          "minutes": 296.6094444445459,
+          "kills": 0,
+          "itemDrops": 1048,
+          "produced": {
+            "huang": 512,
+            "mie": 468,
+            "xi": 167
+          },
+          "spent": {
+            "huang": 511,
+            "mie": 467,
+            "xi": 167
+          },
+          "gems": 327
+        }
+      ],
+      "tierStats": [
+        {
+          "tier": 1,
+          "minutes": 44.11777777777207,
+          "kills": 335,
+          "itemDrops": 156,
+          "currency": 137,
+          "gems": 42
+        },
+        {
+          "tier": 2,
+          "minutes": 64.4122222222793,
+          "kills": 333,
+          "itemDrops": 129,
+          "currency": 166,
+          "gems": 38
+        },
+        {
+          "tier": 3,
+          "minutes": 296.6094444445459,
+          "kills": 2522,
+          "itemDrops": 1048,
+          "currency": 1147,
+          "gems": 327
+        }
+      ],
+      "floorStats": [
+        {
+          "floor": 1,
+          "minutes": 4.028333333333775,
+          "produced": {
+            "huang": 9,
+            "mie": 7,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 2,
+          "minutes": 4.405555555556056,
+          "produced": {
+            "huang": 5,
+            "mie": 6,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 3,
+          "minutes": 4.648333333333872,
+          "produced": {
+            "huang": 7,
+            "mie": 3,
+            "xi": 5
+          },
+          "drops": 38
+        },
+        {
+          "floor": 4,
+          "minutes": 4.633888888889425,
+          "produced": {
+            "huang": 8,
+            "mie": 6,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 5,
+          "minutes": 4.786666666667227,
+          "produced": {
+            "huang": 3,
+            "mie": 8,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 6,
+          "minutes": 4.964444444445032,
+          "produced": {
+            "huang": 5,
+            "mie": 6,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 7,
+          "minutes": 5.199444444445069,
+          "produced": {
+            "huang": 6,
+            "mie": 10,
+            "xi": 4
+          },
+          "drops": 38
+        },
+        {
+          "floor": 8,
+          "minutes": 5.441111111111773,
+          "produced": {
+            "huang": 8,
+            "mie": 7,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 9,
+          "minutes": 6.010000000000751,
+          "produced": {
+            "huang": 6,
+            "mie": 7,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 10,
+          "minutes": 9.208333333334584,
+          "produced": {
+            "huang": 7,
+            "mie": 4,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 11,
+          "minutes": 11.153333333334889,
+          "produced": {
+            "huang": 8,
+            "mie": 11,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 12,
+          "minutes": 7.693888888889903,
+          "produced": {
+            "huang": 6,
+            "mie": 7,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 13,
+          "minutes": 7.965555555556612,
+          "produced": {
+            "huang": 8,
+            "mie": 7,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 14,
+          "minutes": 8.198333333334427,
+          "produced": {
+            "huang": 14,
+            "mie": 10,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 15,
+          "minutes": 5.785000000000716,
+          "produced": {
+            "huang": 8,
+            "mie": 8,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 16,
+          "minutes": 4.491111111111625,
+          "produced": {
+            "huang": 4,
+            "mie": 9,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 17,
+          "minutes": 4.601111111111642,
+          "produced": {
+            "huang": 10,
+            "mie": 5,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 18,
+          "minutes": 5.315555555556198,
+          "produced": {
+            "huang": 4,
+            "mie": 8,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 19,
+          "minutes": 3.516666666667028,
+          "produced": {
+            "huang": 11,
+            "mie": 5,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 20,
+          "minutes": 3.6477777777781597,
+          "produced": {
+            "huang": 11,
+            "mie": 4,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 21,
+          "minutes": 3.602222222222597,
+          "produced": {
+            "huang": 9,
+            "mie": 6,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 22,
+          "minutes": 3.8683333333337497,
+          "produced": {
+            "huang": 7,
+            "mie": 5,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 23,
+          "minutes": 4.200000000000468,
+          "produced": {
+            "huang": 13,
+            "mie": 4,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 24,
+          "minutes": 4.5522222222227455,
+          "produced": {
+            "huang": 7,
+            "mie": 7,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 25,
+          "minutes": 4.7588888888894445,
+          "produced": {
+            "huang": 6,
+            "mie": 7,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 26,
+          "minutes": 4.297222222222706,
+          "produced": {
+            "huang": 10,
+            "mie": 8,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 27,
+          "minutes": 264.1661111123486,
+          "produced": {
+            "huang": 438,
+            "mie": 422,
+            "xi": 150
+          },
+          "drops": 2226
+        }
+      ],
+      "realmArrivals": [
+        0,
+        27.592777777763636,
+        53.31166666662914,
+        91.3394444446871,
+        121.09111111173259,
+        147.3561111117717,
+        183.7583333334642,
+        225.1238888884178,
+        301.49833333175087
+      ],
+      "realmCumXp": [
+        0,
+        2845,
+        10260,
+        32933,
+        144854,
+        318057,
+        547315,
+        862090,
+        1488912
+      ],
+      "floorTrail": [
+        {
+          "floor": 2,
+          "minute": 4.028888888888703,
+          "step": 0
+        },
+        {
+          "floor": 3,
+          "minute": 8.43444444444756,
+          "step": 1
+        },
+        {
+          "floor": 4,
+          "minute": 13.082777777776835,
+          "step": 3
+        },
+        {
+          "floor": 5,
+          "minute": 17.71666666666151,
+          "step": 5
+        },
+        {
+          "floor": 6,
+          "minute": 22.503333333323823,
+          "step": 8
+        },
+        {
+          "floor": 7,
+          "minute": 27.46777777776375,
+          "step": 8
+        },
+        {
+          "floor": 8,
+          "minute": 32.66722222220347,
+          "step": 11
+        },
+        {
+          "floor": 9,
+          "minute": 38.10833333330963,
+          "step": 12
+        },
+        {
+          "floor": 10,
+          "minute": 44.118333333304165,
+          "step": 14
+        },
+        {
+          "floor": 11,
+          "minute": 53.32666666662912,
+          "step": 18
+        },
+        {
+          "floor": 12,
+          "minute": 64.47999999995231,
+          "step": 20
+        },
+        {
+          "floor": 13,
+          "minute": 72.1738888888875,
+          "step": 22
+        },
+        {
+          "floor": 14,
+          "minute": 80.1394444445445,
+          "step": 25
+        },
+        {
+          "floor": 15,
+          "minute": 88.33777777798221,
+          "step": 26
+        },
+        {
+          "floor": 16,
+          "minute": 94.12277777805588,
+          "step": 27
+        },
+        {
+          "floor": 17,
+          "minute": 98.61388888922417,
+          "step": 27
+        },
+        {
+          "floor": 18,
+          "minute": 103.21500000039387,
+          "step": 28
+        },
+        {
+          "floor": 19,
+          "minute": 108.5305555560171,
+          "step": 29
+        },
+        {
+          "floor": 20,
+          "minute": 112.04722222272855,
+          "step": 31
+        },
+        {
+          "floor": 21,
+          "minute": 115.69500000055277,
+          "step": 34
+        },
+        {
+          "floor": 22,
+          "minute": 119.29722222282086,
+          "step": 35
+        },
+        {
+          "floor": 23,
+          "minute": 123.16555555620344,
+          "step": 36
+        },
+        {
+          "floor": 24,
+          "minute": 127.36555555625692,
+          "step": 38
+        },
+        {
+          "floor": 25,
+          "minute": 131.9177777785371,
+          "step": 40
+        },
+        {
+          "floor": 26,
+          "minute": 136.67666666748266,
+          "step": 42
+        },
+        {
+          "floor": 27,
+          "minute": 140.97388888964235,
+          "step": 44
+        }
+      ],
+      "deathEvents": [],
+      "wallMs": 484
+    },
+    {
+      "seed": 20263047,
+      "minutes": 359.5499999975728,
+      "maxedAt": 359.5499999975728,
+      "step": 80,
+      "realm": 9,
+      "stage": 9,
+      "cumXp": 2302917,
+      "floor": 27,
+      "wave": 868,
+      "deaths": 0,
+      "dropsFound": 3213,
+      "itemDrops": 1293,
+      "currencyProduced": {
+        "huang": 715,
+        "mie": 599,
+        "xi": 207
+      },
+      "currencySpent": {
+        "huang": 715,
+        "mie": 599,
+        "xi": 207
+      },
+      "gemProduced": 399,
+      "pocketEnd": {
+        "huang": 0,
+        "mie": 0,
+        "xi": 0
+      },
+      "gemPouchEnd": {
+        "jixie": 35,
+        "mengong": 39,
+        "cuijin": 36,
+        "zhuo-huo": 36,
+        "hanbing": 27,
+        "kaopi": 38,
+        "kuosan": 38,
+        "duanjin": 30,
+        "guantou": 38,
+        "wanhui": 27,
+        "huitou": 23,
+        "yuanmo": 32
+      },
+      "craftLog": {
+        "ticks": 1435,
+        "executed": 774,
+        "failedTicks": 2
+      },
+      "bandStats": [
+        {
+          "id": "层 1~9",
+          "minutes": 46.61055555555821,
+          "kills": 0,
+          "itemDrops": 151,
+          "produced": {
+            "huang": 79,
+            "mie": 56,
+            "xi": 18
+          },
+          "spent": {
+            "huang": 79,
+            "mie": 56,
+            "xi": 18
+          },
+          "gems": 29
+        },
+        {
+          "id": "层 10~18",
+          "minutes": 48.36888888889744,
+          "kills": 0,
+          "itemDrops": 133,
+          "produced": {
+            "huang": 69,
+            "mie": 71,
+            "xi": 24
+          },
+          "spent": {
+            "huang": 69,
+            "mie": 71,
+            "xi": 24
+          },
+          "gems": 36
+        },
+        {
+          "id": "层 19~27",
+          "minutes": 264.57055555677886,
+          "kills": 0,
+          "itemDrops": 1009,
+          "produced": {
+            "huang": 567,
+            "mie": 472,
+            "xi": 165
+          },
+          "spent": {
+            "huang": 567,
+            "mie": 472,
+            "xi": 165
+          },
+          "gems": 334
+        }
+      ],
+      "tierStats": [
+        {
+          "tier": 1,
+          "minutes": 46.61055555555821,
+          "kills": 333,
+          "itemDrops": 151,
+          "currency": 153,
+          "gems": 29
+        },
+        {
+          "tier": 2,
+          "minutes": 48.36888888889744,
+          "kills": 333,
+          "itemDrops": 133,
+          "currency": 164,
+          "gems": 36
+        },
+        {
+          "tier": 3,
+          "minutes": 264.57055555677886,
+          "kills": 2547,
+          "itemDrops": 1009,
+          "currency": 1204,
+          "gems": 334
+        }
+      ],
+      "floorStats": [
+        {
+          "floor": 1,
+          "minutes": 4.315555555556042,
+          "produced": {
+            "huang": 7,
+            "mie": 7,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 2,
+          "minutes": 4.541666666667188,
+          "produced": {
+            "huang": 8,
+            "mie": 5,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 3,
+          "minutes": 4.983333333333924,
+          "produced": {
+            "huang": 8,
+            "mie": 8,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 4,
+          "minutes": 4.636666666667203,
+          "produced": {
+            "huang": 9,
+            "mie": 4,
+            "xi": 0
+          },
+          "drops": 37
+        },
+        {
+          "floor": 5,
+          "minutes": 5.306666666667308,
+          "produced": {
+            "huang": 10,
+            "mie": 7,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 6,
+          "minutes": 5.592777777778464,
+          "produced": {
+            "huang": 10,
+            "mie": 2,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 7,
+          "minutes": 5.5527777777784575,
+          "produced": {
+            "huang": 12,
+            "mie": 9,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 8,
+          "minutes": 5.615555555556245,
+          "produced": {
+            "huang": 8,
+            "mie": 9,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 9,
+          "minutes": 6.065555555556315,
+          "produced": {
+            "huang": 7,
+            "mie": 5,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 10,
+          "minutes": 7.729444444445464,
+          "produced": {
+            "huang": 9,
+            "mie": 6,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 11,
+          "minutes": 5.237222222222853,
+          "produced": {
+            "huang": 8,
+            "mie": 4,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 12,
+          "minutes": 3.7177777777781706,
+          "produced": {
+            "huang": 6,
+            "mie": 4,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 13,
+          "minutes": 4.291111111111594,
+          "produced": {
+            "huang": 8,
+            "mie": 11,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 14,
+          "minutes": 4.600555555556086,
+          "produced": {
+            "huang": 8,
+            "mie": 8,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 15,
+          "minutes": 4.791111111111672,
+          "produced": {
+            "huang": 9,
+            "mie": 8,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 16,
+          "minutes": 5.444444444445107,
+          "produced": {
+            "huang": 8,
+            "mie": 9,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 17,
+          "minutes": 5.815555555556276,
+          "produced": {
+            "huang": 8,
+            "mie": 11,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 18,
+          "minutes": 6.741666666667532,
+          "produced": {
+            "huang": 5,
+            "mie": 10,
+            "xi": 3
+          },
+          "drops": 37
+        },
+        {
+          "floor": 19,
+          "minutes": 4.664444444444985,
+          "produced": {
+            "huang": 9,
+            "mie": 11,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 20,
+          "minutes": 4.771111111111669,
+          "produced": {
+            "huang": 7,
+            "mie": 6,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 21,
+          "minutes": 4.999444444445038,
+          "produced": {
+            "huang": 11,
+            "mie": 6,
+            "xi": 5
+          },
+          "drops": 37
+        },
+        {
+          "floor": 22,
+          "minutes": 5.476111111111779,
+          "produced": {
+            "huang": 11,
+            "mie": 5,
+            "xi": 4
+          },
+          "drops": 37
+        },
+        {
+          "floor": 23,
+          "minutes": 5.861666666667395,
+          "produced": {
+            "huang": 6,
+            "mie": 5,
+            "xi": 2
+          },
+          "drops": 37
+        },
+        {
+          "floor": 24,
+          "minutes": 6.336111111111913,
+          "produced": {
+            "huang": 6,
+            "mie": 7,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 25,
+          "minutes": 5.426666666667327,
+          "produced": {
+            "huang": 6,
+            "mie": 6,
+            "xi": 6
+          },
+          "drops": 37
+        },
+        {
+          "floor": 26,
+          "minutes": 5.082777777778384,
+          "produced": {
+            "huang": 9,
+            "mie": 8,
+            "xi": 1
+          },
+          "drops": 37
+        },
+        {
+          "floor": 27,
+          "minutes": 221.952222223196,
+          "produced": {
+            "huang": 502,
+            "mie": 418,
+            "xi": 143
+          },
+          "drops": 2251
+        }
+      ],
+      "realmArrivals": [
+        0,
+        30.54444444442762,
+        54.325555555517106,
+        74.58611111114045,
+        111.95611111161628,
+        143.90166666737753,
+        181.7350000001603,
+        213.20333333303572,
+        277.27833333210333
+      ],
+      "realmCumXp": [
+        0,
+        2853,
+        9740,
+        32998,
+        144785,
+        318077,
+        546795,
+        862097,
+        1488964
+      ],
+      "floorTrail": [
+        {
+          "floor": 2,
+          "minute": 4.316111111110951,
+          "step": 0
+        },
+        {
+          "floor": 3,
+          "minute": 8.857777777780678,
+          "step": 1
+        },
+        {
+          "floor": 4,
+          "minute": 13.841111111109479,
+          "step": 2
+        },
+        {
+          "floor": 5,
+          "minute": 18.477777777771927,
+          "step": 4
+        },
+        {
+          "floor": 6,
+          "minute": 23.784444444433767,
+          "step": 7
+        },
+        {
+          "floor": 7,
+          "minute": 29.37722222220646,
+          "step": 8
+        },
+        {
+          "floor": 8,
+          "minute": 34.92999999997919,
+          "step": 10
+        },
+        {
+          "floor": 9,
+          "minute": 40.54555555552964,
+          "step": 11
+        },
+        {
+          "floor": 10,
+          "minute": 46.61111111107968,
+          "step": 13
+        },
+        {
+          "floor": 11,
+          "minute": 54.34055555551709,
+          "step": 18
+        },
+        {
+          "floor": 12,
+          "minute": 59.57777777773455,
+          "step": 20
+        },
+        {
+          "floor": 13,
+          "minute": 63.29555555550895,
+          "step": 22
+        },
+        {
+          "floor": 14,
+          "minute": 67.58666666661615,
+          "step": 24
+        },
+        {
+          "floor": 15,
+          "minute": 72.18722222222101,
+          "step": 26
+        },
+        {
+          "floor": 16,
+          "minute": 76.97833333339312,
+          "step": 27
+        },
+        {
+          "floor": 17,
+          "minute": 82.4227777779069,
+          "step": 27
+        },
+        {
+          "floor": 18,
+          "minute": 88.2383333335365,
+          "step": 28
+        },
+        {
+          "floor": 19,
+          "minute": 94.98000000028901,
+          "step": 29
+        },
+        {
+          "floor": 20,
+          "minute": 99.64444444479285,
+          "step": 31
+        },
+        {
+          "floor": 21,
+          "minute": 104.4155555559647,
+          "step": 34
+        },
+        {
+          "floor": 22,
+          "minute": 109.41500000047282,
+          "step": 35
+        },
+        {
+          "floor": 23,
+          "minute": 114.89111111165364,
+          "step": 36
+        },
+        {
+          "floor": 24,
+          "minute": 120.75277777839496,
+          "step": 38
+        },
+        {
+          "floor": 25,
+          "minute": 127.08888888958674,
+          "step": 40
+        },
+        {
+          "floor": 26,
+          "minute": 132.5155555563225,
+          "step": 42
+        },
+        {
+          "floor": 27,
+          "minute": 137.59833333413593,
+          "step": 44
+        }
+      ],
+      "deathEvents": [],
+      "wallMs": 416
+    }
+  ]
+}

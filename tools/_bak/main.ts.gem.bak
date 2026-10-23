@@ -1,0 +1,436 @@
+/**
+ * 入口 —— 只做组装，不写规则。
+ *
+ * 这个文件应该永远很短。它做五件事：
+ * 1. 读档（没有就建新档）
+ * 2. 结算闭关（离线）收益
+ * 3. 每帧推进一局游戏 + 画一帧
+ * 4. 自动存档（30 秒一次 + 切后台/关页面各一次）
+ * 5. 把状态挂到 window 上给探针用（只在开发构建里）
+ *
+ * 如果哪天这个文件变长了，说明规则漏进了入口层，该往 `core/` 里挪。
+ */
+
+/// <reference types="vite/client" />
+
+import { Loop } from './core/loop';
+import { Autosaver } from './core/autosave';
+import {
+  OFFLINE_MIN_SECONDS,
+  applyOfflineGain,
+  simulateOffline,
+} from './core/offline';
+import { gainXp } from './core/character';
+import { pickup } from './core/inventory';
+import {
+  createSession,
+  floorSelectableMax,
+  setFloor,
+  startWave,
+  tickSession,
+  type GameSession,
+} from './core/session';
+import { createLocalStorageAdapter } from './core/storage';
+import {
+  advanceTutorial,
+  clampTutorialIndex,
+  currentTutorialStep,
+  TUTORIAL_LENGTH,
+  tutorialFinished,
+  tutorialProgressText,
+  type TutorialFacts,
+} from './core/onboarding';
+import { spendMarks } from './core/marks-runtime';
+import type { MarkSink } from './data/marks';
+import { AFFIXES } from './data/affixes';
+import { ITEM_BASES } from './data/bases';
+import { BattleRenderer } from './render/battle-renderer';
+import { CLASSES, getClass, type ClassId } from './data/classes';
+import { indexFromDigit, moveClassIndex } from './render/class-select';
+
+const canvas = document.getElementById('stage');
+if (!(canvas instanceof HTMLCanvasElement)) {
+  throw new Error('找不到 #stage 画布，检查 index.html');
+}
+
+const TABLES = { bases: ITEM_BASES, affixes: AFFIXES };
+
+// ── 1. 读档 ────────────────────────────────────────────────
+const storage = createLocalStorageAdapter();
+/** 先建一个占位 session 供 Autosaver 的 getter 用，读档成功后替换 */
+let session: GameSession = createSession({
+  classId: 'yujian',
+  seed: Date.now() & 0x7fffffff,
+  tables: TABLES,
+});
+const autosaver = new Autosaver(storage, () => session, TABLES);
+const loaded = autosaver.load();
+
+/**
+ * 两个阶段：新号先选道统（D1：6 职业，开局选一个、之后不能转职），有档直接进。
+ *
+ * 为什么阶段要显式写出来：选道统时那局占位会话还没开始，如果照着跑
+ * 主循环 + 自动存档，会把一个 yujian 的空档写进新档 —— 玩家下次打开
+ * 就"已经选过剑修了"，而他从没选过。
+ */
+type Phase = 'select' | 'play';
+
+let phase: Phase = loaded ? 'play' : 'select';
+let pickIndex = 0;
+let selectTime = 0;
+
+if (loaded) {
+  session = loaded.session;
+} else {
+  startWave(session);
+}
+
+// ── 探针/回归专用：`?cls=yujian` 直接跳过选道统 ────────────────
+// 为什么做成 URL 参数、而不是让每条探针先模拟一次回车：
+// `__zhuoxian.reset()` 之后是整页 reload，URL 参数会跟着活下来，按键不会；
+// 否则 8 条探针每条都要在每个 navigate/reset 之后补一行"重新选道统"，
+// 漏一处就是一片假红（2026-10-22 那次 105→88 的假红就是这么来的）。
+// 生产不受影响：没人会给玩家发带 ?cls= 的链接；道统名不在表里就当没传。
+const FORCED_CLASS = new URLSearchParams(location.search).get('cls');
+if (!loaded && FORCED_CLASS && CLASSES.some((c) => c.id === FORCED_CLASS)) {
+  pickIndex = CLASSES.findIndex((c) => c.id === FORCED_CLASS);
+  confirmClass();
+}
+
+/** 确认道统：建真正的一局，落盘，进 play */
+function confirmClass(): void {
+  const def = CLASSES[Math.max(0, Math.min(CLASSES.length - 1, pickIndex))];
+  session = createSession({
+    classId: def.id as ClassId,
+    seed: Date.now() & 0x7fffffff,
+    tables: TABLES,
+  });
+  startWave(session);
+  phase = 'play';
+  session.log.push({ text: `道统既定：${def.name}　入九幽魔渊`, color: '#d4a13c', age: 0 });
+  autosaver.saveNow();
+}
+
+// ── 2. 闭关（离线）结算 ────────────────────────────────────
+// 只在真有存档、且离开时间够长时才算。用存档里的 rng 状态结算，
+// 所以「反复刷新页面」不会重摇出不同的收益（防刷）。
+if (loaded && loaded.offlineSeconds >= OFFLINE_MIN_SECONDS) {
+  const gain = simulateOffline(session, loaded.offlineSeconds, session.rng);
+  applyOfflineGain(session, gain, gainXp, pickup);
+  session.offlineReport = {
+    minutes: gain.minutes,
+    kills: gain.kills,
+    xp: gain.xp,
+    items: gain.items.length,
+    currency: Object.values(gain.currency).reduce((a, b) => a + (b ?? 0), 0),
+    gems: Object.values(gain.gems).reduce((a, b) => a + b, 0),
+    capped: gain.capped,
+    age: 0,
+  };
+}
+
+// ── 3 & 4. 主循环 + 自动存档 ───────────────────────────────
+const renderer = new BattleRenderer(canvas);
+
+/**
+ * 新手引导的运行时状态。
+ *
+ * `elapsed` 是「当前这一条已经显示了多久」—— 有几条是「看一眼就够」的
+ * （浊气是什么、镇守是什么），挂机玩家不按键也必须能走过去，否则他永远
+ * 停在第一条上，后面的教学全部看不到。
+ * `keysUsed` 让「按 G 看神通」这类条目在玩家真按了之后立刻收掉。
+ */
+let tutorialElapsed = 0;
+const keysUsed = new Set<string>();
+
+/** 收一次事实 → 推进引导（推进了立刻存档，刷新后不重讲） */
+function tickTutorial(dt: number): void {
+  if (tutorialFinished(session.tutorialStep)) return;
+  tutorialElapsed += dt;
+  const facts: TutorialFacts = {
+    kills: session.kills,
+    dropsFound: session.dropsFound,
+    step: session.character.step,
+    floor: session.floor,
+    clearedFloors: session.firstClearedFloors.length,
+    bossSeen: session.battle.monsters.some((m) => m.rarity === 'boss'),
+    keysUsed,
+    elapsed: tutorialElapsed,
+  };
+  const next = advanceTutorial(session.tutorialStep, facts);
+  if (next !== session.tutorialStep) {
+    session.tutorialStep = next;
+    tutorialElapsed = 0;
+    autosaver.saveNow();
+  }
+}
+
+const loop = new Loop(
+  (dt) => {
+    if (phase === 'select') {
+      selectTime += dt;
+      return;
+    }
+    tickSession(session, dt);
+    autosaver.tick(dt);
+    tickTutorial(dt);
+    // 闭关摘要显示 12 秒后自然淡出（渲染器只看 age）
+    if (session.offlineReport) {
+      const age = session.offlineReport.age + dt;
+      session.offlineReport = age > 12 ? undefined : { ...session.offlineReport, age };
+    }
+  },
+  () => {
+    if (phase === 'select') {
+      renderer.renderClassSelect(pickIndex, selectTime);
+      return;
+    }
+    renderer.render(session);
+    // 引导条画在最后：它是被设计的最上层，不该被任何面板盖住
+    const step = currentTutorialStep(session.tutorialStep);
+    if (step) renderer.renderTutorial(step.text, tutorialProgressText(session.tutorialStep));
+  },
+);
+
+loop.start();
+
+// ── 3.5 回刷选层（D36-B）────────────────────────────────────
+// 左右方向键回刷已到过的层。只在「可回刷」时才响应，越界会被 setFloor 拒绝并给一条日志。
+window.addEventListener('keydown', (e) => {
+  // ── 选道统阶段：方向键/数字键选，Enter 确认 ──
+  if (phase === 'select') {
+    const digit = indexFromDigit(e.code, CLASSES.length);
+    if (digit !== null) {
+      e.preventDefault();
+      pickIndex = digit;
+      return;
+    }
+    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space') {
+      e.preventDefault();
+      confirmClass();
+      return;
+    }
+    if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      pickIndex = moveClassIndex(pickIndex, -1, 0);
+      return;
+    }
+    if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      pickIndex = moveClassIndex(pickIndex, 1, 0);
+      return;
+    }
+    if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      pickIndex = moveClassIndex(pickIndex, 0, -1);
+      return;
+    }
+    if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      pickIndex = moveClassIndex(pickIndex, 0, 1);
+      return;
+    }
+    return;
+  }
+  // ── play 阶段 ──
+  // 先记下玩家按过什么：引导里「按 G 看神通」这类条目在真按了之后立刻收掉，
+  // 不等超时 —— 否则老玩家会被一句已经会了的话挡 14 秒。
+  keysUsed.add(e.code);
+  // 空格 / 回车 = 跳过当前这条（已经懂了就别挡着）。只跳一条，不一键全关：
+  // 一键全关等于把引导变成「跳过之后永远不知道漏了什么」。
+  if ((e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') && !tutorialFinished(session.tutorialStep)) {
+    e.preventDefault();
+    session.tutorialStep = clampTutorialIndex(session.tutorialStep + 1);
+    tutorialElapsed = 0;
+    autosaver.saveNow();
+    return;
+  }
+  // E = 法宝详情（"我身上这 9 件到底有什么灵纹"的答案）
+  if (e.code === 'KeyE') {
+    const on = renderer.toggleDetail();
+    session.log.push({
+      text: on ? '打开法宝详情（再按 E 关闭）' : '关闭法宝详情',
+      color: '#6d665c',
+      age: 0,
+    });
+    return;
+  }
+  // G = 神通/玉简面板（"我这条神通到底装了什么玉简"的答案）
+  // 6 主动 × 4 槽 × 12 条玉简是本作最贵的一层组合，看不见就等于不存在。
+  if (e.code === 'KeyG') {
+    const on = renderer.toggleSkill();
+    session.log.push({
+      text: on ? '打开神通面板（再按 G 关闭）' : '关闭神通面板',
+      color: '#6d665c',
+      age: 0,
+    });
+    return;
+  }
+  // D = 损伤详解面板（"我这一下为什么只打出这么点"的答案）
+  // T = 周天图（天赋树）。54 个节点必须能看见，否则玩家永远不知道自己点了什么。
+  if (e.code === 'KeyT') {
+    const on = renderer.toggleTalent();
+    session.log.push({
+      text: on ? '打开周天图（再按 T 关闭）' : '关闭周天图',
+      color: '#6d665c',
+      age: 0,
+    });
+    return;
+  }
+  if (e.code === 'KeyD') {
+    const on = renderer.toggleBreakdown();
+    session.log.push({
+      text: on ? '打开损伤详解（再按 D 关闭）' : '关闭损伤详解',
+      color: '#6d665c',
+      age: 0,
+    });
+    return;
+  }
+  // 1 / 2 / 3 = 花渊痕的三个口子（D36-A E1）。
+  // 为什么要绑键：渊痕只是数字时玩家满级后看着它涨却不知道能干什么，
+  // 等于这个系统不存在。键位与 HUD 那行「渊痕 N · 可换」对应。
+  const sinkByKey: Record<string, MarkSink> = {
+    Digit1: 'rerollCurrency',
+    Digit2: 'setStartFloor',
+    Digit3: 'divineReforge',
+  };
+  const sink = sinkByKey[e.code];
+  if (sink) {
+    e.preventDefault();
+    const r = spendMarks(session, sink);
+    session.log.push({
+      text: r.ok ? r.message : (r.reason ?? '这一档现在换不了'),
+      color: r.ok ? '#d4a13c' : '#6d665c',
+      age: 0,
+    });
+    autosaver.saveNow();
+    return;
+  }
+  if (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') return;
+  e.preventDefault();
+  const max = floorSelectableMax(session);
+  const next = session.floor + (e.code === 'ArrowRight' ? 1 : -1);
+  if (!setFloor(session, next)) {
+    if (next > max) {
+      session.log.push({ text: `第 ${next} 层还没到过（当前最深 ${max} 层）`, color: '#6d665c', age: 0 });
+    } else if (next < 1) {
+      session.log.push({ text: '已经在最深处的第 1 层', color: '#6d665c', age: 0 });
+    }
+  }
+  autosaver.saveNow();
+});
+
+/**
+ * 清档期间不许写盘。
+ *
+ * reset() 的实现是「clear + reload」，而 reload 会触发 pagehide/beforeunload 上的 flush()，
+ * 于是刚清掉的存档被当前会话原样写回去 —— 表现就是「点了清档，刷新一下进度全回来了」。
+ * 这个旗子只在 reset() 里立一次，页面马上 reload，所以不需要复位。
+ */
+let suppressFlush = false;
+
+/** 切后台 / 关页面时立刻存一次（挂机游戏最怕丢进度） */
+function flush(): void {
+  if (suppressFlush) return;
+  if (phase !== 'play') return;
+  autosaver.saveNow();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flush();
+});
+window.addEventListener('pagehide', flush);
+window.addEventListener('beforeunload', flush);
+
+/**
+ * 开发期调试钩子。
+ *
+ * 为什么要有：自动化验收（探针脚本）没法靠「看截图」判断战斗对不对 ——
+ * 它需要读到 kills、hp、浊气、掉落这些真实数字。把状态挂到 window 上，
+ * 探针就能拿到和玩家看到的是同一份数据，不用另造一套。
+ *
+ * 只在开发构建里挂，正式构建（`npm run build`）不会有这个对象。
+ */
+declare global {
+  interface Window {
+    __zhuoxian?: {
+      get session(): GameSession;
+      readonly autosaver: Autosaver;
+      /** 手动存档（探针验收存档用） */
+      save(): boolean;
+      /** 清档（探针验收新号流程用） */
+      reset(): void;
+      /** 回刷选层（探针验收 D36-B 用）：返回是否真的换了层 */
+      selectFloor(floor: number): boolean;
+      /** 当前可选层上限 */
+      floorSelectableMax(): number;
+      /** 切换损伤详解面板（探针验收用） */
+      toggleBreakdown(): boolean;
+      /** 切换法宝详情面板（探针验收用） */
+      toggleDetail(): boolean;
+      /** 当前阶段（探针验收选道统用） */
+      readonly phase: Phase;
+      /** 选道统阶段的高亮下标 */
+      readonly pickIndex: number;
+      /** 六名候选道统的 id（顺序 = 卡片顺序） */
+      classIds(): string[];
+      /** 直接确认某个道统（探针免键盘路径用） */
+      chooseClass(id: string): boolean;
+      /** 引导走到第几条（探针验收用；0 = 刚开局） */
+      readonly tutorialStep: number;
+      /** 引导总条数（探针断言「走完」时要跟这个数比，不许写死 9/10） */
+      readonly tutorialLength: number;
+      /** 一口气把引导推到底（探针不想等 12 秒时用） */
+      finishTutorial(): void;
+    };
+  }
+}
+
+if (import.meta.env.DEV) {
+  window.__zhuoxian = {
+    get session() {
+      return session;
+    },
+    autosaver,
+    save: () => autosaver.saveNow(),
+    reset: () => {
+      suppressFlush = true;
+      autosaver.clear();
+      location.reload();
+    },
+    selectFloor: (floor: number) => {
+      const ok = setFloor(session, floor);
+      if (ok) autosaver.saveNow();
+      return ok;
+    },
+    floorSelectableMax: () => floorSelectableMax(session),
+    toggleBreakdown: () => renderer.toggleBreakdown(),
+    toggleDetail: () => renderer.toggleDetail(),
+    get phase() {
+      return phase;
+    },
+    get pickIndex() {
+      return pickIndex;
+    },
+    classIds: () => CLASSES.map((d) => d.id),
+    chooseClass: (id: string) => {
+      if (phase !== 'select') return false;
+      const idx = CLASSES.findIndex((d) => d.id === id);
+      if (idx < 0) return false;
+      pickIndex = idx;
+      confirmClass();
+      return true;
+    },
+    get tutorialStep() {
+      return session.tutorialStep;
+    },
+    get tutorialLength() {
+      return TUTORIAL_LENGTH;
+    },
+    finishTutorial: () => {
+      // 用总条数而不是 Infinity：clampTutorialIndex 对非有限数会归零（脏值保护）
+      session.tutorialStep = clampTutorialIndex(TUTORIAL_LENGTH);
+      tutorialElapsed = 0;
+      autosaver.saveNow();
+    },
+  };
+}

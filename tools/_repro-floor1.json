@@ -1,0 +1,387 @@
+{
+  "generatedAt": "2026-10-22T02:30:33.690Z",
+  "params": {
+    "SEED": 20261021,
+    "SECONDS": 400,
+    "SAMPLE": 20
+  },
+  "verdict": {
+    "reachedFloor2": false,
+    "killDelta": 32,
+    "hpDelta": 17,
+    "waveStuckAt": 10,
+    "playerDamage": 5,
+    "finalLeaderHp": 26,
+    "sampleCount": 13,
+    "frameEvery": 600,
+    "sampledAt": "2026-10-22T02:30:33.690Z"
+  },
+  "samples": [
+    {
+      "sampleAt": 20,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 1,
+      "kills": 4,
+      "deaths": 0,
+      "step": 0,
+      "xp": 8,
+      "monsters": 0,
+      "leader": null,
+      "player": {
+        "hp": 113,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 40,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 3,
+      "kills": 8,
+      "deaths": 0,
+      "step": 0,
+      "xp": 16,
+      "monsters": 4,
+      "leader": {
+        "id": "fangshi-yuanke",
+        "rarity": "normal",
+        "hp": 58,
+        "maxHp": 91,
+        "damage": 1,
+        "armor": 5,
+        "resist": {}
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 60,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 4,
+      "kills": 15,
+      "deaths": 0,
+      "step": 0,
+      "xp": 30,
+      "monsters": 1,
+      "leader": {
+        "id": "shijie-pu",
+        "rarity": "normal",
+        "hp": 43,
+        "maxHp": 81,
+        "damage": 1,
+        "armor": 0,
+        "resist": {
+          "resWater": 0.2,
+          "resEarth": -0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 80,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 5,
+      "kills": 18,
+      "deaths": 0,
+      "step": 0,
+      "xp": 36,
+      "monsters": 2,
+      "leader": {
+        "id": "fangshi-yuanke",
+        "rarity": "normal",
+        "hp": 2,
+        "maxHp": 91,
+        "damage": 1,
+        "armor": 5,
+        "resist": {}
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 100,
+      "t": 0.9,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 6,
+      "kills": 24,
+      "deaths": 0,
+      "step": 0,
+      "xp": 48,
+      "monsters": 0,
+      "leader": null,
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 120,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 8,
+      "kills": 29,
+      "deaths": 0,
+      "step": 0,
+      "xp": 58,
+      "monsters": 3,
+      "leader": {
+        "id": "fangshi-yuanke",
+        "rarity": "normal",
+        "hp": 91,
+        "maxHp": 91,
+        "damage": 1,
+        "armor": 5,
+        "resist": {}
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 140,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 9,
+      "kills": 33,
+      "deaths": 0,
+      "step": 0,
+      "xp": 66,
+      "monsters": 3,
+      "leader": {
+        "id": "shijie-pu",
+        "rarity": "normal",
+        "hp": 81,
+        "maxHp": 81,
+        "damage": 1,
+        "armor": 0,
+        "resist": {
+          "resWater": 0.2,
+          "resEarth": -0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 160,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 1543,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 180,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 1216,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 200,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 835,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 220,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 594,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 240,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 313,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    },
+    {
+      "sampleAt": 260,
+      "t": 0,
+      "floor": 1,
+      "maxFloorReached": 1,
+      "wave": 10,
+      "kills": 36,
+      "deaths": 0,
+      "step": 0,
+      "xp": 72,
+      "monsters": 1,
+      "leader": {
+        "id": "boss-shikuai-gui",
+        "rarity": "boss",
+        "hp": 26,
+        "maxHp": 1700,
+        "damage": 1.2,
+        "armor": 30,
+        "resist": {
+          "resEarth": 0.2
+        }
+      },
+      "player": {
+        "hp": 130,
+        "maxHp": 130,
+        "damage": 5,
+        "attackSpeed": 1.035,
+        "critChance": 0.062
+      }
+    }
+  ]
+}

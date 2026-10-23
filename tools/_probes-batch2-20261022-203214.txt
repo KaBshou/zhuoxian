@@ -1,0 +1,38 @@
+﻿# BATCH2 START 2026-10-22 20:32:14 URL=http://127.0.0.1:5288/
+probe-battle EXIT=1 DUR=21.1s
+  - 背包或身上收到了东西（法宝/通货/玉简任一） —— bag=0 equip=["sword"]
+  - 修为累积到了角色上 —— step=0 xp=0
+  - 画面在变化（不是静态一张图） —— 26277 → 26277
+probe-save EXIT=1 DUR=12.3s
+    at <anonymous>:1:19
+    at evaluate (file:///F:/dsh-work/tools/probe-save.mjs:152:15)
+    at async main (file:///F:/dsh-work/tools/probe-save.mjs:183:19)
+probe-floor EXIT=1 DUR=3.8s
+PASS  控制台无报错  [ok]
+
+结果：10/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+probe-breakdown EXIT=1 DUR=32.4s
+PASS  控制台无报错  [ok]
+
+结果：2/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+probe-detail EXIT=1 DUR=57.9s
+PASS  控制台无报错  [ok]
+
+结果：5/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+probe-marks EXIT=1 DUR=11.6s
+ - 按 2 落到第 5 层 · floor=1
+ - 按 2 扣了 40 万渊痕（600000-200000-400000=0） · marks=600000
+ - 深渊痕不足时按 3 被拒绝
+probe-talent EXIT=1 DUR=7.7s
+ - 按 T 后面板盖上来（中心平均亮度下降） · 13.1 → 13.1
+ - 已点节点是实心仙金（找到暖金像素） · gold=553
+ - 再按 T 恢复战斗画面（亮度回升） · 13.1 → 12.8
+probe-skill EXIT=1 DUR=7.7s
+ - 按 G 后面板盖上来（平均亮度下降） · 13.1 → 13.1
+ - 第 30 重后暖色像素更多（6 条神通全解锁） · 844 → 838
+ - 再按 G 恢复战斗画面（亮度回升） · 12.8 → 12.8
+probe-class EXIT=0 DUR=9.6s
+PASS  控制台无报错
+
+结果：17/17 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+# BATCH2 END 2026-10-22 20:34:58

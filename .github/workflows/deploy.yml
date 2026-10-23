@@ -1,0 +1,63 @@
+name: deploy
+
+# 只在 main 分支的推送 / 手动触发时跑。
+# 目的：把「构建 + 门禁」做成不可绕过的一步 —— 手上有绿门禁才可能上线。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时刻只允许一次部署；新的推送取消旧的，但已在部署中的不打断。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      # 门禁一：类型。产物要发到公网，类型错一律不上线。
+      - name: 类型检查
+        run: npx tsc --noEmit
+
+      # 门禁二：单测。任何一个红都不上线。
+      - name: 单测
+        run: npx vitest run
+
+      # 构建（vite.config.ts 里 base 是 './'，子路径部署不会白屏）
+      - name: 构建
+        run: npx vite build
+
+      # 门禁三：部署产物自检 —— 模拟子路径静态服务，验「点了能进战斗、存档能写、控制台干净」。
+      # 这一步是 D91 定的：本地 dev 绿不算绿，得验 dist。
+      - name: 产物自检（子路径）
+        run: node tools/probe-dist.mjs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

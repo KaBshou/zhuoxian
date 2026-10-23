@@ -1,0 +1,60 @@
+// ────────────────────────────────────────────────────────────
+// 周天图（天赋系统）—— 契约文件
+// ────────────────────────────────────────────────────────────
+//
+// 【设计立场（BALANCE §11.4 / D7 定稿，改之前必读）】
+//
+// 1. 天赋总威力 = ×1.05。天赋不是数值主力，是玩法开关。
+//    50 点天赋只提供 +5% 总输出。数值主力是灵纹（装备）。
+//    如果天赋给到 ×1.3，玩家就会去刷等级而不是刷装备 —— 本末倒置。
+//
+// 2. 天赋点来源（DECISIONS 默认值，还没实装）：
+//    每突破一重 +1 点，每层首通 +2 点。
+//    主线 81 台阶 + 27 层 ≈ 81 + 54 = 135 点（预算 110~130，封顶即可）。
+//
+// 3. 结构：v1 用「共享主干 + 按需支线」的列表，不做图（GDD 已拍板：
+//    天赋树先做列表不做图）。节点分三类：
+//    - 主干（trunk）：全职业共享，顺着点下去，提供保底数值；
+//    - 支线（branch）：挂在主干某节点后，倾向明确（输出/生存/资源），
+//      玩家拿剩下的点做取舍 —— 这是天赋系统的「玩法开关」部分。
+//
+// 4. 每个节点 = 一组 Modifier（复用 core/modifier.ts，绝不另起炉灶）。
+//    需要标签的节点（如「法术伤害提高」）在 Modifier.tags 上带 Tag。
+//
+// 5. 数值纪律：单节点增量必须能被一眼看出「小」。
+//    increased 类 3%~6%、flat 类按 STAT_META.base 的 2%~8% 给。
+//    支线终点可以有 1 个「开关型」节点（改变行为而非数值），
+//    v1 只做两个开关：浊化延长（corrupting +1s）/ 波末回气加强（+10%）。
+//    开关节点不走 Modifier（改常量/状态机），单独标 kind: 'switch'。
+import type { Modifier } from '../core/modifier';
+
+/** 节点种类：数值节点走 Modifier，开关节点走 switchId */
+export type TalentKind = 'stat' | 'switch';
+
+/** 一个周天图节点 */
+export interface TalentNode {
+  readonly id: string;
+  readonly name: string;
+  readonly desc: string;
+  /** 0 = 主干起点；>0 = 前置节点的 id 要求全点满 */
+  readonly requires: readonly string[];
+  /** 消耗点数（v1 全部 1 点，字段留着防将来拆大节点） */
+  readonly cost: number;
+  readonly kind: TalentKind;
+  /** kind='stat' 时生效；source.kind='talent' */
+  readonly mods?: readonly Modifier[];
+  /** kind='switch' 时生效：运行时开关 id（turbid-extend / wave-regen-plus） */
+  readonly switchId?: string;
+}
+
+/** 全部开关节点的运行时 id（talents.ts 生成 + 运行时白名单共同持有） */
+export const TALENT_SWITCHES: readonly string[] = [
+  'turbid-boom-plus',
+  'wave-regen-plus',
+  'turbid-extend',
+  'resist-cap-plus',
+  'fast-pickup',
+];
+
+/** v1 开关总量：5 个。加开关时先加这里再改运行时 */
+export const KNOWN_SWITCH_IDS = TALENT_SWITCHES;

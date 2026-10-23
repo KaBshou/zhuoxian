@@ -1,0 +1,116 @@
+/**
+ * 成就表（D87 的「收集类」内容物之一）。
+ *
+ * 存在理由：`docs/BALANCE.md` §6.2 算过 —— 段④（满级后）只撑得住「9 件全仙品 ≈6.2h + 渊痕 3h」＜10h，
+ * 满级前 ~5h ⇒ 24h 目标差 **~9h**（D87）。图鉴是「看得到进度」的收集，成就就是「有终点」的收集。
+ *
+ * 四条纪律（前三条来自 shuzhi §5.8）：
+ * 1. **只从已有事实取进度**，绝不为了成就新增战斗系统或状态（D45：不许产生无限战力）。
+ * 2. **只发渊痕、一次性、有界**：单条 5k / 15k / 30k / 50k 四档，20 条合计 ≈ 39 万 ≈ 25 分钟
+ *    （段④ 产出 ~18.7M 的 2% ⇒ 不可能是捷径）。**禁给修为/战力/掉率** —— 那会进 §2 供给并触发 D64。
+ * 3. **阈值 = 时间锚 × 该计数速率**：三锚 0.75h / 4.5h / 20h（= 满级 300min 的 0.15× / 0.9× / 4×）。
+ *    击杀因此是 500 / 3 000 / 11 000（不是 100/1000/10000：100 那条 9 分钟就到）。
+ *    层数走另一套：阶位边界 10 / 19 + 无尽起点 28 + 封顶 46 —— 这条不用等距，用节点更有意义。
+ * 4. **成就补 0 小时**：它发的渊痕本来就是段④ 的产出，给奖励等于把段④ 提前发一部分，
+ *    不是加内容。9h 缺口只能靠「有离散刻度」的东西（打破层 46 封顶 + 周目），别硬塞成就。
+ *
+ * 阈值与文案都在本表，`core/achievement.ts` 只做状态机 —— 将来重标只改这里。
+ */
+
+/** 成就进度的事实来源（全部由 session 现算，不入档） */
+export interface AchievementFacts {
+  /** 累计击杀 */
+  readonly kills: number;
+  /** 到过的最高层（含没通关的） */
+  readonly maxFloor: number;
+  /** 已通关（首次清完最后一波）的层数 */
+  readonly clearedFloors: number;
+  /** 图鉴：已收录浊物数 */
+  readonly codexMonsters: number;
+  /** 图鉴：已收录传奇数 */
+  readonly codexLegendaries: number;
+  /** 境界台阶 0~80 */
+  readonly step: number;
+  /** 累计死亡次数 */
+  readonly deaths: number;
+  /** 身上已穿的仙品件数 */
+  readonly xianEquipped: number;
+}
+
+export interface AchievementDef {
+  readonly id: string;
+  readonly name: string;
+  /** 一句话：玩家要做到什么（不写"达成条件："这种提示框口气） */
+  readonly desc: string;
+  /** 进度上限；`progress(facts) >= target` 即达成 */
+  readonly target: number;
+  /** 一次性渊痕奖励 */
+  readonly reward: number;
+  readonly progress: (f: AchievementFacts) => number;
+}
+
+const min = (value: number, target: number): number => {
+  const v = Number.isFinite(value) ? Math.floor(value) : 0;
+  return Math.max(0, Math.min(v, target));
+};
+
+export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
+  // ── 击杀（500 / 3 000 / 11 000）─────────────────────────────
+  { id: 'kill-1', name: '开刃', desc: '杀满 500 只浊物。', target: 500, reward: 5000, progress: (f) => min(f.kills, 500) },
+  { id: 'kill-2', name: '千军', desc: '杀满 3 000 只浊物。', target: 3000, reward: 15000, progress: (f) => min(f.kills, 3000) },
+  { id: 'kill-3', name: '万骨', desc: '杀满 11 000 只浊物。', target: 11000, reward: 30000, progress: (f) => min(f.kills, 11000) },
+  // ── 层数（10 / 19 / 28 / 46）───────────────────────────────
+// 注意：D106 把 MAX_FLOOR 抬到 76 之后，层 46 不再是「最深处」，所以 floor-46 的文案删掉了
+// 「魔渊最深处」这个说法。**是否补一条 floor-76（收尾 50k）待 shuzhi 定** —— 加条目会改
+// 20 条 / 385 000 的总量口径，不能顺手加。
+  { id: 'floor-19', name: '破地', desc: '走到渊层第十九层。', target: 19, reward: 15000, progress: (f) => min(f.maxFloor, 19) },
+  { id: 'floor-46', name: '渊底', desc: '抵达第四十六层。', target: 46, reward: 50000, progress: (f) => min(f.maxFloor, 46) },
+  // ── 通关层数 ───────────────────────────────────────────────
+  { id: 'clear-9', name: '九层之上', desc: '清完九层。', target: 9, reward: 15000, progress: (f) => min(f.clearedFloors, 9) },
+  { id: 'clear-27', name: '覆渊', desc: '清完主线二十七层。', target: 27, reward: 30000, progress: (f) => min(f.clearedFloors, 27) },
+  // ── 图鉴 · 浊物 ────────────────────────────────────────────
+  { id: 'codex-m-5', name: '初见', desc: '图鉴收录 5 种浊物。', target: 5, reward: 5000, progress: (f) => min(f.codexMonsters, 5) },
+  { id: 'codex-m-12', name: '半卷', desc: '图鉴收录 12 种浊物。', target: 12, reward: 15000, progress: (f) => min(f.codexMonsters, 12) },
+  { id: 'codex-m-15', name: '识渊', desc: '图鉴收录全部 15 种浊物。', target: 15, reward: 30000, progress: (f) => min(f.codexMonsters, 15) },
+  // ── 图鉴 · 传奇（coupon 折算约 17 / 92 min / 全收）──────────
+  { id: 'codex-l-1', name: '第一件传奇', desc: '收得 1 种传奇效果。', target: 1, reward: 5000, progress: (f) => min(f.codexLegendaries, 1) },
+  { id: 'codex-l-3', name: '藏器', desc: '收得 3 种传奇效果。', target: 3, reward: 15000, progress: (f) => min(f.codexLegendaries, 3) },
+  { id: 'codex-l-9', name: '九器归一', desc: '收齐 9 种传奇效果。', target: 9, reward: 30000, progress: (f) => min(f.codexLegendaries, 9) },
+  // ── 境界 ───────────────────────────────────────────────────
+  { id: 'step-10', name: '登堂', desc: '修到第十重。', target: 10, reward: 5000, progress: (f) => min(f.step, 10) },
+  { id: 'step-41', name: '半程', desc: '修到第四十一重。', target: 41, reward: 15000, progress: (f) => min(f.step, 41) },
+  { id: 'step-80', name: '圆满', desc: '把九十一个台阶走完（台阶 80 = 圆满）。', target: 80, reward: 50000, progress: (f) => min(f.step, 80) },
+  // ── 仙品（身上）────────────────────────────────────────────
+  { id: 'xian-1', name: '一仙在身', desc: '身上带 1 件仙品。', target: 1, reward: 5000, progress: (f) => min(f.xianEquipped, 1) },
+  { id: 'xian-3', name: '三仙随身', desc: '身上带 3 件仙品。', target: 3, reward: 15000, progress: (f) => min(f.xianEquipped, 3) },
+  { id: 'xian-9', name: '九仙在身', desc: '身上带满 9 件仙品。', target: 9, reward: 30000, progress: (f) => min(f.xianEquipped, 9) },
+  // ── 死亡（幽默的一条，也是"失败不惩罚"的教学）───────────────
+  { id: 'death-1', name: '第一次倒下', desc: '死一次。浊脉重凝，不丢层。', target: 1, reward: 5000, progress: (f) => min(f.deaths, 1) },
+];
+
+export const ACHIEVEMENT_TOTAL = ACHIEVEMENT_DEFS.length;
+
+/** 全成就一次性奖励合计（BALANCE 侧拿这个数算「能提前发多少段④」） */
+export const ACHIEVEMENT_REWARD_TOTAL = ACHIEVEMENT_DEFS.reduce((sum, a) => sum + a.reward, 0);
+
+const BY_ID = new Map(ACHIEVEMENT_DEFS.map((a) => [a.id, a] as const));
+
+export function getAchievement(id: string): AchievementDef | undefined {
+  return BY_ID.get(id);
+}
+
+export function isAchievementId(id: unknown): id is string {
+  return typeof id === 'string' && BY_ID.has(id);
+}
+
+/** 空事实（渲染面板、单测的默认值） */
+export const EMPTY_FACTS: AchievementFacts = {
+  kills: 0,
+  maxFloor: 1,
+  clearedFloors: 0,
+  codexMonsters: 0,
+  codexLegendaries: 0,
+  step: 0,
+  deaths: 0,
+  xianEquipped: 0,
+};

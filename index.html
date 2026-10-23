@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0a0c" />
+
+  <title>浊仙 · 修仙暗黑放置刷宝</title>
+  <meta name="description" content="三千年前大能渡劫失败，劈开九幽魔渊。你灵根已废，却能把浊气炼成修为——越强，越脏。纯网页的修仙暗黑放置刷宝，打开就能玩，存档在本机，不用注册。" />
+
+  <!-- 分享到聊天软件 / 社交平台时的卡片文字。不写 og:image：它必须是绝对 URL，而本项目还不知道最终域名。 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="浊仙 · 修仙暗黑放置刷宝" />
+  <meta property="og:description" content="灵根已废，浊气为修为。打开就能玩，不用注册，存档在这台设备上。" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="icon" type="image/png" href="/src/favicon.png" />
+  <link rel="apple-touch-icon" href="/src/favicon.png" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="stage" width="960" height="540"></canvas>
+  </div>
+
+  <!-- 脚本没跑起来时的兜底：至少让玩家知道为什么是黑屏，而不是以为游戏坏了。 -->
+  <noscript>
+    <p style="color:#d8d3c4;font:14px/1.7 system-ui,sans-serif;padding:24px;max-width:560px;margin:0 auto;">
+      这个游戏要用 JavaScript 才能跑。请在浏览器里允许本站运行脚本，然后刷新页面。
+    </p>
+  </noscript>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

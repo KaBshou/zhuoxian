@@ -1,0 +1,12 @@
+﻿# BATCH3 2026-10-22 21:56:35 URL=http://127.0.0.1:5288/
+probe-battle EXIT=0 DUR=21.5s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\battle.txt
+probe-save EXIT=0 DUR=20.5s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\save.txt
+probe-floor EXIT=0 DUR=4.2s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\floor.txt
+probe-breakdown EXIT=0 DUR=2.7s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\breakdown.txt
+probe-detail EXIT=0 DUR=21.3s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\detail.txt
+probe-marks EXIT=0 DUR=11.9s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\marks.txt
+probe-talent EXIT=0 DUR=8.2s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\talent.txt
+probe-skill EXIT=0 DUR=8.3s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\skill.txt
+probe-class EXIT=0 DUR=10.1s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\class.txt
+probe-onboarding EXIT=0 DUR=18.9s RAW=F:\dsh-work\zhuoxian\tools\_v3raw\onboarding.txt
+# BATCH3 END 2026-10-22 21:58:43

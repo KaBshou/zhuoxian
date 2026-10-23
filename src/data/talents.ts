@@ -1,0 +1,174 @@
+// ────────────────────────────────────────────────────────────
+// 周天图（天赋系统）—— 数据
+// ────────────────────────────────────────────────────────────
+//
+// 预算（BALANCE §11.4 / D7）：全部点满 ≈ ×1.05 总威力。
+// 135 点预算 → 节点总量按 60 个左右设计（点多但单点小），
+// 其中主干 24 个（保底），支线 6 条 × 6 个（取舍）。
+//
+// 数值纪律：increased 3%~6% / flat 按 STAT_META.base 的 2%~8%。
+// 玩家只会点 ~一半的节点，所以全部点满 ×1.05 → 实际体验 ×1.02~1.03，
+// 剩下的价值在支线开关和倾向选择上。
+//
+// ⚠️ v4.17 起「玩家只会点一半」这个前提**不成立**：session 默认自动点天赋
+// （`SessionOptions.autoTalents` 默认 true），实测会吃满 54 点，满级时长
+// 405.8 min → 340.1 min（−16.2%）。D38 的处置是把 9 个战斗节点砍半
+// （实测回收 71% 的时间差，340.1 → 386.9，因为战斗天赋对进度是平方级影响），
+// 生存/资源/收益三类节点保持原值 —— 树的价值从「火力」移到「活得更久、刷得更多」。
+// 详见 BALANCE §20.17（xpGain 死属性）与 §20.18（砍半实测、gain ∝ s²）。
+import type { Modifier } from '../core/modifier';
+import { mod } from '../core/modifier';
+import type { TalentNode } from './talent-def';
+
+/** 统一来源标签：周天图 */
+const T = { kind: 'talent' as const, label: '周天图' };
+
+function m(stat: Parameters<typeof mod>[0], op: Parameters<typeof mod>[1], value: number): Modifier {
+  return mod(stat, op, value, T);
+}
+
+// ── 主干（24 点，全职业保底）─────────────────────────────────
+// 每个节点都小到「点了不觉得亏，不点也不致命」。
+// 顺序：气血线 ×4 → 攻击线 ×4 → 防御线 ×4 → 资源线 ×4 → 拾取/修为 ×4 → 通用 ×4
+
+const TRUNK: TalentNode[] = [
+  { id: 't-life-1', name: '炼骨', desc: '气血上限提高 4%', requires: [], cost: 1, kind: 'stat', mods: [m('life', 'increased', 0.04)] },
+  { id: 't-life-2', name: '淬体', desc: '气血上限提高 4%', requires: ['t-life-1'], cost: 1, kind: 'stat', mods: [m('life', 'increased', 0.04)] },
+  { id: 't-life-3', name: '铁骨', desc: '气血上限提高 5%', requires: ['t-life-2'], cost: 1, kind: 'stat', mods: [m('life', 'increased', 0.05)] },
+  { id: 't-life-4', name: '道基', desc: '气血上限提高 5%', requires: ['t-life-3'], cost: 1, kind: 'stat', mods: [m('life', 'increased', 0.05)] },
+
+  // v4.17 D38（N1）：伤害通道 3/3/4/4%（合计 +14%）→ 1.5/1.5/2/2%（合计 +7%）。
+  // 理由：自动点天赋会把 54 点吃满，实测满级时长 405.8 → 340.1 min（−16.2%），
+  // 而战斗天赋对进度是**平方级**影响（先打死怪就不挨打），砍半实测只回收 71% 的时间差
+  // （340.1 → 386.9），拟合 gain ∝ s²。BALANCE §20.18.2。
+  { id: 't-dmg-1', name: '凝气', desc: '伤害提高 1.5%', requires: [], cost: 1, kind: 'stat', mods: [m('damage', 'increased', 0.015)] },
+  { id: 't-dmg-2', name: '锐意', desc: '伤害提高 1.5%', requires: ['t-dmg-1'], cost: 1, kind: 'stat', mods: [m('damage', 'increased', 0.015)] },
+  { id: 't-dmg-3', name: '锋芒', desc: '伤害提高 2%', requires: ['t-dmg-2'], cost: 1, kind: 'stat', mods: [m('damage', 'increased', 0.02)] },
+  { id: 't-dmg-4', name: '剑心', desc: '伤害提高 2%', requires: ['t-dmg-3'], cost: 1, kind: 'stat', mods: [m('damage', 'increased', 0.02)] },
+
+  { id: 't-armor-1', name: '皮糙', desc: '护体提高 4%', requires: [], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.04)] },
+  { id: 't-armor-2', name: '肉厚', desc: '护体提高 4%', requires: ['t-armor-1'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.04)] },
+  { id: 't-armor-3', name: '罡气', desc: '护体提高 5%', requires: ['t-armor-2'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.05)] },
+  { id: 't-armor-4', name: '金身', desc: '护体提高 5%', requires: ['t-armor-3'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.05)] },
+
+  { id: 't-mana-1', name: '聚元', desc: '真元上限提高 6%', requires: [], cost: 1, kind: 'stat', mods: [m('mana', 'increased', 0.06)] },
+  { id: 't-mana-2', name: '凝元', desc: '真元上限提高 6%', requires: ['t-mana-1'], cost: 1, kind: 'stat', mods: [m('mana', 'increased', 0.06)] },
+  { id: 't-mana-3', name: '周流', desc: '真元回复提高 8%', requires: ['t-mana-2'], cost: 1, kind: 'stat', mods: [m('manaRegen', 'increased', 0.08)] },
+  { id: 't-mana-4', name: '不息', desc: '真元回复提高 8%', requires: ['t-mana-3'], cost: 1, kind: 'stat', mods: [m('manaRegen', 'increased', 0.08)] },
+
+  { id: 't-loot-1', name: '慧眼', desc: '仙缘（稀有度）提高 5%', requires: [], cost: 1, kind: 'stat', mods: [m('lootRarity', 'increased', 0.05)] },
+  { id: 't-loot-2', name: '寻宝', desc: '机缘（数量）提高 5%', requires: ['t-loot-1'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.05)] },
+  { id: 't-loot-3', name: '福缘', desc: '仙缘提高 6%', requires: ['t-loot-2'], cost: 1, kind: 'stat', mods: [m('lootRarity', 'increased', 0.06)] },
+  { id: 't-loot-4', name: '气运', desc: '机缘提高 6%', requires: ['t-loot-3'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.06)] },
+
+  // v4.17 D37(a)：修为通道取消，四处 t-xp 改为「机缘（数量）」。理由见 BALANCE §20.17：
+  // `character.ts` 的 gainXp 不读任何属性，全库 6 处 xpGain 引用没有一处消费方（死属性），
+  // 消融实验证明把它们换成 lootQuantity 后满级时长一字不差。
+  // v4.17 D38（N1）：1/2 两处攻击速度 4% → 2%，3/4/5 三处破绽/范围数值砍半（同 t-dmg 的理由）。
+  { id: 't-xp-1', name: '问道', desc: '机缘（掉落数量）提高 3%', requires: [], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.03)] },
+  { id: 't-xp-2', name: '悟道', desc: '机缘（掉落数量）提高 3%', requires: ['t-xp-1'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.03)] },
+  { id: 't-xp-3', name: '通玄', desc: '机缘（掉落数量）提高 3%', requires: ['t-xp-2'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.03)] },
+  { id: 't-xp-4', name: '顿悟', desc: '机缘（掉落数量）提高 3%', requires: ['t-xp-3'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.03)] },
+];
+
+// ── 支线（6 条 × 6 点，挂在主干节点后）──────────────────────
+// 支线是天赋系统的「玩法开关」：玩家用剩余的点选倾向。
+// 每条支线终点有 1 个开关节点（kind='switch'，改行为不改数值）。
+
+const BRANCHES: TalentNode[][] = [
+  // 支线一：剑修线（输出倾向，挂 t-dmg-4 后）
+  [
+    { id: 'b-sword-1', name: '剑势', desc: '出手速度提高 2%', requires: ['t-dmg-4'], cost: 1, kind: 'stat', mods: [m('attackSpeed', 'increased', 0.02)] },
+    { id: 'b-sword-2', name: '连斩', desc: '出手速度提高 2%', requires: ['b-sword-1'], cost: 1, kind: 'stat', mods: [m('attackSpeed', 'increased', 0.02)] },
+    // v4.6 D31：破绽率 flat 0.03 → 0.015。理由：BALANCE §20.6 —— 破绽率的收益
+    // 与玩家已堆的 flat 破绽率成乘数关系，同两点对「已堆破绽」的玩家值 +6.6%，
+    // 对裸装玩家只值 +2.9%（2.32 倍差），2 个节点吃掉整个天赋预算的 1.3 倍。
+    // v4.17 D38（N1）：0.015 → 0.008（战斗节点整体砍半，见 t-dmg-1 上方注释）。
+    { id: 'b-sword-3', name: '破绽', desc: '破绽率（暴击率）提高 0.8 个百分点', requires: ['b-sword-2'], cost: 1, kind: 'stat', mods: [m('critChance', 'flat', 0.008)] },
+    { id: 'b-sword-4', name: '致命', desc: '破绽伤害提高 6%', requires: ['b-sword-3'], cost: 1, kind: 'stat', mods: [m('critMulti', 'increased', 0.06)] },
+    { id: 'b-sword-5', name: '范围', desc: '范围提高 4%', requires: ['b-sword-4'], cost: 1, kind: 'stat', mods: [m('area', 'increased', 0.04)] },
+    { id: 'b-sword-6', name: '万剑归宗', desc: '开关：浊化（爆发期）伤害加成从 +50% 提高到 +75%', requires: ['b-sword-5'], cost: 1, kind: 'switch', switchId: 'turbid-boom-plus' },
+  ],
+  // 支线二：龟息线（生存倾向，挂 t-life-4 后）
+  [
+    { id: 'b-turtle-1', name: '龟息', desc: '每秒回复 0.1 点气血', requires: ['t-life-4'], cost: 1, kind: 'stat', mods: [m('lifeRegen', 'flat', 0.1)] },
+    { id: 'b-turtle-2', name: '吐纳', desc: '每秒回复 0.15 点气血', requires: ['b-turtle-1'], cost: 1, kind: 'stat', mods: [m('lifeRegen', 'flat', 0.15)] },
+    { id: 'b-turtle-3', name: '回春', desc: '每秒回复 0.2 点气血', requires: ['b-turtle-2'], cost: 1, kind: 'stat', mods: [m('lifeRegen', 'flat', 0.2)] },
+    { id: 'b-turtle-4', name: '饮血', desc: '击中回复 0.25 点气血', requires: ['b-turtle-3'], cost: 1, kind: 'stat', mods: [m('lifeOnHit', 'flat', 0.25)] },
+    { id: 'b-turtle-5', name: '摄魂', desc: '击中回复 0.35 点气血', requires: ['b-turtle-4'], cost: 1, kind: 'stat', mods: [m('lifeOnHit', 'flat', 0.35)] },
+    { id: 'b-turtle-6', name: '不灭道躯', desc: '开关：波末脱战回气从 25% 提高到 35%', requires: ['b-turtle-5'], cost: 1, kind: 'switch', switchId: 'wave-regen-plus' },
+  ],
+  // 支线三：浊脉线（浊气倾向，挂 t-dmg-4 后）—— 拥抱脏
+  [
+    { id: 'b-turbid-1', name: '浊脉初开', desc: '浊气亲和提高 10%', requires: ['t-dmg-4'], cost: 1, kind: 'stat', mods: [m('turbid', 'increased', 0.10)] },
+    { id: 'b-turbid-2', name: '引浊', desc: '浊气亲和提高 10%', requires: ['b-turbid-1'], cost: 1, kind: 'stat', mods: [m('turbid', 'increased', 0.10)] },
+    { id: 'b-turbid-3', name: '浊韧', desc: '护体提高 6%', requires: ['b-turbid-2'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.06)] },
+    { id: 'b-turbid-4', name: '浊体', desc: '气血上限提高 6%', requires: ['b-turbid-3'], cost: 1, kind: 'stat', mods: [m('life', 'increased', 0.06)] },
+    { id: 'b-turbid-5', name: '浊护', desc: '护体提高 8%', requires: ['b-turbid-4'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.08)] },
+    { id: 'b-turbid-6', name: '浊化道躯', desc: '开关：浊化（爆发期）延长 1 秒', requires: ['b-turbid-5'], cost: 1, kind: 'switch', switchId: 'turbid-extend' },
+  ],
+  // 支线四：身法线（机动倾向，挂 t-armor-4 后）
+  [
+    { id: 'b-foot-1', name: '轻身', desc: '护体提高 4%', requires: ['t-armor-4'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.04)] },
+    { id: 'b-foot-2', name: '踏云', desc: '护体提高 4%', requires: ['b-foot-1'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.04)] },
+    { id: 'b-foot-3', name: '游龙', desc: '护体提高 6%', requires: ['b-foot-2'], cost: 1, kind: 'stat', mods: [m('armor', 'increased', 0.06)] },
+    { id: 'b-foot-4', name: '凝神', desc: '结印速度（施法速度）提高 6%', requires: ['b-foot-3'], cost: 1, kind: 'stat', mods: [m('castSpeed', 'increased', 0.06)] },
+    { id: 'b-foot-5', name: '印成', desc: '结印速度提高 8%', requires: ['b-foot-4'], cost: 1, kind: 'stat', mods: [m('castSpeed', 'increased', 0.08)] },
+    { id: 'b-foot-6', name: '形随意动', desc: '开关：五行抗性上限 75% → 80%', requires: ['b-foot-5'], cost: 1, kind: 'switch', switchId: 'resist-cap-plus' },
+  ],
+  // 支线五：财脉线（掉落倾向，挂 t-loot-4 后）
+  [
+    { id: 'b-gold-1', name: '聚宝', desc: '机缘提高 6%', requires: ['t-loot-4'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.06)] },
+    { id: 'b-gold-2', name: '拾遗', desc: '仙缘提高 6%', requires: ['b-gold-1'], cost: 1, kind: 'stat', mods: [m('lootRarity', 'increased', 0.06)] },
+    { id: 'b-gold-3', name: '通宝', desc: '机缘提高 8%', requires: ['b-gold-2'], cost: 1, kind: 'stat', mods: [m('lootQuantity', 'increased', 0.08)] },
+    { id: 'b-gold-4', name: '瑞气', desc: '仙缘提高 8%', requires: ['b-gold-3'], cost: 1, kind: 'stat', mods: [m('lootRarity', 'increased', 0.08)] },
+    // v4.17 D37(a)：原来是 xpGain +8%（死属性）→ 改成仙缘（掉落稀有度）提高 8%，
+    // 让财脉支线仍是「收益倾向」，但不再指向一个没有消费方的属性。BALANCE §20.17。
+    { id: 'b-gold-5', name: '天佑', desc: '仙缘（稀有度）提高 8%', requires: ['b-gold-4'], cost: 1, kind: 'stat', mods: [m('lootRarity', 'increased', 0.08)] },
+    { id: 'b-gold-6', name: '气运加身', desc: '开关：地上法宝自动拾取延迟减半', requires: ['b-gold-5'], cost: 1, kind: 'switch', switchId: 'fast-pickup' },
+  ],
+];
+
+export const TALENT_NODES: readonly TalentNode[] = [...TRUNK, ...BRANCHES.flat()];
+
+const BY_ID = new Map(TALENT_NODES.map((n) => [n.id, n]));
+
+export function getTalent(id: string): TalentNode | undefined {
+  return BY_ID.get(id);
+}
+
+/** 开关节点 id 集（运行时行为开关，battle/session 按 id 查询） */
+export const TALENT_SWITCHES: readonly string[] = TALENT_NODES
+  .filter((n) => n.kind === 'switch')
+  .map((n) => n.switchId!);
+
+/** v1 开关总量：6 个。加开关时先加这里再改运行时 */
+export const KNOWN_SWITCH_IDS: readonly string[] = [
+  'turbid-boom-plus',
+  'wave-regen-plus',
+  'turbid-extend',
+  'resist-cap-plus',
+  'fast-pickup',
+];
+
+export function validateTalents(): string[] {
+  const problems: string[] = [];
+  for (const n of TALENT_NODES) {
+    if (n.cost !== 1) problems.push(`${n.id}: v1 节点成本必须为 1`);
+    if (n.kind === 'stat' && (!n.mods || n.mods.length === 0)) problems.push(`${n.id}: stat 节点必须有 mods`);
+    if (n.kind === 'switch' && !n.switchId) problems.push(`${n.id}: switch 节点必须有 switchId`);
+    if (n.kind === 'switch' && n.switchId && !KNOWN_SWITCH_IDS.includes(n.switchId)) {
+      problems.push(`${n.id}: 未登记的开关 ${n.switchId}`);
+    }
+    for (const r of n.requires) {
+      if (!BY_ID.has(r)) problems.push(`${n.id}: 前置 ${r} 不存在`);
+    }
+  }
+  // 主干起点（requires 为空）必须正好 6 个：六条主干线
+  const roots = TALENT_NODES.filter((n) => n.requires.length === 0);
+  if (roots.length !== 6) problems.push(`主干起点应 6 个，实际 ${roots.length}`);
+  // 玩家预算检查：全部点满要 <= 预算 135
+  const total = TALENT_NODES.reduce((s, n) => s + n.cost, 0);
+  if (total > 135) problems.push(`全图 ${total} 点超出预算 135`);
+  return problems;
+}

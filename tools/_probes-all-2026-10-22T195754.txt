@@ -1,0 +1,195 @@
+﻿# 全探针统一复跑 · 2026-10-22 19:57:54 · 探针=8 · 目录 F:\dsh-work\tools
+
+===== probe-battle ===== EXIT=0
+状态快照 t2：
+{
+  "time": 19.566666666666837,
+  "kills": 3,
+  "xpGained": 6,
+  "deaths": 0,
+  "damageTaken": 14,
+  "revive": 0,
+  "hp": 116,
+  "maxHp": 130,
+  "damage": 5,
+  "turbid": 29.6500000000003,
+  "phase": "calm",
+  "monsterCount": 1,
+  "monsters": [
+    {
+      "uid": 4,
+      "name": "锈剑傀",
+      "x": 442,
+      "y": 282,
+      "hp": 23,
+      "maxHp": 45,
+      "d": 40,
+      "range": 40
+    }
+  ],
+  "nonFinite": [],
+  "wave": 1,
+  "dropsFound": 3,
+  "groundCount": 0,
+  "bagCount": 0,
+  "pocketCount": 3,
+  "gemCount": 0,
+  "step": 0,
+  "xp": 6,
+  "breakthroughs": 0,
+  "floats": 1,
+  "logLines": 0,
+  "equipment": [
+    {
+      "slot": "sword",
+      "name": "铁剑",
+      "rarity": "fan"
+    }
+  ],
+  "bagTop": []
+}
+
+画面统计：亮 262927 / 中亮 7586 / 青 527 / 暖 963（共 518400 像素）
+截图：F:\dsh-work\zhuoxian\docs\probe-battle.png
+
+── 断言 ──
+PASS  页面挂上了调试钩子
+PASS  时间在推进
+PASS  19 秒推进了约 19 秒（没有被节流）
+PASS  有浊物出场
+PASS  打死了怪
+PASS  拿到修为
+PASS  浊气涨了（命中会攒浊气）
+PASS  玩家挨过打（累计入伤 > 0）
+PASS  新手期不该被秒（19 秒内没死）
+PASS  血量没溢出也没负数
+PASS  状态里没有 NaN
+PASS  怪在往玩家靠近（400ms 内同一只怪变近了，或已经贴到攻击距离）
+PASS  波次在推进
+PASS  掉落了法宝
+PASS  掉落被捡起来（地上不会永远堆着）
+PASS  背包或身上收到了东西（法宝/通货/玉简任一）
+PASS  修为累积到了角色上
+PASS  浮字在产出也会消失（没有无限堆积）
+PASS  日志不超过 6 行
+PASS  画面不是一片黑
+PASS  画面上有青色的玩家
+PASS  画面上有浊物（暖色）
+PASS  画面有层次（中亮像素，不是纯黑或纯灰）
+PASS  画面在变化（不是静态一张图）
+PASS  控制台无报错
+
+总计 25/25 通过
+
+===== probe-save ===== EXIT=0
+
+=== 存档 / 闭关 探针 ===
+PASS  页面挂上了调试钩子  ["ok"]
+PASS  关页面/导航时会自动存档（pagehide flush）  [saveRawLen=439]
+PASS  新号没有闭关摘要  [null]
+PASS  玩 8 秒后真的杀了怪  [kills=1]
+PASS  场上有怪（正在打）  [monsters=3]
+PASS  手动存档返回 true  [true]
+PASS  存档写进了 localStorage  [saveRawLen=439]
+PASS  存档版本是 1  [1]
+PASS  reload 后还是同一层  [1 -> 1]
+PASS  reload 后还是同一波（±1，重建时回到波开头）  [1 -> 1]
+PASS  reload 后境界没退  [0 -> 0]
+PASS  reload 后背包/通货/玉简都没丢  [bag 0->0 pocket 1->1 gems 0->0]
+PASS  reload 后装备坑数不变  [1 -> 1]
+PASS  reload 后战斗统计从 0 重算（kills 是运行时态）  [kills 1 -> 0]
+PASS  成功给新页面注入 3 小时时间偏移  [{"identifier":"1"}]
+PASS  3 小时后回来弹出了闭关摘要  [{"minutes":180,"kills":2628,"xp":8951,"items":312,"currency":1232,"gems":331,"capped":false,"age":2.4}]
+PASS  闭关时长≈180 分钟  [180 min]
+PASS  闭关有击杀  [kills=2628]
+PASS  闭关有修为  [xp=8951]
+PASS  闭关有三类产出  [法宝312 通货1232 玉简331]
+PASS  3 小时没触发 12 小时上限  [false]
+PASS  闭关后境界或修为有增长  [step 0->16 xp 2->111 pocket 1->1233]
+PASS  刚存完档立刻刷新 → 不重复结算闭关  [null]
+PASS  6 小时档的摘要时长达 360 分钟  [{"minutes":360,"kills":5256,"xp":17850,"items":619,"currency":2494,"gems":678,"capped":false,"age":1.7}]
+PASS  闭关面板真的画在屏幕上（金色描边 + 文字像素）  [{"gold":650,"brightish":1898,"w":320,"h":105}]
+PASS  控制台无报错  [ok]
+
+结果：26/26 通过   截图：F:\dsh-work\zhuoxian\docs\probe-save.png
+
+
+===== probe-floor ===== EXIT=0
+PASS  调试钩子挂上了（window.__zhuoxian.session）  [true]
+PASS  新号在第 1 层  [floor=1]
+PASS  新号可选层上限 = 1（不许跳关）  [max=1]
+PASS  选没到过的第 2 层被拒绝  [selectFloor(2)=false]
+PASS  选当前层返回 false（不是错误，是没必要）  [selectFloor(1)=false]
+PASS  选越界层被拒绝  [selectFloor(99)=false]
+PASS  被拒绝后层数没变  [floor=1]
+PASS  按 → 有反馈日志（不是静默无反应）  ["第 2 层还没到过（当前最深 1 层）"]
+PASS  刷新后层数与可选上限都还在档里  [{"floor":1,"max":1}]
+PASS  画布还在（截图有效）  [true]
+PASS  控制台无报错  [ok]
+
+结果：11/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+
+===== probe-breakdown ===== EXIT=0
+PASS  打出了第一下（lastBreakdown 有值）
+PASS  拆解结构完整（label/amount/steps）  [{"label":"浊焰咒 → 锈剑傀","amount":20,"steps":5,"crit":false}]
+PASS  调用 toggleBreakdown 返回 true（已打开）  [true]
+PASS  打开面板后底板盖住了地板（平均亮度下降）  [off 22.2 → on 20.9]
+PASS  面板里有文字像素（亮像素明显增加）  [0 → 818]
+PASS  再按一次能关掉（区域恢复）  [on 20.9 → off 22.2]
+PASS  控制台无报错  [ok]
+
+结果：7/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+
+===== probe-detail ===== EXIT=0
+PASS  身上至少有起始法器（详情面板有东西可画）  [1 件]
+PASS  调试钩子暴露 toggleDetail
+PASS  调用 toggleDetail 返回 true（已打开）  [true]
+PASS  打开后中心区域整体压暗（全屏遮罩生效）  [off 37.2 → on 17.1]
+PASS  卡片文字真的画出来了（低饱和亮像素 ≥40）  [关闭态 56 → 打开态 78]
+PASS  详情开着战斗仍在推进（不是暂停画面）  [击杀 10→12　波次 3→4]
+PASS  再按一次能关掉  [on 17.1 → off 37.0]
+PASS  控制台无报错  [ok]
+
+结果：8/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+
+===== probe-marks ===== EXIT=0
+PASS  调试钩子存在
+PASS  满级前不产渊痕 · marks=0 step=0
+PASS  按 1 扣 20 万渊痕 · 600000 → 400000
+PASS  按 1 洗灵石 +1 · 0 → 1
+PASS  按 1 写了日志 · 聚灵：倾入 200,000 渊痕，得洗灵石 ×1 | 聚灵（换一块洗灵石）
+PASS  造出可回刷的深层
+PASS  按 2 落到第 5 层 · floor=5
+PASS  按 2 扣了 40 万渊痕（600000-200000-400000=0） · marks=0
+PASS  深渊痕不足时按 3 被拒绝 · 渊痕不足：需要 1,500,000，现有 0
+PASS  存档带 marks · saved=777777
+PASS  刷新后渊痕还在 · marks=777777
+PASS  刷新后最深可达层还在 · max=5
+PASS  控制台无报错
+
+13/13 通过
+
+===== probe-talent ===== EXIT=0
+PASS  调试钩子存在
+PASS  按 T 后面板盖上来（中心平均亮度下降） · 35.4 → 19.6
+PASS  已点节点是实心仙金（找到暖金像素） · gold=2886
+PASS  可点节点有青色描边 · teal=1381
+PASS  再按 T 恢复战斗画面（亮度回升） · 19.6 → 35.4
+PASS  控制台无报错
+
+结果：6/6 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+
+===== probe-skill ===== EXIT=0
+PASS  调试钩子存在
+PASS  新号从第 0 重开始 · step=0
+PASS  按 G 后面板盖上来（平均亮度下降） · 34.3 → 16.1
+PASS  五行色神通名画出来了（暖色像素） · warm=1239
+PASS  说明文字画出来了（米白像素） · pale=644
+PASS  面板上出现未解锁行（暗色，比战斗画面更暗） · mean=16.1
+PASS  第 30 重后暖色像素更多（6 条神通全解锁） · 1239 → 2838
+PASS  再按 G 恢复战斗画面（亮度回升） · 20.9 → 34.2
+PASS  控制台无报错
+
+结果：9/9 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+
+# 结束 2026-10-22 20:00:08

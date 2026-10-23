@@ -1,0 +1,336 @@
+{
+  "generatedAt": "2026-10-22T02:01:31.877Z",
+  "params": {
+    "seeds": 1,
+    "baseSeed": 20261021,
+    "minutes": 720,
+    "dt": 0.03333333333333333,
+    "classId": "yujian",
+    "talents": [],
+    "talentMode": "off",
+    "autoTalents": false,
+    "farm": "deepest",
+    "farmFrom": null
+  },
+  "targets": {
+    "maxMinutes": 406,
+    "maxTolerance": 0.1,
+    "realmTolerance": 0.15,
+    "realmMinutes": [
+      32,
+      47,
+      70,
+      104,
+      139,
+      179,
+      224,
+      304,
+      406
+    ]
+  },
+  "verdict": {
+    "pass": false,
+    "allMaxed": false,
+    "maxedMin": null,
+    "maxedMed": null,
+    "maxedMax": null,
+    "dev": null,
+    "deaths": [
+      21
+    ]
+  },
+  "runs": [
+    {
+      "seed": 20261021,
+      "minutes": 719.9999999923276,
+      "maxedAt": null,
+      "step": 5,
+      "realm": 1,
+      "stage": 6,
+      "cumXp": 1301,
+      "floor": 1,
+      "wave": 220,
+      "deaths": 21,
+      "farmMode": "deepest",
+      "farmFrom": 46,
+      "farmSnaps": 0,
+      "farmFloorXpPerMin": 50,
+      "maxFloorReached": 1,
+      "dropsFound": 792,
+      "itemDrops": 316,
+      "currencyProduced": {
+        "huang": 196,
+        "mie": 176,
+        "xi": 0
+      },
+      "currencySpent": {
+        "huang": 196,
+        "mie": 176,
+        "xi": 0
+      },
+      "gemProduced": 104,
+      "pocketEnd": {
+        "huang": 0,
+        "mie": 0,
+        "xi": 0
+      },
+      "gemPouchEnd": {
+        "mengong": 22,
+        "cuijin": 24,
+        "hanbing": 20,
+        "jixie": 16,
+        "zhuo-huo": 19,
+        "kuosan": 2,
+        "kaopi": 1
+      },
+      "craftLog": {
+        "ticks": 2873,
+        "executed": 174,
+        "failedTicks": 8
+      },
+      "bandStats": [
+        {
+          "id": "层 1~9",
+          "minutes": 720.0000000065584,
+          "kills": 0,
+          "itemDrops": 316,
+          "produced": {
+            "huang": 196,
+            "mie": 176,
+            "xi": 0
+          },
+          "spent": {
+            "huang": 196,
+            "mie": 176,
+            "xi": 0
+          },
+          "gems": 104
+        },
+        {
+          "id": "层 10~18",
+          "minutes": 0,
+          "kills": 0,
+          "itemDrops": 0,
+          "produced": {
+            "huang": 0,
+            "mie": 0,
+            "xi": 0
+          },
+          "spent": {
+            "huang": 0,
+            "mie": 0,
+            "xi": 0
+          },
+          "gems": 0
+        },
+        {
+          "id": "层 19~27",
+          "minutes": 0,
+          "kills": 0,
+          "itemDrops": 0,
+          "produced": {
+            "huang": 0,
+            "mie": 0,
+            "xi": 0
+          },
+          "spent": {
+            "huang": 0,
+            "mie": 0,
+            "xi": 0
+          },
+          "gems": 0
+        }
+      ],
+      "tierStats": [
+        {
+          "tier": 1,
+          "minutes": 720.0000000065584,
+          "kills": 792,
+          "itemDrops": 316,
+          "currency": 372,
+          "gems": 104
+        },
+        {
+          "tier": 2,
+          "minutes": 0,
+          "kills": 0,
+          "itemDrops": 0,
+          "currency": 0,
+          "gems": 0
+        },
+        {
+          "tier": 3,
+          "minutes": 0,
+          "kills": 0,
+          "itemDrops": 0,
+          "currency": 0,
+          "gems": 0
+        }
+      ],
+      "floorStats": [
+        {
+          "floor": 1,
+          "minutes": 720.0000000065584,
+          "produced": {
+            "huang": 196,
+            "mie": 176,
+            "xi": 0
+          },
+          "drops": 792
+        }
+      ],
+      "realmArrivals": [
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "realmCumXp": [
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "floorTrail": [],
+      "deathEvents": [
+        {
+          "minute": 15.324999999997017,
+          "floor": 1,
+          "step": 0,
+          "realm": 1
+        },
+        {
+          "minute": 30.522222222205418,
+          "floor": 1,
+          "step": 0,
+          "realm": 1
+        },
+        {
+          "minute": 45.677777777747195,
+          "floor": 1,
+          "step": 0,
+          "realm": 1
+        },
+        {
+          "minute": 68.14499999994898,
+          "floor": 1,
+          "step": 0,
+          "realm": 1
+        },
+        {
+          "minute": 90.84500000023635,
+          "floor": 1,
+          "step": 1,
+          "realm": 1
+        },
+        {
+          "minute": 113.49500000052475,
+          "floor": 1,
+          "step": 1,
+          "realm": 1
+        },
+        {
+          "minute": 138.01277777857433,
+          "floor": 1,
+          "step": 1,
+          "realm": 1
+        },
+        {
+          "minute": 162.42666666710795,
+          "floor": 1,
+          "step": 1,
+          "realm": 1
+        },
+        {
+          "minute": 185.42444444455109,
+          "floor": 1,
+          "step": 2,
+          "realm": 1
+        },
+        {
+          "minute": 208.48666666643769,
+          "floor": 1,
+          "step": 2,
+          "realm": 1
+        },
+        {
+          "minute": 231.55055555499095,
+          "floor": 1,
+          "step": 2,
+          "realm": 1
+        },
+        {
+          "minute": 254.62499999909963,
+          "floor": 1,
+          "step": 2,
+          "realm": 1
+        },
+        {
+          "minute": 279.63666666540234,
+          "floor": 1,
+          "step": 3,
+          "realm": 1
+        },
+        {
+          "minute": 304.5022222205961,
+          "floor": 1,
+          "step": 3,
+          "realm": 1
+        },
+        {
+          "minute": 329.45888888689956,
+          "floor": 1,
+          "step": 3,
+          "realm": 1
+        },
+        {
+          "minute": 354.36777777542596,
+          "floor": 1,
+          "step": 3,
+          "realm": 1
+        },
+        {
+          "minute": 379.3099999972853,
+          "floor": 1,
+          "step": 3,
+          "realm": 1
+        },
+        {
+          "minute": 404.38722221914253,
+          "floor": 1,
+          "step": 4,
+          "realm": 1
+        },
+        {
+          "minute": 429.7327777743293,
+          "floor": 1,
+          "step": 4,
+          "realm": 1
+        },
+        {
+          "minute": 455.0172222184058,
+          "floor": 1,
+          "step": 4,
+          "realm": 1
+        },
+        {
+          "minute": 480.28777777359363,
+          "floor": 1,
+          "step": 4,
+          "realm": 1
+        }
+      ],
+      "wallMs": 753
+    }
+  ]
+}

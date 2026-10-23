@@ -1,0 +1,23 @@
+node:internal/fs/watchers:323
+    const error = new UVException({
+                  ^
+
+Error: EBUSY: resource busy or locked, watch 'F:\dsh-work\zhuoxian\src\core\.battle.ts.32532.3dd7b06e-81e4-4f36-b871-7bc379e117af.tmpdir\battle.ts.tmp'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at Object.watch (node:fs:2608:36)
+    at createFsWatchInstance (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22195:17)
+    at setFsWatchListener (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22242:15)
+    at NodeFsHandler._watchWithNodeFs (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22397:14)
+    at NodeFsHandler._handleFile (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22461:23)
+    at NodeFsHandler._addToNodeFs (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22703:21)
+Emitted 'error' event on FSWatcher instance at:
+    at FSWatcher._handleError (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:23896:10)
+    at NodeFsHandler._addToNodeFs (file:///F:/dsh-work/zhuoxian/node_modules/vite/dist/node/chunks/dep-3O3b9SCF.js:22711:18) {
+  errno: -4082,
+  syscall: 'watch',
+  code: 'EBUSY',
+  path: 'F:\\dsh-work\\zhuoxian\\src\\core\\.battle.ts.32532.3dd7b06e-81e4-4f36-b871-7bc379e117af.tmpdir\\battle.ts.tmp',
+  filename: 'F:\\dsh-work\\zhuoxian\\src\\core\\.battle.ts.32532.3dd7b06e-81e4-4f36-b871-7bc379e117af.tmpdir\\battle.ts.tmp'
+}
+
+Node.js v24.22.0

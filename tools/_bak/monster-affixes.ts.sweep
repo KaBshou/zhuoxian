@@ -1,0 +1,311 @@
+/**
+ * 怪物妖纹（= 怪物词缀，REQ §3 第 8 条 / D3 签的「妖怪词缀先做 8 条」）。
+ *
+ * 在此之前项目里**只有稀有度、没有妖纹**：`DROP_CHANCE` / `DROP_RARITY_BONUS`
+ * 的 magic / rare 两档是死代码（`spawnRing` 从不传 rarity ⇒ 实战里除镇守全是 normal），
+ * REQ §5 的验收判据「越精英越稀有的怪掉落好装备和通货的概率越大」只有镇守一个例外。
+ *
+ * ## 结构约束（shuzhi v4.44，比数值更重要）
+ * **8 条妖纹分 4 类（伤害 / 防御 / 速度 / 经济），每类 2 条；一只怪最多 4 条，且「每类至多 1 条」。**
+ * 这样「四条全叠伤害」在生成阶段就不可能发生 —— 不靠数值上限去堵洞，用结构防死。
+ *
+ * ## 数值口径
+ * 伤害/防御/速度/抗性都是 **increased（加法汇总后乘一次）**，不是逐条相乘：
+ * 4 条同类的乘法叠加会指数爆炸，而「+30% +45%」这种加法在 UI 上也能一句话说清。
+ * `attackInterval` 是唯一的乘法（`×1.25` / `×0.80`），因为「出手间隔」天然是倍率。
+ *
+ * ## 掉落数量
+ * `dropBonus` 是**数量**加成（累加后钳到 `MONSTER_QTY_CAP = 0.24`），语义是
+ * 「这一杀多出来的那部分产出」：通货/玉简份额 ×(1+q)，法宝吃剩下的 `1 − 0.6(1+q)`。
+ * ⚠️ 所以 dropBonus 给大了会**挤压法宝份额**（4 条 ×0.12 = 0.48 时法宝只剩 0.112，
+ * rare 反而比 normal 穷）。这是 cap 压到 0.24 的唯一原因（shuzhi 的推导）。
+ *
+ * 纪律：妖纹倍率只作用于**个体**（在 `spawnMonster` 里算），绝不改 `BASE_MONSTER_HP` /
+ * `FLOOR_HP_MUL` 这类全局常量 —— 否则整条层曲线一起漂，几轮验收基线全作废。
+ *
+ * ## 通道有效性（D97，血的教训：**词条写了不等于生效**）
+ * 妖纹必须落在「玩家伤害真的会读」的通道上，否则是一条随机占位的死词条，而且**失效不报错**：
+ * - ✅ 五行抗性（`resistInc`）：`mitigationOf` 里占 70% 权重 —— 前提是**这只怪有抗性表**；
+ * - ⚠️ 护甲（`armorInc`）：只占 30% 权重，且玩家伤害全部带五行标签 ⇒ 护甲翻倍对元素 TTK
+ *   只有 +0.6~2.8%（实测：`yaoshi-zhu` 层 5 火系 +2.8%、层 20 火系 +1.3%），
+ *   15 只怪里还有 2 只 `armor === 0` 翻了还是 0 ⇒ **本项目里等于死通道**；
+ * - ✅ 气血 / 伤害 / 出手间隔 / 移速 / 数量加成：都有真实消费者。
+ * 由此立的不变量（有单测）：**每只怪至少有一条自己的五行抗性**，新加怪必须给。
+ */
+
+import type { MonsterRarity } from './monsters';
+
+/** 妖纹的四个类别：同类互斥（一只怪每类至多 1 条） */
+export type MonsterAffixCategory = 'damage' | 'defense' | 'speed' | 'economy';
+
+export const MONSTER_AFFIX_CATEGORY_NAME: Readonly<Record<MonsterAffixCategory, string>> = {
+  damage: '伤害',
+  defense: '防御',
+  speed: '速度',
+  economy: '经济',
+};
+
+export interface MonsterAffixDef {
+  readonly id: string;
+  /** 妖纹名（两字，修仙味；显示在怪物血条右侧） */
+  readonly name: string;
+  readonly category: MonsterAffixCategory;
+  readonly desc: string;
+  /** 攻伐 increased（加法汇总） */
+  readonly damageInc?: number;
+  /** 气血 increased */
+  readonly lifeInc?: number;
+  /** 护体 increased */
+  readonly armorInc?: number;
+  /** 移速 increased */
+  readonly speedInc?: number;
+  /** 五行抗性 increased（各元素同比例） */
+  readonly resistInc?: number;
+  /** 出手间隔倍率（乘法；>1 = 出手更慢，<1 = 更快） */
+  readonly intervalMul?: number;
+  /** 掉落**数量**加成（累加后钳到 `MONSTER_QTY_CAP`） */
+  readonly dropBonus: number;
+  /**
+   * 从第几层起进入掷档池（省略 = 1，即全层可用）。
+   * D148：深层专属妖纹只在这个池子里，避免「层 1 的新手遇到 `磐`（气血 ×2.5）」。
+   */
+  readonly minFloor?: number;
+}
+
+/** 一只怪合计的数量加成上限（shuzhi 定稿；`LOOT_QUANTITY_CAP 0.58` 不动） */
+export const MONSTER_QTY_CAP = 0.24;
+
+/**
+ * 深层专属妖纹的起始层（D148）。与 `threatMul` 的斜坡同段（层 22 起渐进门禁、
+ * 层 28 起进精英池）—— 层 22~27 是「威胁变疼」，层 28+ 是「精英变硬」，两个梯度不重叠。
+ */
+export const DEEP_AFFIX_MIN_FLOOR = 28;
+
+/** 某一层可用的妖纹池（层号脏值按第 1 层算） */
+export function affixesForFloor(floor: number): readonly MonsterAffixDef[] {
+  const f = Number.isFinite(floor) ? Math.max(1, Math.floor(floor)) : 1;
+  return MONSTER_AFFIX_DEFS.filter((d) => f >= (d.minFloor ?? 1));
+}
+
+export const MONSTER_AFFIX_DEFS: readonly MonsterAffixDef[] = [
+  // ── 伤害 ────────────────────────────────────────────────
+  {
+    id: 'sha',
+    name: '凶煞',
+    category: 'damage',
+    desc: '死得太冤，下手比寻常浊物重得多。',
+    damageInc: 0.3,
+    dropBonus: 0.05,
+  },
+  {
+    id: 'kuang',
+    name: '狂怒',
+    category: 'damage',
+    desc: '一出手就是全力，可一拳之后要缓很久。',
+    damageInc: 0.45,
+    intervalMul: 1.25,
+    dropBonus: 0.05,
+  },
+  // ── 防御 ────────────────────────────────────────────────
+  {
+    id: 'hou',
+    name: '厚皮',
+    category: 'defense',
+    // D97：原本是 `armorInc: 1.0`，实测**近乎死词条** —— 玩家伤害全部带五行标签，
+    // 而 `mitigationOf` 里护甲只占 30% 权重（`ELEMENTAL_MITIGATION_SHARE 0.7` 走抗性），
+    // 护甲翻倍只让元素 TTK +0.6~2.8%（层 20 的 `fangshi-yuanke` 火系只 +0.6%），
+    // 且 15 只怪里有 2 只 `armor === 0`（翻倍还是 0）。换成抗性通道后 15/15 全部生效。
+    desc: '皮肉厚得像一层甲，五行打上去都钝三分。',
+    resistInc: 0.2,
+    dropBonus: 0.05,
+  },
+  {
+    id: 'jian',
+    name: '坚韧',
+    category: 'defense',
+    desc: '浊气在体内结成实心，砍下去像砍木头。',
+    lifeInc: 0.5,
+    dropBonus: 0.05,
+  },
+  // ── 速度 ────────────────────────────────────────────────
+  {
+    id: 'ji',
+    name: '疾行',
+    category: 'speed',
+    desc: '腿骨被浊气撑长了半寸：出手快，骨头也脆。',
+    // D150：**删掉纯移速通道**（`speedInc`）。
+    // 实测（`tools/measure-ji.mjs`，12 种子配对）：speedInc 0 / 0.25 / 0.5 三档，
+    // 击杀/分 13.99 / 14.26 / 13.65（+50% 反而低 2.4%），而承伤/kill 10.89 → 11.45 → 11.51 单调上升。
+    // 机制：总伤害 = 单体 DPS × 接触时长，接触时长 = 存活时长 − 走路时长；
+    // speed ↑ 只缩短走路 ⇒ 存活时长由玩家 DPS 决定 ⇒ **击杀率不变，只是把伤害提前兑现**。
+    // 也就是说移速在「固定波次 + 挂机」里不是威胁通道、也不是收益通道 —— 是纯负面的假词条。
+    // 替换成「快但脆」：出手间隔 ×0.85、气血 ×0.80 ⇒ 出手快 17.6%、单只总伤害 ×0.94（略偏玩家），
+    // 与 `kuang`（狂怒：伤害 +70% / 间隔 ×1.5 = 慢而重）形成对称。
+    intervalMul: 0.85,
+    lifeInc: -0.2,
+    dropBonus: 0.05,
+  },
+  {
+    id: 'xun',
+    name: '迅捷',
+    category: 'speed',
+    desc: '出手快得看不清，一刀接一刀。',
+    intervalMul: 0.8,
+    dropBonus: 0.05,
+  },
+  // ── 经济 ────────────────────────────────────────────────
+  {
+    id: 'tan',
+    name: '贪婪',
+    category: 'economy',
+    desc: '它吞过别人的东西，杀了它都能掏出来。',
+    dropBonus: 0.12,
+  },
+  {
+    id: 'shi',
+    name: '噬宝',
+    category: 'economy',
+    desc: '把法宝吞进肚里消化了一半，属性伤害反而啃不动它。',
+    // D97：和 `厚皮` 共用抗性通道，两条同时出现时不能顶到「打不动」，故 0.25 → 0.15。
+    // 抗性加成是**加法汇总**（`sumMonsterAffixes` 里 `resistInc += `），最坏组合
+    // `厚皮 + 噬宝` = ×1.35 ⇒ `resist 0.35 → 0.4725`，元素减伤 0.7×0.4725 = 33.1%。
+    resistInc: 0.15,
+    dropBonus: 0.05,
+  },
+  // ── 深层专属（D148，层 28+ 才进池）：shuzhi v4.66 的 A 批 —— 不加新通道，
+  // 只用已有的 resist / damage / interval / life / dropBonus 五个通道，
+  // 每条都把单一通道推到「明显能感觉到」的量级，而不是再摊一层 5%。
+  // 为什么不给「每 N 秒给玩家上浊气」：浊气满 → 浊化 5s 伤害 ×2 → 净效应是先送 +100%
+  // 输出再罚虚弱（易成正反馈），且浊化 uptime 实测 8.2~8.3%，一动会让深层 TTK 摆 ±30%，
+  // 直接作废 §16/§20 的整条基线；更重要是它需要引擎钩子，而 A 批的全部优势是「只改数据」。
+  {
+    id: 'chi',
+    name: '炽',
+    category: 'defense',
+    desc: '浊火在骨缝里烧了几百年，五行打上去大半被烤散了。',
+    resistInc: 0.35,
+    dropBonus: 0.05,
+    minFloor: DEEP_AFFIX_MIN_FLOOR,
+  },
+  {
+    id: 'man',
+    name: '蛮',
+    category: 'damage',
+    desc: '一具被浊气撑大的躯壳，抡起来砸得慢，可砸中一次就够。',
+    // D148 校准：规格 0.80 → 0.70。0.80 时 c3 死亡 131/中位 501min = **15.68 次/小时**
+    // （D141 硬线 ≤15，超 4.5%）；0.70 → 115/494 = 13.97 ✓，且 c0 首撞层仍 48 ✓。
+    damageInc: 0.7,
+    intervalMul: 1.5,
+    dropBonus: 0.05,
+    minFloor: DEEP_AFFIX_MIN_FLOOR,
+  },
+  {
+    id: 'pan',
+    name: '磐',
+    category: 'defense',
+    desc: '整块浊石化成，刀砍进去只留一道白痕。',
+    // D148 校准：shuzhi 原规格 1.50，实测首撞层 40（破硬线 ≥42）、死亡中位 12.5。
+    // 12 种子扫描：1.50 → 首撞 40 ✗ ｜ 1.40 → 首撞 48 ✓、死亡中位 6.5、满级 258.4 ✓
+    // ｜ 1.25 → 段② 达成跌破 90% ✗ ｜ 1.00 → 段② 达成 9/12 ✗。
+    // 磐 是「首撞层」与「段② 达成率」之间唯一的杠杆（炽/蛮 单独降都救不回首撞层）。
+    lifeInc: 1.4,
+    dropBonus: 0.05,
+    minFloor: DEEP_AFFIX_MIN_FLOOR,
+  },
+  {
+    id: 'shi-deep',
+    name: '噬',
+    category: 'economy',
+    desc: '肚里消化着别人的家当，杀了它能一次掏出来。',
+    dropBonus: 0.2,
+    minFloor: DEEP_AFFIX_MIN_FLOOR,
+  },
+];
+
+const AFFIX_BY_ID: ReadonlyMap<string, MonsterAffixDef> = new Map(
+  MONSTER_AFFIX_DEFS.map((d) => [d.id, d]),
+);
+
+export function getMonsterAffix(id: string): MonsterAffixDef | undefined {
+  return AFFIX_BY_ID.get(id);
+}
+
+export function isMonsterAffixId(value: unknown): value is string {
+  return typeof value === 'string' && AFFIX_BY_ID.has(value);
+}
+
+/** 稀有度 → 妖纹条数区间（REQ §3 第 8 条：普通 0 / 魔法 1~2 / 稀有 3~4） */
+export function affixCountRange(rarity: MonsterRarity): readonly [number, number] {
+  if (rarity === 'magic') return [1, 2];
+  if (rarity === 'rare') return [3, 4];
+  return [0, 0];
+}
+
+/** 妖纹条数 → 稀有度（条数是唯一判据，避免两处各写一套边界） */
+export function rarityOfAffixCount(count: number): MonsterRarity {
+  if (!Number.isFinite(count) || count <= 0) return 'normal';
+  if (count <= 2) return 'magic';
+  return 'rare';
+}
+
+/** 一份妖纹的合计效果 */
+export interface MonsterAffixSum {
+  readonly damageInc: number;
+  readonly lifeInc: number;
+  readonly armorInc: number;
+  readonly speedInc: number;
+  readonly resistInc: number;
+  readonly intervalMul: number;
+  readonly dropBonus: number;
+}
+
+export const NO_AFFIX_SUM: MonsterAffixSum = {
+  damageInc: 0,
+  lifeInc: 0,
+  armorInc: 0,
+  speedInc: 0,
+  resistInc: 0,
+  intervalMul: 1,
+  dropBonus: 0,
+};
+
+export function sumMonsterAffixes(ids: readonly string[] | undefined): MonsterAffixSum {
+  if (!ids || ids.length === 0) return NO_AFFIX_SUM;
+  let damageInc = 0;
+  let lifeInc = 0;
+  let armorInc = 0;
+  let speedInc = 0;
+  let resistInc = 0;
+  let intervalMul = 1;
+  let dropBonus = 0;
+  for (const id of ids) {
+    const def = AFFIX_BY_ID.get(id);
+    if (!def) continue; // 未知 id 安静跳过：探针/旧档里可能带脏值
+    damageInc += def.damageInc ?? 0;
+    lifeInc += def.lifeInc ?? 0;
+    armorInc += def.armorInc ?? 0;
+    speedInc += def.speedInc ?? 0;
+    resistInc += def.resistInc ?? 0;
+    intervalMul *= def.intervalMul ?? 1;
+    dropBonus += def.dropBonus;
+  }
+  return {
+    damageInc,
+    lifeInc,
+    armorInc,
+    speedInc,
+    resistInc,
+    intervalMul,
+    dropBonus: Math.min(MONSTER_QTY_CAP, dropBonus),
+  };
+}
+
+/** 妖纹名的展示串（「凶煞 · 厚皮 · +2」）；无妖纹返回空串 */
+export function monsterAffixSuffix(ids: readonly string[] | undefined, maxNames = 2): string {
+  if (!ids || ids.length === 0) return '';
+  const names = ids.map((id) => AFFIX_BY_ID.get(id)?.name).filter((n): n is string => !!n);
+  if (names.length === 0) return '';
+  const shown = names.slice(0, maxNames);
+  const rest = names.length - shown.length;
+  return rest > 0 ? ` · ${shown.join('·')} +${rest}` : ` · ${shown.join('·')}`;
+}

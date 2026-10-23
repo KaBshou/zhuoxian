@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+
+# 构建产物（由 GitHub Actions 现场构建，不进仓库）
+dist/
+
+# 本地临时证据 / 调试产物
+tmp/
+*.log
+
+# 根目录下历史跑批留下的文本证据（不属于游戏内容）
+/_c-run*.txt
+/_formed-run*.txt
+/true
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store

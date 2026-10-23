@@ -1,0 +1,201 @@
+/**
+ * 境界与修为成长曲线。
+ *
+ * 数值已按 `docs/BALANCE.md` §20.11（v4.9，shuzhi 2026-10-22 按**真实 session 进程**定稿，
+ * D34 = C″ 案）：
+ *
+ *   本境总修为 R(k)：显式数组 BREAKTHROUGH_XP（Σ2 619 598）
+ *   每一重 = R(k) × 9%    （8 重合计 72%）
+ *   渡劫   = R(k) × 28%
+ *   满级实付 = ΣR(0..7) + 0.72×R(8) = 2 302 914 ≈ 406 min = 6.8h
+ *
+ * 【末境渡劫永不支付】step 80 是终点，它的 xpForStep 返回 Infinity，
+ * 所以第 9 境的渡劫（0.28×R(8) ≈ 316 684）永远不会被消耗 —— 末境实付只有 72%。
+ * 反推数组时末境必须 ÷0.72，否则会固定短 ≈44 min（≈11%）。
+ *
+ * 结构：9 个大境界 × 9 重 = 81 个台阶。
+ *
+ * 【为什么是显式数组而不是几何式】
+ * 修为/小时是**线性**的（速率 ∝ 层数，而层数是线性推进），几何式的 R(k) 除以
+ * 线性速率会让「每境时长」逐境递减 —— 越往后升级越快，与「修仙越往后越难」相反。
+ * 实测：几何式 Σ17 265 → 43 分钟满级；`1080×(3k+2)` Σ136 080 → 93 分钟。
+ * 显式数组是唯一能同时满足「一境 40~60 分钟」和「末段不重复」的形状。
+ *
+ * 【为什么数组有 ×2.3 / ×3.3 的台阶（R(3→4)、R(5→6)）】
+ * 那不是笔误，是**阶赏金**（D32 拍板 C）：进新阶（层 10、层 19）怪更强，
+ * 修为赏金也同比跳一档（xpMul 一阶 1.05 / 二阶 3.275 / 三阶 10.15），
+ * 玩家体感是「换阶了，升级明显加快」。归一到 1.0 会让换阶变成纯换皮。
+ *
+ * 【为什么末三境 45 / 80 / 102 分钟递增】
+ * 层 19~27 的修为速率不再上涨（深处卖装备不卖等级），若末三境等长，
+ * 玩家会经历 3 段一模一样的「层 27 原地挂机」。改成递增后每境都有新目标。
+ */
+
+import { REALM_TERM, REALM_STAGE_TERM, formatRealm } from '../data/glossary';
+
+/** 大境界个数 */
+export const REALM_COUNT = 9;
+/** 每个大境界内的小台阶数（九重） */
+export const STAGES_PER_REALM = 9;
+/** 总台阶数 = 81。索引 0 = 练气一重，索引 80 = 渡劫九重 */
+export const TOTAL_STEPS = REALM_COUNT * STAGES_PER_REALM;
+
+/**
+ * 第 k 个大境界的总修为 R(k)（BALANCE §20.11 / D34 定稿 C″ 案）。
+ *
+ * 合计 1 513 370 修为 = 406 分钟 = 6.8 小时（真实 session 进程实测口径）。
+ * 九境到达时刻（分钟）：32 / 47 / 70 / 104 / 139 / 179 / 224 / 304 / 406。
+ *
+ * 【改这个数组之前必读】
+ * 1. 它必须**单调递增**（越往后越难），单测 `tests/progression.test.ts` 把守。
+ * 2. 它换掉之后，24h 四段式的「境界圆满」那一段（GDD 1.7 第 ③ 段）时长跟着变，
+ *    必须同步 ceshi 的 `tools/run-timeline.mjs` 验收值。
+ * 3. 层数上限还是 27（D36 未做），所以层 27 的速率是硬顶；数组再拉长就只能靠
+ *    「深处卖装备不卖等级」来解释。
+ */
+export const BREAKTHROUGH_XP: readonly number[] = [
+  2839, 6853, 23225, 111682, 173239, 218335, 325727, 626684, 1131014,
+];
+
+/**
+ * 每一重占本境总修为 R(k) 的比例。
+ *
+ * 必须是 0.09 而不是 0.08：R(k) 的语义是「本境全部台阶之和」，
+ * 8 重 + 渡劫 = 8 × 0.09 + 0.28 = 1.00。写 0.08 时只有 8×0.08+0.28 = 0.92，
+ * 每境实际只要 92% 的 R(k)，比 BALANCE 的时长预算短 8%（§19.1 踩过这个坑）。
+ */
+export const STAGE_RATIO = 0.09;
+/** 渡劫（第 9 重）占本境总修为 R(k) 的比例 */
+export const TRIBULATION_RATIO = 0.28;
+
+/**
+ * 第 k 个大境界的总修为 R(k)。超出数组范围时按最后一境算（防未来加境界时崩）
+ */
+export function realmXp(k: number): number {
+  if (!Number.isFinite(k) || k < 0) return BREAKTHROUGH_XP[0];
+  const idx = Math.min(BREAKTHROUGH_XP.length - 1, Math.floor(k));
+  return BREAKTHROUGH_XP[idx];
+}
+
+/**
+ * 这是第几个大境界（0~8）
+ */
+export function realmIndexOf(step: number): number {
+  return Math.floor(clampStep(step) / STAGES_PER_REALM);
+}
+
+/** 这是本境界的第几重（0~8） */
+export function stageIndexOf(step: number): number {
+  return clampStep(step) % STAGES_PER_REALM;
+}
+
+function clampStep(step: number): number {
+  if (!Number.isFinite(step)) return 0;
+  return Math.max(0, Math.min(TOTAL_STEPS - 1, Math.floor(step)));
+}
+
+/**
+ * 从 `step` 突破到 `step + 1` 需要多少修为。
+ *
+ * 满了（step >= 80）返回 Infinity —— 表示"已到顶，不再需要修为"。
+ * 用 Infinity 而不是 0，是为了让「还差多少」的 UI 自己会显示「已圆满」，
+ * 而不会显示成「0 / 0」让玩家以为卡住了。
+ */
+export function xpForStep(step: number): number {
+  const s = Math.floor(step);
+  // 非法台阶归一化到第一阶（注意走 Math.round，与正常路径同一数值）
+  if (!Number.isFinite(s) || s < 0) {
+    return Math.round(realmXp(0) * STAGE_RATIO);
+  }
+  if (s >= TOTAL_STEPS - 1) return Number.POSITIVE_INFINITY;
+  const realm = realmIndexOf(s);
+  const stage = stageIndexOf(s);
+  const r = realmXp(realm);
+  // 第 9 重（stage 8）是渡劫，占 28%；前 8 重各占 8%
+  return Math.round(r * (stage >= STAGES_PER_REALM - 1 ? TRIBULATION_RATIO : STAGE_RATIO));
+}
+
+/** 从 0 升到 step 需要累计多少修为（给「总进度」条用） */
+export function totalXpToStep(step: number): number {
+  const target = clampStep(step);
+  let sum = 0;
+  for (let s = 0; s < target; s++) sum += xpForStep(s);
+  return sum;
+}
+
+/** 境界显示名，如「金丹·三重」 */
+export function stepLabel(step: number): string {
+  return formatRealm(step);
+}
+
+/** 大境界名，如「金丹」 */
+export function realmName(step: number): string {
+  return REALM_TERM[realmIndexOf(step)] ?? '练气';
+}
+
+/** 本境界内的重数名，如「三重」 */
+export function stageName(step: number): string {
+  return REALM_STAGE_TERM[stageIndexOf(step)] ?? '一重';
+}
+
+/** 是否已经圆满（不能再突破） */
+export function isMaxStep(step: number): boolean {
+  return clampStep(step) >= TOTAL_STEPS - 1;
+}
+
+/** 一次加修为的结果 */
+export interface XpGainResult {
+  /** 实际落到的台阶 */
+  readonly step: number;
+  /** 剩余修为（没花完的） */
+  readonly xp: number;
+  /** 这次一共突破了几重 */
+  readonly breakthroughs: number;
+}
+
+/**
+ * 加修为，处理"一次加太多、连破好几重"的情况。
+ *
+ * 必须循环而不是只算一次：挂机八小时回来，一次结算可能连破十几重。
+ * 如果只算一次，玩家会白丢大量修为（而且这个 bug 只在离线收益时才暴露，很难测）。
+ */
+export function addXp(step: number, xp: number, gain: number): XpGainResult {
+  let cur = clampStep(step);
+  let pool = Number.isFinite(xp) && xp > 0 ? xp : 0;
+  const add = Number.isFinite(gain) && gain > 0 ? gain : 0;
+  pool += add;
+
+  let breakthroughs = 0;
+  // 防御性上限：TOTAL_STEPS 次循环足够，防止系数写错时死循环
+  let guard = 0;
+  while (!isMaxStep(cur) && guard < TOTAL_STEPS + 1) {
+    const need = xpForStep(cur);
+    if (!Number.isFinite(need) || pool < need) break;
+    pool -= need;
+    cur += 1;
+    breakthroughs += 1;
+    guard += 1;
+  }
+
+  // 圆满之后多余修为不再累积（避免界面一直显示「溢出的 999 万修为」）
+  if (isMaxStep(cur)) pool = 0;
+
+  return { step: cur, xp: pool, breakthroughs };
+}
+
+/** 距离下一重还差多少修为；圆满时返回 null */
+export function xpToNext(step: number, xp: number): number | null {
+  if (isMaxStep(step)) return null;
+  const need = xpForStep(step);
+  const cur = Number.isFinite(xp) && xp > 0 ? xp : 0;
+  return Math.max(0, need - cur);
+}
+
+/** 当前台阶的进度（0~1），圆满为 1 */
+export function stepProgress(step: number, xp: number): number {
+  if (isMaxStep(step)) return 1;
+  const need = xpForStep(step);
+  if (!Number.isFinite(need) || need <= 0) return 0;
+  const cur = Number.isFinite(xp) && xp > 0 ? xp : 0;
+  return Math.max(0, Math.min(1, cur / need));
+}

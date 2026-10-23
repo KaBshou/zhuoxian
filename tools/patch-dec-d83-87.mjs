@@ -1,0 +1,67 @@
+// 追加 D83 / D84 / D85 / D86 / D87 到 docs/DECISIONS.md（shuzhi v4.40 的四件判定）
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+const FILE = 'docs/DECISIONS.md';
+const raw = readFileSync(FILE, 'utf8');
+const before = raw.length;
+
+const lines = [];
+lines.push('');
+lines.push('### D83（四段下界绑「比例 × 满级目标」，只维护 `TARGET_MAX_MINUTES` 一个数）');
+lines.push('');
+lines.push('- **起因**：满级目标 330→300 后，第 4 段（层28→满级）中位 **164.8 < 180** 破线。');
+lines.push('  这不是内容变少，是 **band 没跟着满级目标缩**（`BALANCE.md` 的绝对数还是 330 时代拍的）。');
+lines.push('- **定稿（shuzhi v4.40）**：绝对下界改成 `比例 × TARGET_MAX_MINUTES`，比例来自「330 时代的老绝对数 ÷ 330」：');
+lines.push('  一阶 30/330 = **0.090**、二阶 35/330 = **0.105**、层19→28 35/330 = **0.105**、层28→满级 175/330 ≈ **0.53**。');
+lines.push('  目标 300 ⇒ 27 / 32 / 32 / 159。第 4 段取 **0.53 不取 0.545**：0.545 = 163.5，只剩 1.3min 余量（必红）；0.53 留 5.8min。');
+lines.push('- **纪律**：以后重标只改满级目标；同一批连续两轮红，才把 0.53 下探到 0.51（每次只动一个数、留 ≥3% 余量）。');
+lines.push('  硬红线仍是「量级 0.5×」（抓「整段被跳过」的真事故）。');
+lines.push('- **落地**：`tools/_segments.mjs` 的 `TARGET_MAX_MINUTES = 300` + `BAND_RATIO = [0.09, 0.105, 0.105, 0.53]`，');
+lines.push('  下界由数组算出，不再写死绝对数。');
+lines.push('- **实测（`tmp\\v439.json`，6 种子）**：一阶 40.6 / 二阶 45.4 / 19→28 46.6 / 28→满级 164.8，**四段全 PASS**');
+lines.push('  （余量 +50% / +44% / +48% / +3.4%）。');
+lines.push('');
+lines.push('### D84（段④ 内容长度认实测：**≈6.2 小时**，解析锚 10.6h 作废）');
+lines.push('');
+lines.push('- **经过**：shuzhi 先按解析式给 7.2 件/3h（⇒ 25.46 件 ≈ 10.6h），我实测 12.3 件/3h（⇒ ≈6.2h）。');
+lines.push('  她复盘**自己错了**：解析式用了过期输入 —— 法宝按 **1.04/分**（实测 1.31）、仙品率按**无装备 3.85%**（满级装自带仙缘 +30% 档 ≈ **4.57%**）。');
+lines.push('  换新输入解析 `1.31 × 4.57% × 180 = 10.8 件/3h`，与实测 12.3 差 14%（同量级）。');
+lines.push('- **结论**：**口径正确时，仪器实测 > 解析式**。段④ 一律写 **≈6.2h**；`tools/_segments.mjs` 直接打印折算小时（D84），不再写「≈10.6h」。');
+lines.push('- **旗子占比 38.0%（n=229）**：σ = 3.1pp ⇒ +1.5σ，属边缘噪声，**只记录不改设计**；下轮 n ≥ 500 再判。');
+lines.push('- **教训第二十三次**：「解析式和实测一致」只有在**输入同源**时才成立；拿过期输入自洽是自欺。');
+lines.push('');
+lines.push('### D85（渊痕速率保持 15 627 + 「>10% 才重锚」阈值纪律）');
+lines.push('');
+lines.push('- 本轮实测 **15 032/分** vs 锚定值 15 627（−3.8%）。两轮 6 种子散布本身 ~10% ⇒ 差在噪声内。');
+lines.push('- **判**：保持 15 627。定价语义是「几分钟买得到」⇒ 用较高速率锚 ⇒ 实际花的时间更多 ⇒ 保守方向。');
+lines.push('- **纪律（新增）**：偏离实测中位 **>10%** 才重锚，且每次只乘一次三档价格 ——');
+lines.push('  防止「每轮重跑都调一次价」的漂移（这正是 §21.10 立规精神：价格锚时间量，不锚单轮读数）。');
+lines.push('');
+lines.push('### D86（法宝/分 拆两列口径；禁止跨轮比单个数）');
+lines.push('');
+lines.push('- **现象**：法宝 1.04 → 1.31/分（+26%），但掉落率与权重一行没改。');
+lines.push('- **根因**：分母仍含「满级后窗口长度 + 停留层构成」。满级提前 ⇒ 窗口变长 ⇒ 读数变大，和 D80 的仙品/3h 是同一个病。');
+lines.push('- **定稿**：**段② 口径 = 全程按停留分钟加权**；**段④ 口径 = 层 46 稳态**。两个数各自标口径，');
+lines.push('  **禁止拿单个数跨轮对比**（D84 我就是被这个带偏的）。');
+lines.push('');
+lines.push('### D87（24h 内容缺口 ≈9h：D36-A 之后必须再加一层收集类系统）');
+lines.push('');
+lines.push('- **账**：段④ 6.2h（D84）+ 满级后渊痕 3h ≈ **9.2h** 的可支撑内容，而满级前只有 **~5h**（302.9min）⇒ 合计 ≈14h。');
+lines.push('  GDD 的 24h 目标还差 **~9h**。');
+lines.push('- **结论**：**D36-A（无尽层）之后必须再加一层「收集 / 图鉴 / 成就」类系统**。');
+lines.push('  否则 D64 的棘轮刹车（任何让玩家更强的改动若把满级提前 >5%，必须先证明段④ 有内容接住）会失效 ——');
+lines.push('  只剩「把满级时长往上限拉」这一条路，那就是用玩家的时间掩盖内容缺口。');
+lines.push('- **本决策只记账，不排期**；下一步优先级仍是先把现有系统的可见性与诚实度做完。');
+lines.push('');
+
+const block = lines.join('\n');
+if (!raw.includes('### D82（死属性穷举审计')) throw new Error('MISS anchor D82');
+const out = raw + block;
+if (out.length < before + 2000) throw new Error(`输出太短：${before} → ${out.length}`);
+if (!out.includes('### D87（24h 内容缺口')) throw new Error('D87 标题缺失');
+
+mkdirSync('tools/_bak', { recursive: true });
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+copyFileSync(FILE, `tools/_bak/DECISIONS.md.${stamp}.bak`);
+writeFileSync(FILE, out, 'utf8');
+console.log(`ok: ${FILE} ${before} → ${out.length} chars（+${out.length - before}）· bak=tools/_bak/DECISIONS.md.${stamp}.bak`);

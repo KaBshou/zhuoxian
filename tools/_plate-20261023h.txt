@@ -1,0 +1,324 @@
+﻿# probe plate @ 2026-10-23T01:49:06.4558236+08:00 base=http://127.0.0.1:5292/
+状态快照 t2：
+{
+  "time": 19.55000000000017,
+  "kills": 4,
+  "xpGained": 8,
+  "deaths": 0,
+  "damageTaken": 5,
+  "revive": 0,
+  "hp": 151.8,
+  "maxHp": 151.8,
+  "damage": 5,
+  "turbid": 35.00000000000079,
+  "phase": "calm",
+  "monsterCount": 4,
+  "monsters": [
+    {
+      "uid": 10,
+      "name": "断枪鬼",
+      "x": 404,
+      "y": 150,
+      "hp": 42,
+      "maxHp": 55,
+      "d": 142,
+      "range": 38
+    },
+    {
+      "uid": 11,
+      "name": "尸解仆",
+      "x": 607,
+      "y": 143,
+      "hp": 81,
+      "maxHp": 81,
+      "d": 180,
+      "range": 30
+    },
+    {
+      "uid": 12,
+      "name": "锈剑傀",
+      "x": 272,
+      "y": 154,
+      "hp": 45,
+      "maxHp": 45,
+      "d": 238,
+      "range": 40
+    },
+    {
+      "uid": 13,
+      "name": "坊市怨客",
+      "x": 544,
+      "y": 107,
+      "hp": 91,
+      "maxHp": 91,
+      "d": 175,
+      "range": 34
+    }
+  ],
+  "nonFinite": [],
+  "wave": 2,
+  "dropsFound": 4,
+  "groundCount": 0,
+  "bagCount": 0,
+  "pocketCount": 0,
+  "gemCount": 0,
+  "step": 0,
+  "xp": 8,
+  "breakthroughs": 0,
+  "floats": 1,
+  "logLines": 2,
+  "equipment": [
+    {
+      "slot": "sword",
+      "name": "铁剑",
+      "rarity": "fan"
+    },
+    {
+      "slot": "ring1",
+      "name": "仙品·铜戒",
+      "rarity": "xian"
+    }
+  ],
+  "bagTop": []
+}
+
+画面统计：亮 240587 / 中亮 13767 / 青 972 / 暖 2748（共 518400 像素）
+截图：F:\dsh-work\zhuoxian\docs\probe-battle.png
+
+── 断言 ──
+PASS  页面挂上了调试钩子
+PASS  时间在推进
+PASS  19 秒推进了约 19 秒（没有被节流）
+PASS  有浊物出场
+PASS  打死了怪
+PASS  拿到修为
+PASS  浊气涨了（命中会攒浊气）
+PASS  玩家挨过打（累计入伤 > 0）
+PASS  新手期不该被秒（19 秒内没死）
+PASS  血量没溢出也没负数
+PASS  状态里没有 NaN
+PASS  怪在往玩家靠近（400ms 内同一只怪变近了，或已经贴到攻击距离）
+PASS  波次在推进
+PASS  发生过掉落掷骰（dropsFound = 每杀一次掷骰，不是收货数）
+PASS  掉落被捡起来（地上不会永远堆着）
+PASS  背包或身上收到了东西（法宝/通货/玉简任一）
+PASS  修为累积到了角色上
+PASS  浮字在产出也会消失（没有无限堆积）
+PASS  日志不超过 6 行
+PASS  画面不是一片黑
+PASS  画面上有青色的玩家
+PASS  画面上有浊物（暖色）
+PASS  画面有层次（中亮像素，不是纯黑或纯灰）
+PASS  画面在变化（不是静态一张图）
+PASS  控制台无报错
+
+总计 25/25 通过
+
+== probe-battle.mjs exit=0 dur=21.2s : 总计 25/25 通过
+
+=== 存档 / 闭关 探针 ===
+PASS  页面挂上了调试钩子  ["ok"]
+PASS  关页面/导航时会自动存档（pagehide flush）  [saveRawLen=456]
+PASS  新号没有闭关摘要  [null]
+FAIL  玩 8 秒后真的杀了怪  [kills=0]
+PASS  场上有怪（正在打）  [monsters=4]
+PASS  手动存档返回 true  [true]
+PASS  存档写进了 localStorage  [saveRawLen=456]
+PASS  存档版本是 1  [1]
+PASS  reload 后还是同一层  [1 -> 1]
+PASS  reload 后还是同一波（±1，重建时回到波开头）  [1 -> 1]
+PASS  reload 后境界没退  [0 -> 0]
+PASS  reload 后背包/通货/玉简都没丢  [bag 0->0 pocket 0->0 gems 0->0]
+PASS  reload 后装备坑数不变  [1 -> 1]
+PASS  reload 后战斗统计从 0 重算（kills 是运行时态）  [kills 0 -> 0]
+PASS  成功给新页面注入 3 小时时间偏移  [{"identifier":"1"}]
+PASS  3 小时后回来弹出了闭关摘要  [{"minutes":180,"kills":2628,"xp":8951,"items":273,"currency":374,"gems":83,"capped":false,"age":2.4}]
+PASS  闭关时长≈180 分钟  [180 min]
+PASS  闭关有击杀  [kills=2628]
+PASS  闭关有修为  [xp=8951]
+PASS  闭关有三类产出  [法宝273 通货374 玉简83]
+PASS  3 小时没触发 12 小时上限  [false]
+PASS  闭关后境界或修为有增长  [step 0->16 xp 0->109 pocket 0->374]
+PASS  刚存完档立刻刷新 → 不重复结算闭关  [null]
+PASS  6 小时档的摘要时长达 360 分钟  [{"minutes":360,"kills":5256,"xp":17850,"items":614,"currency":675,"gems":200,"capped":false,"age":1.7}]
+PASS  闭关面板真的画在屏幕上（金色描边 + 文字像素）  [{"gold":645,"brightish":1807,"w":320,"h":105}]
+PASS  控制台无报错  [ok]
+
+结果：25/26 通过   截图：F:\dsh-work\zhuoxian\docs\probe-save.png
+
+失败项：
+ - 玩 8 秒后真的杀了怪 —— kills=0
+
+== probe-save.mjs exit=1 dur=20.3s : 结果：25/26 通过   截图：F:\dsh-work\zhuoxian\docs\probe-save.png
+PASS  调试钩子挂上了（window.__zhuoxian.session）  [true]
+PASS  新号在第 1 层  [floor=1]
+PASS  新号可选层上限 = 1（不许跳关）  [max=1]
+PASS  选没到过的第 2 层被拒绝  [selectFloor(2)=false]
+PASS  选当前层返回 false（不是错误，是没必要）  [selectFloor(1)=false]
+PASS  选越界层被拒绝  [selectFloor(99)=false]
+PASS  被拒绝后层数没变  [floor=1]
+PASS  按 → 有反馈日志（不是静默无反应）  ["第 2 层还没到过（当前最深 1 层）"]
+PASS  刷新后层数与可选上限都还在档里  [{"floor":1,"max":1}]
+PASS  画布还在（截图有效）  [true]
+PASS  控制台无报错  [ok]
+
+结果：11/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+
+== probe-floor.mjs exit=0 dur=3.8s : 结果：11/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+PASS  打出了第一下（lastBreakdown 有值）
+PASS  拆解结构完整（label/amount/steps）  [{"label":"浊焰咒 → 断枪鬼","amount":17,"steps":5,"crit":false}]
+PASS  调用 toggleBreakdown 返回 true（已打开）  [true]
+PASS  打开面板后底板盖住了地板（平均亮度下降）  [off 22.2 → on 20.8]
+PASS  面板里有文字像素（亮像素明显增加）  [0 → 822]
+PASS  再按一次能关掉（区域恢复）  [on 20.8 → off 22.2]
+PASS  控制台无报错  [ok]
+
+结果：7/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+
+== probe-breakdown.mjs exit=0 dur=2.8s : 结果：7/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+PASS  身上至少有起始法器（详情面板有东西可画）  [2 件]
+PASS  调试钩子暴露 toggleDetail
+PASS  调用 toggleDetail 返回 true（已打开）  [true]
+PASS  打开后中心区域整体压暗（全屏遮罩生效）  [off 37.4 → on 17.4]
+PASS  卡片文字真的画出来了（低饱和亮像素 ≥24，卡片 2 张）  [关闭态 96 → 打开态 169]
+PASS  详情开着战斗仍在推进（不是暂停画面）  [击杀 2→5　波次 1→2]
+PASS  再按一次能关掉  [on 17.4 → off 37.4]
+PASS  控制台无报错  [ok]
+
+结果：8/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+
+== probe-detail.mjs exit=0 dur=28.7s : 结果：8/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+PASS  调试钩子存在
+PASS  满级前不产渊痕 · marks=0 step=0
+PASS  按 1 扣 25 万渊痕 · 1250000 → 1000000
+PASS  按 1 洗灵石 +1 · 0 → 1
+PASS  按 1 写了日志 · 道统既定：御剑堂　入九幽魔渊 | 聚灵（换一块洗灵石）
+PASS  造出可回刷的深层
+PASS  按 2 落到第 5 层 · floor=5
+PASS  按 2 扣 50 万渊痕（1250000 − 250000 聚灵 − 500000 定渊 = 500000） · marks=500000
+PASS  渊痕不足时按 3 被拒绝 · 渊痕不足：需要 2,500,000，现有 500,000
+PASS  存档带 marks · saved=777777
+PASS  刷新后渊痕还在 · marks=777777
+PASS  刷新后最深可达层还在 · max=5
+PASS  控制台无报错
+
+13/13 通过
+
+== probe-marks.mjs exit=0 dur=11.6s : 13/13 通过
+PASS  调试钩子存在
+PASS  按 T 后面板盖上来（中心平均亮度下降） · 34.8 → 19.7
+PASS  已点节点是实心仙金（找到暖金像素） · gold=2994
+PASS  可点节点有青色描边 · teal=1292
+PASS  再按 T 恢复战斗画面（亮度回升） · 19.7 → 34.7
+PASS  控制台无报错
+
+结果：6/6 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+
+== probe-talent.mjs exit=0 dur=7.8s : 结果：6/6 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+PASS  调试钩子存在
+PASS  新号从第 0 重开始 · step=0
+PASS  按 G 后面板盖上来（平均亮度下降） · 33.7 → 17.3
+PASS  五行色神通名画出来了（暖色像素） · warm=2712
+PASS  说明文字画出来了（米白像素） · pale=918
+PASS  面板上出现未解锁行（暗色，比战斗画面更暗） · mean=17.3
+PASS  第 30 重后暖色像素更多（6 条神通全解锁） · 2712 → 4353
+PASS  再按 G 恢复战斗画面（亮度回升） · 22.2 → 33.7
+PASS  控制台无报错
+
+结果：9/9 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+
+== probe-skill.mjs exit=0 dur=7.8s : 结果：9/9 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+PASS  调试钩子存在
+PASS  新号进的是「选道统」阶段 · phase=select
+PASS  六名候选道统都在 · yujian,yushou,fenyin,xuanshui,houtu,ruijin
+PASS  默认高亮第 1 张 · pick=0
+PASS  选道统画面是很暗的遮罩（平均亮度 < 22） · mean=12.5
+PASS  高亮卡片有金色描边/文字 · gold=1489
+PASS  卡片文字画出来了（米白像素） · pale=1881
+PASS  按 → 高亮移到第 2 张 · pick=1
+PASS  按 4 直选第 4 张 · pick=3
+PASS  按下 ↓ 跨行（3 → 0 回绕到同列第一行） · pick=0
+PASS  回车后进入游戏 · phase=play
+PASS  选的道统真的生效（Digit6 → ruijin） · classId=ruijin
+PASS  进游戏就开好第一波了 · monsters=4
+PASS  画面切回战斗（平均亮度回升） · 12.5 → 27.7
+PASS  刷新后直接进游戏（不再问道统） · phase=play
+PASS  刷新后道统还在 · classId=ruijin
+PASS  控制台无报错
+
+结果：17/17 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+
+== probe-class.mjs exit=0 dur=9.7s : 结果：17/17 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+PASS  调试钩子存在
+PASS  新号从第 1 条开始（tutorialStep=0） · step=0
+PASS  底部画出了引导条（暖金边/标题像素） · bottom.gold=2190
+PASS  引导条上有米白正文 · bottom.cream=353
+PASS  引导条在底部，不压战斗区（底部仙金密度明显高于中心） · bottom=0.0369 center=0.0086
+PASS  挂机 9 秒引导自动推进（放置游戏不能靠按键才动） · 0 → 1
+PASS  按过 G 之后不再教「按 G 看神通」（停在周天图那条） · step=4
+PASS  刷新之后接着讲，不回到第 1 条 · 4 → 4
+PASS  走完后不再显示引导（底部仙金像素大幅减少） · 2249 → 71
+PASS  走完后 tutorialStep 到底（=11） · step=11 / len=11
+PASS  tutorialStep 进了存档（刷新才不重讲） · saved=11 / len=11
+PASS  控制台无报错
+
+结果：12/12 通过   截图：F:\dsh-work\zhuoxian\docs\probe-onboarding.png
+
+== probe-onboarding.mjs exit=0 dur=18.7s : 结果：12/12 通过   截图：F:\dsh-work\zhuoxian\docs\probe-onboarding.png
+  OK   A 注入一件带传奇的仙品成功 — {"legendary":"taiyi","rarity":"xian","affixes":4}
+  OK   A 钩子能读到该件 legendary 字段 — legendary=taiyi
+  OK   A 仙品仍是 4 条灵纹（传奇不占灵纹位） — affixes=4
+  OK   B 面板打开的确实是一张卡片（亮文字像素明显多于关闭态） — 关闭 325 → 打开 962
+  OK   B 传奇效果真占一行文字（有/无传奇差分 ≥ 20） — 有传奇 962 vs 无传奇 939，差 23
+  OK   C 仙品标题橙金色真的画出来了（≥20 像素） — 橙金像素=302
+  OK   D 开关面板后 legendary 没被渲染层改掉 — legendary=taiyi
+  OK   D 未知传奇 id 不崩、面板照画 — legendary=not-a-real-legendary-id 新增错误=0
+  OK   E 全程无控制台错误 — 0 条
+
+通过 9/9
+
+== probe-legendary.mjs exit=0 dur=8s : 通过 9/9
+  OK   reset() 后回到「选道统」阶段 — phase=select
+  OK   真新号的引导从第 0 条开始 — tutorialStep=0
+  OK   选完道统进入战斗，引导仍停在 0 — phase=play step=0
+  OK   底部出现「引路」金色条带 — 底部金色像素=2841
+  OK   挂机 9 秒后引导自己往前走（step ≥ 1） — step 0 → 1
+  OK   引导推进不影响战斗（等到真的击杀） — kills 0 → 1（30s 等待）
+  OK   按 G 后引导不倒退 — step 3 → 4
+  OK   事实补齐后按 G 能吃掉「按 G 看神通」这一条（step 越过 panel-skill） — kills=3 drops=3 step 3 → 4（panel-skill 的下标是 3，越过它应 ≥4）
+  OK   按 T 后引导不倒退 — step 4 → 5
+  OK   G/T 两条面板引导被吃掉（step 越过 panel-talent） — 挂机时 1 → 按完 G/T 5（panel-talent 下标 4，越过它应 ≥5）
+  OK   reload 后直接进战斗（不再选道统） — phase=play
+  OK   reload 后引导不重讲（进度不回 0） — step 5 → 5
+  OK   finishTutorial() 把引导推到末条（tutorialLength） — step=11 / tutorialLength=11
+  OK   引导走完后底部条带没有残留高亮（金色像素低） — 走完后 119（阈值 600，条带存在时实测 3000+）
+  OK   引导结束后战斗照常推进（击杀继续涨） — kills 0 → 1（30s 窗口）
+  OK   选道统画面有两行世界观文字（米白文字像素） — 米白文字像素=1884（阈值 120，实测请勿低于它太多）
+  OK   switch-floor 那条能按 → 推进（不靠 12 秒兜底） — step 8 → 9
+  OK   tier 那条能把引导推到末条（灌层 10 后 step → tutorialLength） — step=10 / tutorialLength=11
+  OK   控制台无报错（含 reset/选道统/按键/灌层全流程） — 干净
+
+通过 19/19
+
+== probe-onboarding-indep.mjs exit=0 dur=30.5s : 通过 19/19
+PASS  调试钩子存在（gems / skillRows / skillCursor）
+PASS  面板行序读得到（不写死 id） · rows=6
+PASS  第 30 重时全部神通已解锁 · 6/6
+PASS  按 G 后画面变暗（面板盖上来） · 33.7 → 22.2
+PASS  面板文字上屏（米白像素） · pale=1536
+PASS  光标初始在 (0,0) · {"skill":0,"slot":0}
+PASS  光标框真的画了（金色描边像素） · gold=627
+PASS  ↓ 移动技能光标 · {"skill":1,"slot":0}
+PASS  → 移动槽位光标 · {"skill":1,"slot":1}
+PASS  空格真的换了玉简（装配变化） · "jixie" → "kuosan"
+PASS  换完仍然合法（≤4 条、无重复）
+PASS  刷新后装配还在（改动真的入了档） · reload=["kaopi","kuosan","jixie","wanhui"]
+PASS  R 恢复自动：覆盖项被删掉
+PASS  恢复自动后装配非空（默认装配兜底） · ["kaopi","jixie","wanhui","zhuo-huo"]
+PASS  面板关闭后 → 仍然是回刷层（旧键位没被吃掉） · 1 → 1
+PASS  控制台无报错
+
+结果：16/16 通过   截图：F:\dsh-work\zhuoxian\docs\probe-gem.png
+
+== probe-gem.mjs exit=0 dur=11.6s : 结果：16/16 通过   截图：F:\dsh-work\zhuoxian\docs\probe-gem.png
+== TOTAL 177/178

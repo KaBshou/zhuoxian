@@ -1,0 +1,107 @@
+/**
+ * 掉落 —— 怪死了会不会掉东西、掉什么。
+ *
+ * 掉落是「刷宝」的入口。这个文件只决定「掉不掉、掉成什么样」，
+ * 不负责把东西放进背包（那是 `inventory.ts`），也不负责画（那是 renderer）。
+ *
+ * 两个关键参数：
+ * - **掉落率**：怪有多大概率掉落法宝。太低玩家刷半天没东西，太高就没惊喜。
+ * - **品阶加成**：怪越凶，掉落越好。这是「打精英有意义」的全部理由 ——
+ *   如果精英怪和普通怪掉一样的东西，玩家就会只刷最弱的怪。
+ */
+
+import { rollLoot, type LootParams } from './loot';
+import type { Item } from './item';
+import type { ItemBaseDef } from '../data/bases';
+import type { AffixDef } from '../data/affix-def';
+import type { MonsterRarity } from '../data/monsters';
+import { floorOfTier } from '../data/monsters';
+import { Rng } from './rng';
+
+/** 掉法宝的概率。镇守必掉 —— 不然打镇守没意义 */
+export const DROP_CHANCE: Readonly<Record<MonsterRarity, number>> = {
+  normal: 0.28,
+  magic: 0.42,
+  rare: 0.75,
+  boss: 1.0,
+};
+
+/**
+ * 品阶加成（数字越大，越容易掉高品质）。
+ *
+ * 注意它是 `loot.rarityWeights` 的乘数不是概率，
+ * 且那个函数内部封顶 `MAX_RARITY_BONUS=10`，所以这里给 4 是安全值。
+ */
+export const DROP_RARITY_BONUS: Readonly<Record<MonsterRarity, number>> = {
+  normal: 1,
+  magic: 1.7,
+  rare: 2.6,
+  boss: 4,
+};
+
+/**
+ * 这一阶掉落的法宝灵蕴（物品等级）。
+ *
+ * 按 DECISIONS「灵蕴 = 5 × 层数」：一阶 15、二阶 30、三阶 45。
+ * 正好对应黄阶（1~15）/ 玄阶（16~30）/ 地阶（31~45）的顶格 ——
+ * 也就是说每一阶的怪刚好能掉出该阶最好的东西，再往上得往下打。
+ */
+/** 灵蕴映射（BALANCE v2 表 F）：affixIlvlOfFloor = round(99×f/27)。
+ * 层 1~4 黄、5~8 玄、9~12 地、13~27 天（15/15/15/56%）。旧的 5×层 在 27 层下
+ * 最高 29，地/天两档永远洗不出来，作废。 */
+export function ilvlForFloor(floor: number): number {
+  const f = Math.max(1, Math.min(27, Math.floor(floor)));
+  return Math.max(1, Math.min(99, Math.round((99 * f) / 27)));
+}
+
+/** 兼容旧调用：按阶取该阶第一层的灵蕴 */
+export function ilvlForTier(tier: 1 | 2 | 3): number {
+  return ilvlForFloor(floorOfTier(tier));
+}
+
+export interface DropTables {
+  readonly bases: readonly ItemBaseDef[];
+  readonly affixes: readonly AffixDef[];
+}
+
+/** 掷一次掉落。没掉返回 null（大多数怪不掉东西，这是设计，不是 bug） */
+/** floor 是层数：词缀灵蕴按层算（ilvlForFloor），基底/怪表按阶查（tierOfFloor）。
+ *  之前参数收 tier，调用方传的却是层，层 1~9 全掉 ilvl 4，玄/地/天词缀永远洗不出。 */
+export function rollMonsterDrop(
+  defId: string,
+  floor: number,
+  rarity: MonsterRarity,
+  rng: Rng,
+  tables: DropTables,
+): Item | null {
+  if (!Number.isFinite(DROP_CHANCE[rarity])) return null;
+  if (!rng.chance(DROP_CHANCE[rarity])) return null;
+
+  const params: LootParams = {
+    ilvl: ilvlForFloor(floor),
+    rarityBonus: DROP_RARITY_BONUS[rarity],
+  };
+  const result = rollLoot(rng, tables.bases, tables.affixes, params);
+  if (!result || !result.item) return null;
+
+  // 名字带上怪的出处，玩家会记住"这只怪掉过好东西"
+  const item = result.item;
+  return { ...item, name: item.name, uid: `${item.uid}-${defId.slice(0, 4)}` };
+}
+
+/** 地上的一件掉落物 */
+export interface GroundDrop {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly item: Item;
+  /** 活了多久（秒）。UI 用它做"上下浮动 + 光晕呼吸" */
+  age: number;
+  /** 已经捡走了（等渲染完这一帧再删） */
+  picked: boolean;
+}
+
+/** 掉落物在地上待多久才被自动拾取（秒）。给玩家"我看见它掉了"的时间 */
+export const PICKUP_DELAY = 0.9;
+/** 地上最多留几件（超了最早的立刻消失，防止挂机几小时地上堆成垃圾场） */
+export const MAX_GROUND_DROPS = 24;

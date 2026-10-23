@@ -1,0 +1,294 @@
+{
+  "generatedAt": "2026-10-22T11:24:52.664Z",
+  "params": {
+    "seeds": 3,
+    "uses": 6,
+    "minutes": 900,
+    "marksPerMin": 8881,
+    "baseSeed": 20261021,
+    "seedStep": 1013,
+    "cost": 1000000,
+    "xiTrials": 30
+  },
+  "usesIn3h": 1,
+  "minutesPerUse": 112.59993244004053,
+  "seeds": [
+    {
+      "seed": 20261021,
+      "maxed": true,
+      "minutesToMax": 391.94111110821257,
+      "power0": 3622.732362885129,
+      "bestName": "宝品·木牌佩",
+      "bestSlot": "pendant",
+      "bestRarity": "bao",
+      "bestIlvl": 99,
+      "bestAffixCount": 3,
+      "bestAffix0": 32.415,
+      "curve": [
+        {
+          "k": 0,
+          "power": 3622.732362885129,
+          "bestItemPower": 187.66,
+          "affixSum": 32.415,
+          "delta": 0,
+          "sameItem": true
+        },
+        {
+          "k": 1,
+          "ok": true,
+          "reason": "",
+          "power": 3803.488235515808,
+          "bestItemPower": 222.0516,
+          "affixSum": 103.3474,
+          "delta": 0.049894901009669285,
+          "sameItem": true
+        },
+        {
+          "k": 2,
+          "ok": true,
+          "reason": "",
+          "power": 4022.650036335691,
+          "bestItemPower": 275.2632,
+          "affixSum": 115.91242,
+          "delta": 0.11039117257121059,
+          "sameItem": true
+        },
+        {
+          "k": 3,
+          "ok": true,
+          "reason": "",
+          "power": 4295.390505401539,
+          "bestItemPower": 607.90668,
+          "affixSum": 161.678946,
+          "delta": 0.18567701810042278,
+          "sameItem": true
+        },
+        {
+          "k": 4,
+          "ok": true,
+          "reason": "",
+          "power": 3060.7790274495324,
+          "bestItemPower": 680.515216,
+          "affixSum": 208.445172,
+          "delta": -0.1551186450295929,
+          "sameItem": true
+        },
+        {
+          "k": 5,
+          "ok": true,
+          "reason": "",
+          "power": 3072.9488994495323,
+          "bestItemPower": 856.6169808000001,
+          "affixSum": 332.10979360000005,
+          "delta": -0.15175933752880147,
+          "sameItem": true
+        },
+        {
+          "k": 6,
+          "ok": true,
+          "reason": "",
+          "power": 3076.0220994495326,
+          "bestItemPower": 1103.27139504,
+          "affixSum": 454.27953168000005,
+          "delta": -0.15091102755385405,
+          "sameItem": true
+        }
+      ],
+      "affixGrow": 14.014485012494218,
+      "designedDelta": 0.046535593508877836,
+      "xiSingle": {
+        "median": -0.14929793350918494,
+        "mean": -0.144658416105126,
+        "min": -0.1551186450295929,
+        "max": 0.0032366288274914327
+      }
+    },
+    {
+      "seed": 20262034,
+      "maxed": true,
+      "minutesToMax": 331.70166666464473,
+      "power0": 3342.1316884267476,
+      "bestName": "灵品·逐电飞剑",
+      "bestSlot": "sword",
+      "bestRarity": "ling",
+      "bestIlvl": 99,
+      "bestAffixCount": 2,
+      "bestAffix0": 301.1,
+      "curve": [
+        {
+          "k": 0,
+          "power": 3342.1316884267476,
+          "bestItemPower": 132.1104,
+          "affixSum": 301.1,
+          "delta": 0,
+          "sameItem": true
+        },
+        {
+          "k": 1,
+          "ok": true,
+          "reason": "",
+          "power": 3359.3438452267474,
+          "bestItemPower": 146.44872,
+          "affixSum": 432.406,
+          "delta": 0.005150053440324522,
+          "sameItem": true
+        },
+        {
+          "k": 2,
+          "ok": true,
+          "reason": "",
+          "power": 3358.8304554667475,
+          "bestItemPower": 146.805986,
+          "affixSum": 429.72709000000003,
+          "delta": 0.004996441970801144,
+          "sameItem": true
+        },
+        {
+          "k": 3,
+          "ok": true,
+          "reason": "",
+          "power": 3377.9790423787476,
+          "bestItemPower": 163.0137048,
+          "affixSum": 634.4725400000001,
+          "delta": 0.010725895115423949,
+          "sameItem": true
+        },
+        {
+          "k": 4,
+          "ok": true,
+          "reason": "",
+          "power": 3402.8722053643473,
+          "bestItemPower": 182.69831624,
+          "affixSum": 726.0813820000001,
+          "delta": 0.018174184203433447,
+          "sameItem": true
+        },
+        {
+          "k": 5,
+          "ok": true,
+          "reason": "",
+          "power": 3447.4031892456273,
+          "bestItemPower": 216.869507112,
+          "affixSum": 1003.8798926000002,
+          "delta": 0.031498310250136954,
+          "sameItem": true
+        },
+        {
+          "k": 6,
+          "ok": true,
+          "reason": "",
+          "power": 4891.646136502472,
+          "bestItemPower": 423.05687924559993,
+          "affixSum": 1225.5943603800001,
+          "delta": 0.4636305784842164,
+          "sameItem": true
+        }
+      ],
+      "affixGrow": 4.070389772102292,
+      "designedDelta": 0.004230520553382394,
+      "xiSingle": {
+        "median": -0.00881869739066873,
+        "mean": 0.05778652485189781,
+        "min": -0.01410173517794136,
+        "max": 0.6861201959891102
+      }
+    },
+    {
+      "seed": 20263047,
+      "maxed": true,
+      "minutesToMax": 385.63111110830437,
+      "power0": 5224.498482379024,
+      "bestName": "仙品·龙鳞护腕",
+      "bestSlot": "bracer",
+      "bestRarity": "xian",
+      "bestIlvl": 99,
+      "bestAffixCount": 4,
+      "bestAffix0": 154.8188,
+      "curve": [
+        {
+          "k": 0,
+          "power": 5224.498482379024,
+          "bestItemPower": 212.38799999999998,
+          "affixSum": 154.8188,
+          "delta": 0,
+          "sameItem": true
+        },
+        {
+          "k": 1,
+          "ok": true,
+          "reason": "",
+          "power": 5821.076445576194,
+          "bestItemPower": 244.91929999999996,
+          "affixSum": 141.08094000000003,
+          "delta": 0.11418856091341283,
+          "sameItem": true
+        },
+        {
+          "k": 2,
+          "ok": true,
+          "reason": "",
+          "power": 6655.186197883648,
+          "bestItemPower": 290.92344,
+          "affixSum": 243.20457200000004,
+          "delta": 0.2738421152441693,
+          "sameItem": true
+        },
+        {
+          "k": 3,
+          "ok": true,
+          "reason": "",
+          "power": 7775.163170470763,
+          "bestItemPower": 339.383592,
+          "affixSum": 313.09274360000006,
+          "delta": 0.48821235123227963,
+          "sameItem": true
+        },
+        {
+          "k": 4,
+          "ok": true,
+          "reason": "",
+          "power": 9382.445209982947,
+          "bestItemPower": 420.0526896,
+          "affixSum": 368.6055666800001,
+          "delta": 0.7958556676066951,
+          "sameItem": true
+        },
+        {
+          "k": 5,
+          "ok": true,
+          "reason": "",
+          "power": 11628.875289554298,
+          "bestItemPower": 512.1175164800001,
+          "affixSum": 400.5645366840001,
+          "delta": 1.2258357101214015,
+          "sameItem": true
+        },
+        {
+          "k": 6,
+          "ok": true,
+          "reason": "",
+          "power": 14900.070179260565,
+          "bestItemPower": 647.5724814240001,
+          "affixSum": 673.3272476892002,
+          "delta": 1.8519618159551423,
+          "sameItem": true
+        }
+      ],
+      "affixGrow": 4.349131033758176,
+      "designedDelta": 0.11621628331312832,
+      "xiSingle": {
+        "median": -0.3111857079949002,
+        "mean": -0.27494391323185163,
+        "min": -0.34786910459603815,
+        "max": 0.00899449771926855
+      }
+    }
+  ],
+  "medians": {
+    "use1": 0.049894901009669285,
+    "use2": 0.11039117257121059,
+    "use3": 0.18567701810042278,
+    "use6": 0.4636305784842164,
+    "xiSingle": -0.14929793350918494
+  }
+}

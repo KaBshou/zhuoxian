@@ -1,0 +1,67 @@
+﻿# BATCH START 2026-10-22 20:21:15
+===== probe-battle ===== EXIT=1 DUR=21s
+  - 玩家挨过打（累计入伤 > 0） —— damageTaken=0 hp=130/130
+  - 怪在往玩家靠近（400ms 内同一只怪变近了，或已经贴到攻击距离） —— t1=[[1,261,30],[2,278,38],[3,301,40],[4,163,34]] t1b=[[1,261],[2,278],[3,301],[4,163]]
+  - 掉落了法宝 —— dropsFound=0
+  - 背包或身上收到了东西（法宝/通货/玉简任一） —— bag=0 equip=["sword"]
+  - 修为累积到了角色上 —— step=0 xp=0
+  - 画面在变化（不是静态一张图） —— 26277 → 26277
+===== probe-save ===== EXIT=1 DUR=20.2s
+
+结果：24/26 通过   截图：F:\dsh-work\zhuoxian\docs\probe-save.png
+
+失败项：
+ - 关页面/导航时会自动存档（pagehide flush） —— saveRawLen=0
+ - 玩 8 秒后真的杀了怪 —— kills=0
+===== probe-floor ===== EXIT=1 DUR=3.8s
+FAIL  按 → 有反馈日志（不是静默无反应）  [""]
+PASS  刷新后层数与可选上限都还在档里  [{"floor":1,"max":1}]
+PASS  画布还在（截图有效）  [true]
+PASS  控制台无报错  [ok]
+
+结果：10/11 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+===== probe-breakdown ===== EXIT=1 DUR=32.5s
+FAIL  打开面板后底板盖住了地板（平均亮度下降）  [off 7.9 → on 7.9]
+FAIL  面板里有文字像素（亮像素明显增加）  [10 → 10]
+FAIL  再按一次能关掉（区域恢复）  [on 7.9 → off 7.3]
+PASS  控制台无报错  [ok]
+
+结果：2/7 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+===== probe-detail ===== EXIT=1 DUR=57.9s
+PASS  卡片文字真的画出来了（低饱和亮像素 ≥40）  [关闭态 344 → 打开态 344]
+FAIL  详情开着战斗仍在推进（不是暂停画面）  [击杀 0→0　波次 1→1]
+FAIL  再按一次能关掉  [on 14.4 → off 14.0]
+PASS  控制台无报错  [ok]
+
+结果：5/8 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+===== probe-marks ===== EXIT=1 DUR=11.6s
+ - 按 1 扣 20 万渊痕 · 600000 → 600000
+ - 按 1 洗灵石 +1 · 0 → 0
+ - 按 1 写了日志
+ - 按 2 落到第 5 层 · floor=1
+ - 按 2 扣了 40 万渊痕（600000-200000-400000=0） · marks=600000
+ - 深渊痕不足时按 3 被拒绝
+===== probe-talent ===== EXIT=1 DUR=7.8s
+PASS  控制台无报错
+
+结果：3/6 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+ - 按 T 后面板盖上来（中心平均亮度下降） · 13.1 → 13.1
+ - 已点节点是实心仙金（找到暖金像素） · gold=553
+ - 再按 T 恢复战斗画面（亮度回升） · 13.1 → 12.8
+===== probe-skill ===== EXIT=1 DUR=7.8s
+PASS  控制台无报错
+
+结果：6/9 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+ - 按 G 后面板盖上来（平均亮度下降） · 13.1 → 13.1
+ - 第 30 重后暖色像素更多（6 条神通全解锁） · 844 → 838
+ - 再按 G 恢复战斗画面（亮度回升） · 12.8 → 12.8
+===== probe-class ===== EXIT=0 DUR=9.8s
+PASS  画面切回战斗（平均亮度回升） · 12.1 → 28.3
+PASS  刷新后直接进游戏（不再问道统） · phase=play
+PASS  刷新后道统还在 · classId=ruijin
+PASS  控制台无报错
+
+结果：17/17 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+===== run-timeline ===== EXIT=0 DUR=5.7s
+===== craft-econ ===== EXIT=0 DUR=1.3s
+# BATCH END 2026-10-22 20:24:14

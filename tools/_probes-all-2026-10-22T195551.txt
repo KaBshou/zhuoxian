@@ -1,0 +1,163 @@
+﻿# 全探针统一复跑 · 2026-10-22 19:55:51 · 探针=8
+
+===== probe-battle ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-battle.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-save ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-save.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-floor ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-floor.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-breakdown ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-breakdown.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-detail ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-detail.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-marks ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-marks.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-talent ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-talent.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+===== probe-skill ===== EXIT=1
+node:internal/modules/cjs/loader:1568
+  throw err;
+  ^
+System.Management.Automation.RemoteException
+Error: Cannot find module 'F:\dsh-work\zhuoxian\tools\probe-skill.mjs'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+    at Module._load (node:internal/modules/cjs/loader:1341:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+System.Management.Automation.RemoteException
+Node.js v24.22.0
+
+# 结束 2026-10-22 19:55:52
