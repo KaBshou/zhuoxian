@@ -122,6 +122,8 @@ export class BattleRenderer {
   private savePaint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null = null;
   /** 成就（按 J，D87）：24h 缺口里「有终点」的收集。看不见的进度等于不存在 */
   private showAchievements = false;
+  /** 音效静音（D181）。权威在 main.ts 的 audio engine，这里只持本帧副本画按钮高亮 */
+  private soundMuted = false;
   // 光标只在这里存「本帧副本」：权威在 main.ts（与图鉴/神通同一条纪律，
   // 免得面板与 session 两处各记一份、翻着翻着对不上）。
   private achievementCursor = 0;
@@ -252,6 +254,15 @@ export class BattleRenderer {
   }
 
   /** 某个面板现在是否开着（main.ts 的 activatePanel 据此判断"这次是开还是关"） */
+  /** 同步静音状态（main.ts 每次切换后调一次） */
+  setSoundMuted(muted: boolean): void {
+    this.soundMuted = muted === true;
+  }
+
+  get soundMutedState(): boolean {
+    return this.soundMuted;
+  }
+
   panelOpen(id: HudButtonId): boolean {
     switch (id) {
       case 'detail':
@@ -270,6 +281,10 @@ export class BattleRenderer {
         return this.showAchievements;
       case 'save':
         return this.savePaint !== null;
+      case 'sound':
+        // 音效不是面板：它没有遮罩、不参与互斥，所以永远算「没开」。
+        // 不出现在 activeButtons 里会让玩家看不出自己关没关，那一步在 activeButtons 处理。
+        return false;
     }
   }
 
@@ -307,6 +322,7 @@ export class BattleRenderer {
     if (this.showSkill) on.push('skill');
     if (this.showCodex) on.push('codex');
     if (this.showAchievements) on.push('achievement');
+    if (this.soundMuted) on.push('sound');
     if (this.showMarksPanel) on.push('marks');
     if (this.savePaint !== null) on.push('save');
     return on;

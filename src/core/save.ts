@@ -37,6 +37,8 @@ export interface PlayerSave {
    * **必须入档** —— 它不入档就等于每次刷新吞掉玩家攒的定向工具。
    */
   readonly fragments?: { readonly metal?: number; readonly fire?: number; readonly water?: number };
+  /** D181：音效静音（玩家偏好，可选；老档没有 = 不静音） */
+  readonly muted?: boolean;
   readonly equipment: Partial<Record<string, Item>>;
   readonly bag: readonly Item[];
 }
@@ -136,6 +138,7 @@ export function serialize(input: {
       talentIds: ch.talentIds ? [...ch.talentIds] : undefined,
       marks: Math.max(0, Math.floor(ch.marks ?? 0)),
       diveLockUnlocked: ch.diveLockUnlocked === true,
+      muted: ch.muted === true,
       fragments: {
         metal: Math.max(0, Math.floor(ch.fragments?.metal ?? 0)),
         fire: Math.max(0, Math.floor(ch.fragments?.fire ?? 0)),
@@ -208,6 +211,7 @@ export function deserialize(raw: unknown): { ok: true; state: SaveState } | { ok
         // 这条曾经真的漏了（探针「刷新后渊痕还在」红），所以这里宁可按 0 兜底也要显式写出来。
         marks: typeof p.marks === 'number' && Number.isFinite(p.marks) ? Math.max(0, Math.floor(p.marks)) : 0,
         diveLockUnlocked: p.diveLockUnlocked === true,
+        muted: p.muted === true,
         // 五行碎片（D104）：与 marks 同理，逐字段重建，漏了就是静默清零。
         fragments: sanitizeFragments(p.fragments),
         equipment: p.equipment as Partial<Record<string, Item>>,

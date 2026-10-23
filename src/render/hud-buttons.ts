@@ -24,7 +24,8 @@ export type HudButtonId =
   | 'codex'
   | 'achievement'
   | 'marks'
-  | 'save';
+  | 'save'
+  | 'sound';
 
 export interface HudButton {
   readonly id: HudButtonId;
@@ -70,6 +71,9 @@ export function layoutHudButtons(canvasW: number, canvasH = 540): readonly HudBu
     { id: 'achievement', label: '成就', key: 'J' },
     { id: 'marks', label: '渊痕', key: 'M' },
     { id: 'save', label: '存档', key: 'S' },
+    // 唯一一个**不是开关面板**的按钮：切换音效静音（D181）。
+    // 它仍然排在同一条按钮条里，因为「玩家想关声音时能不能找到」比「语义是否纯」重要。
+    { id: 'sound', label: '音效', key: 'V' },
   ];
   const n = specs.length;
   const avail = Math.max(0, canvasW - EDGE * 2);

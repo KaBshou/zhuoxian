@@ -9,7 +9,7 @@ import { hitTestHudButtons, layoutHudButtons, toCanvasPoint, type HudButtonId } 
 // 顺序必须与底部提示行、以及 hud-buttons.ts 的按钮表一致。
 // 加按钮时这里也要加 —— 漏了会立刻红（D92 的设计意图：按钮条是手机上唯一入口，
 // 少一个就等于「这个面板手机上打不开」）。
-const ALL_IDS: readonly HudButtonId[] = ['detail', 'breakdown', 'talent', 'skill', 'codex', 'achievement', 'marks', 'save'];
+const ALL_IDS: readonly HudButtonId[] = ['detail', 'breakdown', 'talent', 'skill', 'codex', 'achievement', 'marks', 'save', 'sound'];
 
 describe('布局：任何画布宽度下都不许画到屏幕外', () => {
   it('全部按钮都在 [0, canvasW] 内（960 设计分辨率）', () => {
@@ -30,10 +30,10 @@ describe('布局：任何画布宽度下都不许画到屏幕外', () => {
     expect(960 - (bs[bs.length - 1].x + bs[bs.length - 1].w)).toBe(14);
   });
 
-  it('按钮之间不重叠，且顺序与底部提示行一致（E D T G K J M S）', () => {
+  it('按钮之间不重叠，且顺序与底部提示行一致（E D T G K J M S V）', () => {
     const bs = layoutHudButtons(960);
     expect(bs.map((b) => b.id)).toEqual(ALL_IDS);
-    expect(bs.map((b) => b.key)).toEqual(['E', 'D', 'T', 'G', 'K', 'J', 'M', 'S']);
+    expect(bs.map((b) => b.key)).toEqual(['E', 'D', 'T', 'G', 'K', 'J', 'M', 'S', 'V']);
     for (let i = 1; i < bs.length; i++) expect(bs[i].x).toBeGreaterThan(bs[i - 1].x + bs[i - 1].w);
   });
 });

@@ -31,9 +31,11 @@ import {
   sessionAchievementFacts,
   syncAchievements,
   tickSession,
+  drainSoundCues,
   type GameSession,
 } from './core/session';
 import { createLocalStorageAdapter } from './core/storage';
+import { createAudioEngine } from './core/audio';
 import { FRAGMENT_TERM, type FragmentElement } from './data/fragments';
 import {
   advanceTutorial,
@@ -123,6 +125,17 @@ const autosaver = new Autosaver(storage, () => session, TABLES);
 const loaded = autosaver.load();
 
 /**
+ * 音效引擎（D181）。
+ *
+ * 三个约束决定它的建法：
+ * - **AudioContext 懒创建**：页面没被点过之前建了也发不出声，Chrome 还会打警告；
+ *   引擎内部等第一次真播放（或 unlock）时才建；
+ * - **静音读档**：玩家上次关掉音效，这次打开不能自己响（存档里的 `muted`）；
+ * - 引擎自己吞掉所有异常（没声卡/被策略拦），所以这里不用 try。
+ */
+const audio = createAudioEngine({ muted: loaded ? loaded.session.character.muted === true : false });
+
+/**
  * 两个阶段：新号先选道统（D1：6 职业，开局选一个、之后不能转职），有档直接进。
  *
  * 为什么阶段要显式写出来：选道统时那局占位会话还没开始，如果照着跑
@@ -204,6 +217,7 @@ const PANEL_NAME: Record<HudButtonId, string> = {
   achievement: '成就',
   marks: '渊痕价目表',
   save: '存档',
+  sound: '音效',
 };
 
 /** 打开时附带的一句"再按什么关"，按键与按钮共用 */
@@ -216,9 +230,15 @@ const PANEL_CLOSE_HINT: Record<HudButtonId, string> = {
   achievement: '（再按 J 或点按钮关闭）',
   marks: '（再按 M 或点按钮关闭）',
   save: '（再按 S 或点按钮关闭）',
+  sound: '',
 };
 function activatePanel(id: HudButtonId): void {
   if (phase !== 'play') return;
+  // 音效不是面板：不参与「一次只开一个」的互斥，也不该顺手关掉玩家正开着的面板。
+  if (id === 'sound') {
+    toggleSound();
+    return;
+  }
   // 一次只许开一个面板：先记下"这个是不是本来开着"，再全关，最后决定开不开。
   // 不这么做的话点两个按钮就会出现两块面板叠着盖住一半 —— 玩家以为界面坏了（手机上尤其容易连点）。
   const wasOpen = renderer.panelOpen(id);
@@ -388,6 +408,29 @@ function doSaveAction(action: SavePanelAction): void {
 }
 
 /**
+ * 切换音效静音（D181）。
+ *
+ * 三处必须同步：引擎（真正发不发）、存档（刷新后还算数）、渲染器（按钮高亮）。
+ * 只改引擎的话，玩家刷新一次声音又回来了 —— 这类小事最招骂。
+ */
+function toggleSound(): void {
+  const muted = audio.toggleMute();
+  session.character = { ...session.character, muted };
+  renderer.setSoundMuted(muted);
+  autosaver.saveNow();
+  session.log.push({
+    text: muted ? '音效已关闭' : '音效已开启',
+    color: muted ? '#6d665c' : '#8eeae2',
+    age: 0,
+  });
+  // 开的时候顺手解锁并播一声：让玩家立刻听到「确实开了」，不用等下一次打怪。
+  if (!muted) {
+    audio.unlock();
+    audio.play('ui');
+  }
+}
+
+/**
  * 鼠标 / 触屏。
  *
  * 为什么这件事不是"锦上添花"：手机上没有 K/T/G/M/D/E 这些键，连**开局确认道统都要 Enter** ——
@@ -398,6 +441,8 @@ function doSaveAction(action: SavePanelAction): void {
  * 直接用 clientX 去比画布坐标，手指点在右半边的按钮上会判到左半边。
  */
 canvas.addEventListener('pointerdown', (e) => {
+  // 鼠标/触屏也是用户手势：手机上没有键盘，只能靠这一下解锁音频。
+  audio.unlock();
   const rect = canvas.getBoundingClientRect();
   const pt = toCanvasPoint(e.clientX, e.clientY, rect, LOGICAL_W, LOGICAL_H);
   if (phase === 'select') {
@@ -483,6 +528,8 @@ if (loaded && loaded.offlineSeconds >= OFFLINE_MIN_SECONDS) {
 
 // ── 3 & 4. 主循环 + 自动存档 ───────────────────────────────
 const renderer = new BattleRenderer(canvas);
+// 读档里可能是静音状态，渲染器一开始就要知道（按钮高亮 = 静音中）
+renderer.setSoundMuted(audio.muted);
 
 /**
  * 新手引导的运行时状态。
@@ -524,6 +571,10 @@ const loop = new Loop(
       return;
     }
     tickSession(session, dt);
+    // 音效（D181）：core 只把「发生了什么」塞进 soundCues，这里每帧取走播放。
+    // 放在 tick 之后、渲染之前 —— 音画同一帧对齐，玩家才不会觉得「先响后打」。
+    const cues = drainSoundCues(session);
+    for (const cue of cues) audio.play(cue);
     autosaver.tick(dt);
     tickTutorial(dt);
     // 闭关摘要显示 12 秒后自然淡出（渲染器只看 age）
@@ -549,6 +600,8 @@ loop.start();
 // ── 3.5 回刷选层（D36-B）────────────────────────────────────
 // 左右方向键回刷已到过的层。只在「可回刷」时才响应，越界会被 setFloor 拒绝并给一条日志。
 window.addEventListener('keydown', (e) => {
+  // 任何按键都算一次用户手势：音频引擎借此解锁（浏览器不给「没交互就自动播放」）。
+  audio.unlock();
   // ── 选道统阶段：方向键/数字键选，Enter 确认 ──
   if (phase === 'select') {
     const digit = indexFromDigit(e.code, CLASSES.length);
@@ -718,6 +771,11 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyS') {
     e.preventDefault();
     activatePanel('save');
+    return;
+  }
+  if (e.code === 'KeyV') {
+    e.preventDefault();
+    activatePanel('sound');
     return;
   }
   if (e.code === 'KeyM') {
@@ -915,6 +973,10 @@ declare global {
       stageImportText(text: string): { readonly ok: boolean; readonly message: string };
       /** 真正执行导入（覆盖当前 session） */
       confirmImport(): boolean;
+      /** 音效状态（D181 探针用） */
+      audio(): { readonly muted: boolean; readonly played: number; readonly failed: number };
+      /** 切换静音（走 UI 同一条路径） */
+      toggleSound(): boolean;
       /** 引导走到第几条（探针验收用；0 = 刚开局） */
       readonly tutorialStep: number;
       /** 引导总条数（探针断言「走完」时要跟这个数比，不许写死 9/10） */
@@ -1160,6 +1222,11 @@ if (import.meta.env.DEV) {
         // 必须单独给 visible：关闭态与 idle 态的 phase 都是 'idle'，探针分不出来
         visible: renderer.savePanelVisible,
       };
+    },
+    audio: () => ({ muted: audio.muted, played: audio.played, failed: audio.failed }),
+    toggleSound: () => {
+      toggleSound();
+      return audio.muted;
     },
     exportSaveText: () => encodeTransfer(sessionToSave(session)),
     stageImportText: (text: string) => {

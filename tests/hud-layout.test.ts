@@ -46,7 +46,7 @@ const buttons = layoutHudButtons(W, H);
 
 describe('HUD 布局不重叠（D176）', () => {
   it('有 8 个按钮（法宝/详解/周天/神通/图鉴/成就/渊痕/存档）', () => {
-    expect(buttons).toHaveLength(8);
+    expect(buttons).toHaveLength(9);
     expect(buttons.map((b) => b.id)).toEqual([
       'detail',
       'breakdown',
@@ -56,6 +56,7 @@ describe('HUD 布局不重叠（D176）', () => {
       'achievement',
       'marks',
       'save',
+      'sound',
     ]);
   });
 

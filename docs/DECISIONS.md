@@ -2800,3 +2800,26 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 
 **验收**：`tests/session.test.ts` 3 条（普通突破文案 / 满级不写「81」且含「按 N」/ 脏值不产生 NaN）+ `tests/hud-layout.test.ts` 5 条（未满级为 null / 满级文案 / 冷却中为 null / 周目号 / 文案不含误导字样）。浏览器侧另用像素验证：把 `session.character.step` 置 80 后右列金色像素 234 → 633（多出渊痕与轮回两行），设 `reviveCooldown=3` 后回到 234。
 **纪律**：**终点必须有出口提示**。一个系统「存在」但玩家在正确时刻看不到它，等于不存在（与 D87 图鉴、D90 渊痕价目表同源）。
+### D181 音效系统（WebAudio 现场合成，14 个音效，静音入档）
+
+**问题**：GDD §6 要求 6 个 WebAudio 现场合成音效，全项目 `src/**` 里 `AudioContext|oscillator|gainNode` **零命中** —— 从来没做过。挂机刷宝游戏里「打中了没有」全靠画面抖动，是「完整感」上最直观的一个空洞。
+
+**做法**：`src/core/audio.ts` 一个模块解决，不引任何音频资源文件。
+
+- 14 个音名（hit / crit / kill / boss / drop / currency / gem / legendary / levelup / ascend / death / turbid / ui / deny），每个是一组 `SoundRecipe`（频率、滑到的频率、时长、波形、增益、是否叠噪声、延迟）。方波 = 受击/暴击（硬），三角波 = 掉落/突破（软），上行音 = 得到，下行 = 失去，多音层用 `delay` 排琶音（暴击三声、传奇五声）。
+- **节奏保护**：按音名节流（hit 55ms / kill 85ms / drop 150ms / ui 60ms），且会话层 `MAX_SOUND_CUES = 6` 每帧上限，满了**丢新的保先到的**（先到的通常是「打死怪」这种大事）。
+- **AudioContext 懒创建**：页面没被点过时建了也发不出声，还会让 Chrome 打警告；`ctxTried` 保证只试一次。`suspended` 时 `void resume()`。**任何异常都吞进 `failed` 计数** —— 音效坏了不该让游戏停。
+- **静音存进角色存档**（`CharacterState.muted`），不是另开 localStorage key：存档只有角色这一处能存玩家状态，再开一个 key 就是第二套口径（D101 族）。
+- `src/core/session.ts` 只负责**排队**（`soundCues` 运行时态，不入档），`src/main.ts` 每帧 `drainSoundCues` 后交给引擎播 —— 播放器不碰游戏逻辑，游戏逻辑不碰 AudioContext。
+- 按钮条加第 9 个按钮「音效 V」，静音时金色边框常亮；`activatePanel` 里 `sound` 分支**走最前面**，因为音效不是面板，不许顺手把玩家正开着的面板关掉。
+- `keydown` / `pointerdown` 首行 `audio.unlock()`：浏览器要求手势解锁音频，这是唯一保证「第一声真的响」的位置。
+
+**验收（本次真跑，2026-10-24 03:27）**：
+
+- `npx tsc --noEmit` **0**
+- `npx vitest run` **822 passed / 53 files**（新增 `tests/audio.test.ts` 18 条）
+- `node tools\probe-audio.mjs`（CDP 9389，真机）**15/15**：钩子存在 / 新号不静音 / 战斗 6 秒 `played=9` / `failed=0` / 按钮条最后一个 id 是 `sound` / 按 V 后 `muted=true` / 日志含「音效已关闭」/ 存档文本含 `"muted": true` / **静音时按钮金框 0 → 123 像素** / 静音期间 `played` 9 → 9 不再涨 / reload 后仍静音且 `character.muted=true` / 钩子切回 `false` / 打开后继续播 `played=4` / 控制台零报错。
+
+**探针只证机制，不证听感**：无声卡的 CI 里 `AudioContext` 一样能跑，「好不好听」只有耳朵能判断。所以探针钉的是「引擎被调用 / 状态入档 / 按钮高亮」，不钉「响没响」。
+
+**没做的**：音量滑块（引擎已支持 `setVolume`，但玩家没有入口，属可见奖励缺口，记账）、背景音乐（挂机游戏长听 2 BGM 不如无 BGM，暂不做）。

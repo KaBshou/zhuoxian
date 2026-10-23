@@ -21,6 +21,7 @@ import {
   type MonsterInPlay,
 } from './battle';
 import { characterStats, createCharacter, gainXp, type CharacterState } from './character';
+import type { SoundName } from './audio';
 import { CURRENCY_SHARE, rollCurrency, type CurrencyId } from '../data/currency';
 import { GEM_SHARE, rollGemDrop } from '../data/gem-drops';
 import { runCraftPlan, type CraftPlan } from './crafting';
@@ -92,6 +93,13 @@ export interface LogLine {
 
 /** 日志最多留几行：多了会糊住画面 */
 export const MAX_LOG_LINES = 6;
+/**
+ * 一帧内最多留几个音效 cue（音效引擎自己还有按名的节流，这里是第二道闸）。
+ *
+ * 为什么要在 core 里就设上限：放置游戏满级后一秒能杀十几只怪，
+ * 逐个播 = 白噪音；而且 main.ts 每帧 drain 一次，堆太多会让音效滞后于画面。
+ */
+export const MAX_SOUND_CUES = 6;
 
 /** 清场之后隔多久开下一波（秒）。给玩家「喘一口气 + 看清掉落」的时间 */
 export const WAVE_GAP = 0.9;
@@ -192,6 +200,13 @@ export interface GameSession {
   floorMinutes: number;
   /** 累计突破次数 */
   breakthroughs: number;
+  /**
+   * 待播音效队列（运行时、不入档）。
+   *
+   * core 只写「发生了什么」，不认识 AudioContext —— 主循环 drain 之后交给渲染侧播。
+   * 这样离线结算/数值模拟跑 session 时既不会发声、也不会创建音频上下文（Node 里根本没有）。
+   */
+  soundCues: SoundName[];
   /** 货币袋：通货计数（不占 40 格背包，记账式） */
   pocket: Record<CurrencyId, number>;
   /** 掉落的玉简（id 计数，拾取即收入） */
@@ -328,6 +343,7 @@ export function createSession(opts: SessionOptions): GameSession {
     floorKills: 0,
     floorMinutes: 0,
     breakthroughs: 0,
+    soundCues: [],
     pocket: { huang: 0, mie: 0, xi: 0 },
     gemPouch: {},
     firstClearedFloors: [],
@@ -446,6 +462,7 @@ export function tickSession(s: GameSession, dt: number): void {
   for (const e of s.battle.events) {
     if (e.kind === 'player-died') {
       pushLog(s, '气血枯竭，浊脉重凝', '#e05a3a');
+      pushCue(s, 'death');
       // 死亡 ≠ 清场。旧逻辑里死亡清怪 → isCleared 立即为真 → 白送一波进度，
       // 模拟里 10 分钟死 17 次却推了 27 波。现在：重开本波，不给进度。
       s.battle.deathCleanup = false;
@@ -502,6 +519,7 @@ export function tickSession(s: GameSession, dt: number): void {
     } else if (e.kind === 'player-hit' || e.kind === 'player-crit') {
       // 伤害浮字：暴击金色更大，普攻灰白 —— 玩家不看数字也能感到"这一下重"
       const crit = e.kind === 'player-crit';
+      pushCue(s, crit ? 'crit' : 'hit');
       pushFloat(s, {
         text: crit ? `${e.amount}!` : String(e.amount),
         // 抖动必须**确定性**：浮字是纯显示，吃 rng 会把「第几条随机数」整体错位，
@@ -523,6 +541,7 @@ export function tickSession(s: GameSession, dt: number): void {
       });
     } else if (e.kind === 'player-kill' && e.monster) {
       const killed = e.monster;
+      pushCue(s, killed.rarity === 'boss' ? 'boss' : 'kill');
       // 累计与本层击杀：按层真实击杀率（BALANCE §21.11）的唯一实测来源
       s.kills += 1;
       s.floorKills += 1;
@@ -601,6 +620,7 @@ export function tickSession(s: GameSession, dt: number): void {
         // 满级那一下要单独说：它不再是「又一重」，而是「这条线到头了，另一条线开始了」。
         // 玩家如果不知道这里按 N 能轮回，他会以为游戏卡在满级不动（D180）。
         pushLog(s, breakthroughLogText(s.character.step), '#d4a13c');
+        pushCue(s, s.character.step >= TOTAL_STEPS - 1 ? 'ascend' : 'levelup');
         pushFloat(s, {
           text: s.character.step >= TOTAL_STEPS - 1 ? '渡劫圆满！' : '突破！',
           x: BATTLE_W / 2,
@@ -652,6 +672,7 @@ export function tickSession(s: GameSession, dt: number): void {
         if (cur) {
           s.pocket[cur.id] = (s.pocket[cur.id] ?? 0) + 1;
           s.diag.currencyByRarity[killed.rarity] += 1;
+          pushCue(s, 'currency');
           pushFloat(s, {
             text: cur.name,
             x: killed.x,
@@ -667,6 +688,7 @@ export function tickSession(s: GameSession, dt: number): void {
         if (gem) {
           s.gemPouch[gem.id] = (s.gemPouch[gem.id] ?? 0) + 1;
           s.diag.gemByRarity[killed.rarity] += 1;
+          pushCue(s, 'gem');
           pushFloat(s, {
             text: `玉简·${gem.name}`,
             x: killed.x,
@@ -691,6 +713,9 @@ export function tickSession(s: GameSession, dt: number): void {
           addGroundDrop(s, item, killed.x, killed.y);
           s.diag.itemsByRarity[killed.rarity] += 1;
         }
+        // 传奇单独一个音：它是本作最贵的掉落（图鉴 12 条 / 段④ 主内容），
+        // 和普通法宝同一个声音等于把最值得庆祝的一刻藏起来。
+        if (items.length > 0) pushCue(s, items.some((it) => it.legendary !== undefined) ? 'legendary' : 'drop');
       }
     }
   }
@@ -892,6 +917,25 @@ export function pushFloat(s: GameSession, spec: Omit<FloatText, 'age'>): void {
   s.floats.push({ ...spec, age: 0 });
 }
 
+/**
+ * 排一个音效。
+ *
+ * 超过 `MAX_SOUND_CUES` 就**丢弃新的**（保留先到的）：先到的通常是「打死怪」这种大事，
+ * 后到的多是同一帧里的次要掉落；反过来丢弃旧的会让音效听起来在抽帧。
+ */
+export function pushCue(s: GameSession, name: SoundName): void {
+  if (s.soundCues.length >= MAX_SOUND_CUES) return;
+  s.soundCues.push(name);
+}
+
+/** 取走并清空音效队列（主循环每帧调一次）。 */
+export function drainSoundCues(s: GameSession): SoundName[] {
+  if (s.soundCues.length === 0) return [];
+  const out = s.soundCues.slice();
+  s.soundCues.length = 0;
+  return out;
+}
+
 /** 身上穿了几件仙品（成就用；只数装备，不数背包 —— 收藏与战力分开看） */
 function xianEquippedCount(ch: CharacterState): number {
   let n = 0;
@@ -1001,5 +1045,9 @@ export function prestige(s: GameSession): boolean {
   s.battle = createBattle(playerBattleFromCharacter(s.character), s.character.turbid, s.character, s.switches);
   startWave(s);
   pushLog(s, '轮回 · ' + cycleName(nextCycle) + '：浊物更凶，渊痕更厚', '#6b3fa0');
+  // 轮回是本作最大的一件事（一条时间线的终点 + 另一条的开头），必须有自己的声音。
+  // 先清掉本帧残留的 cue：不然「满级那一下的 ascend」和「轮回的 ascend」会叠着播。
+  s.soundCues.length = 0;
+  pushCue(s, 'ascend');
   return true;
 }

@@ -88,6 +88,8 @@ export function sessionFromSave(state: SaveState, opts: RestoreOptions): GameSes
   // 渊痕（D36-A）：满级后的唯一积累物，丢它等于把几十小时清零。老档没有 → 0。
   ch.marks = Math.max(0, Math.floor(state.player.marks ?? 0));
   ch.diveLockUnlocked = state.player.diveLockUnlocked === true;
+  // 音效静音（D181）：玩家偏好，读档必须恢复 —— 上次关了声，这次打开不能自己响。
+  ch.muted = state.player.muted === true;
   // 五行碎片（D104）：与渊痕同理，丢它等于把攒的定向工具清零。老档没有 → 全 0。
   ch.fragments = sanitizeFragments(state.player.fragments);
   ch.equipment = state.player.equipment;
