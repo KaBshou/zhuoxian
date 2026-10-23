@@ -15,7 +15,15 @@
  */
 
 /** 按钮能做的一件事：切换一个面板。 */
-export type HudButtonId = 'detail' | 'breakdown' | 'talent' | 'skill' | 'codex' | 'achievement' | 'marks';
+export type HudButtonId =
+  | 'detail'
+  | 'breakdown'
+  | 'talent'
+  | 'skill'
+  | 'codex'
+  | 'achievement'
+  | 'marks'
+  | 'save';
 
 export interface HudButton {
   readonly id: HudButtonId;
@@ -51,8 +59,9 @@ export function layoutHudButtons(canvasW: number, canvasH = 540): readonly HudBu
     { id: 'talent', label: '周天', key: 'T' },
     { id: 'skill', label: '神通', key: 'G' },
     { id: 'codex', label: '图鉴', key: 'K' },
-  { id: 'achievement', label: '成就', key: 'J' },
+    { id: 'achievement', label: '成就', key: 'J' },
     { id: 'marks', label: '渊痕', key: 'M' },
+    { id: 'save', label: '存档', key: 'S' },
   ];
   const n = specs.length;
   const avail = Math.max(0, canvasW - EDGE * 2);

@@ -32,6 +32,7 @@ import { drawSkillPanel } from './skill-panel';
 import { drawCodexPanel } from './codex-panel';
 import { drawAchievementPanel } from './achievement-panel';
 import { drawMarksPanel } from './marks-panel';
+import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-panel';
 import type { SkillCursor } from './skill-panel';
 import { drawTutorial } from './tutorial-overlay';
 import { drawClassSelect } from './class-select';
@@ -110,6 +111,8 @@ export class BattleRenderer {
   private showCodex = false;
   /** 渊痕价目表（按 M）：满级后唯一还在涨的数字，必须能点开看价 */
   private showMarksPanel = false;
+  /** 存档面板的状态（null = 关着）。文案与阶段都由 main.ts 给，渲染器不自己编事实。 */
+  private savePaint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null = null;
   /** 成就（按 J，D87）：24h 缺口里「有终点」的收集。看不见的进度等于不存在 */
   private showAchievements = false;
   // 光标只在这里存「本帧副本」：权威在 main.ts（与图鉴/神通同一条纪律，
@@ -182,6 +185,15 @@ export class BattleRenderer {
     return this.showMarksPanel;
   }
 
+  /** 存档面板没有「切换」语义：打开时由 main.ts 给初始 paint，关闭时置 null。 */
+  setSavePanel(paint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null): void {
+    this.savePaint = paint;
+  }
+
+  get savePanelVisible(): boolean {
+    return this.savePaint !== null;
+  }
+
   get marksPanelVisible(): boolean {
     return this.showMarksPanel;
   }
@@ -232,6 +244,8 @@ export class BattleRenderer {
         return this.showMarksPanel;
       case 'achievement':
         return this.showAchievements;
+      case 'save':
+        return this.savePaint !== null;
     }
   }
 
@@ -249,6 +263,7 @@ export class BattleRenderer {
     this.showSkill = false;
     this.showCodex = false;
     this.showMarksPanel = false;
+    this.savePaint = null;
     this.showAchievements = false;
     this.skillCursor = null;
   }
@@ -268,6 +283,7 @@ export class BattleRenderer {
     if (this.showCodex) on.push('codex');
     if (this.showAchievements) on.push('achievement');
     if (this.showMarksPanel) on.push('marks');
+    if (this.savePaint !== null) on.push('save');
     return on;
   }
 
@@ -339,6 +355,9 @@ export class BattleRenderer {
       });
     // 按钮条画在**所有面板之后**：面板盖住它就看不出还能点，而且它本身是"退出面板"的唯一手段
     // （手机上没有 Escape 键，除了再点一次按钮没有别的关法）。
+    if (this.savePaint !== null) {
+      drawSavePanel(this.ctx, BATTLE_W, BATTLE_H, this.savePaint.phase, this.savePaint);
+    }
     drawHudButtons(this.ctx, BATTLE_W, { text: C.text, dim: C.dim, edge: C.barEdge, frame: C.gold }, this.activeButtons());
     this.drawOfflineReport(s);
   }

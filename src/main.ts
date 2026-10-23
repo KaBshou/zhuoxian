@@ -75,6 +75,11 @@ import {
 } from './core/codex';
 import { achievementEntries, achievementSummary, moveAchievementCursor } from './core/achievement';
 import { ACHIEVEMENT_TOTAL } from './data/achievements';
+import { decodeTransfer, encodeTransfer, transferFailText, transferFileName, transferSummary } from './core/save-transfer';
+import { sessionFromSave, sessionToSave } from './core/save-bridge';
+import { copyText, downloadText, pickTextFile } from './ui/file-transfer';
+import { formatRealm } from './data/glossary';
+import { savePanelButtons, type SavePanelAction, type SavePanelPhase } from './render/save-panel';
 
 const canvas = document.getElementById('stage');
 if (!(canvas instanceof HTMLCanvasElement)) {
@@ -175,6 +180,7 @@ const PANEL_NAME: Record<HudButtonId, string> = {
   codex: '图鉴',
   achievement: '成就',
   marks: '渊痕价目表',
+  save: '存档',
 };
 
 /** 打开时附带的一句"再按什么关"，按键与按钮共用 */
@@ -186,6 +192,7 @@ const PANEL_CLOSE_HINT: Record<HudButtonId, string> = {
   codex: '（再按 K 或点按钮关闭）',
   achievement: '（再按 J 或点按钮关闭）',
   marks: '（再按 M 或点按钮关闭）',
+  save: '（再按 S 或点按钮关闭）',
 };
 function activatePanel(id: HudButtonId): void {
   if (phase !== 'play') return;
@@ -221,6 +228,8 @@ function activatePanel(id: HudButtonId): void {
     // 条目数会随版本变（现在 20），打开时按总数夹一次
     achievementCursor = moveAchievementCursor(achievementCursor, 0, ACHIEVEMENT_TOTAL);
     renderer.setAchievementCursor(achievementCursor);
+  } else if (id === 'save') {
+    openSavePanel();
   } else {
     renderer.toggleMarksPanel();
   }
@@ -235,6 +244,124 @@ function activatePanel(id: HudButtonId): void {
         ? `；现有 ${Math.max(0, Math.floor(session.character.marks ?? 0)).toLocaleString('en-US')}`
         : '';
   session.log.push({ text: `打开${PANEL_NAME[id]}${extra}${PANEL_CLOSE_HINT[id]}`, color: '#d4a13c', age: 0 });
+}
+
+// ── 1.6 存档搬家（导出 / 导入） ────────────────────────────
+// 存档在 localStorage，按域名隔离：换网址、换设备、清缓存、无痕窗口都会让玩家「打开一看是新的」，
+// 而且不报错。对 24 小时内容量的挂机游戏，这是最伤的一种失败 —— 不是被打死，是被清档。
+
+const SAVE_LINES: readonly string[] = [
+  '存档只在这台设备的浏览器里（localStorage，按网址隔离）。',
+  '清缓存 / 换设备 / 换网址 / 无痕窗口 —— 都会读到新号，而且不会报错。',
+  '导出：下载一个 .json 文件，自己收好（发给自己也行）。',
+  '导入：选那个文件，会先显示摘要，再点确认才覆盖。',
+];
+
+let savePhase: SavePanelPhase = 'idle';
+let saveStatus = '';
+let saveTone: 'dim' | 'ok' | 'warn' = 'dim';
+/** 导入暂存：选完文件先放这里，等玩家点「确认导入」才真正生效（一步覆盖 = 手滑即毁档） */
+let pendingImport: { readonly text: string; readonly summary: string } | null = null;
+
+function paintSavePanel(): void {
+  renderer.setSavePanel({ phase: savePhase, lines: SAVE_LINES, status: saveStatus, statusTone: saveTone });
+}
+
+function openSavePanel(): void {
+  savePhase = 'idle';
+  saveStatus = '';
+  saveTone = 'dim';
+  pendingImport = null;
+  paintSavePanel();
+}
+
+function closeSavePanel(): void {
+  renderer.setSavePanel(null);
+  pendingImport = null;
+}
+
+function doExport(): void {
+  const text = encodeTransfer(sessionToSave(session));
+  const name = transferFileName();
+  const ok = downloadText(name, text);
+  // 剪贴板只是顺手：https / localhost 之外拿不到，失败也不能谎报成功。
+  void copyText(text).then((copied) => {
+    if (!renderer.savePanelVisible) return;
+    saveStatus = ok
+      ? (copied ? '已导出并复制到剪贴板：' + name : '已导出：' + name)
+      : '导出失败（浏览器不许下载）—— 试试换个浏览器'
+    saveTone = ok ? 'ok' : 'warn';
+    paintSavePanel();
+  });
+  saveStatus = ok ? '已导出，正在复制…' : '导出失败（浏览器不许下载）';
+  saveTone = ok ? 'ok' : 'warn';
+  paintSavePanel();
+}
+
+function doImportPick(): void {
+  saveStatus = '正在等选择文件…';
+  saveTone = 'dim';
+  paintSavePanel();
+  void pickTextFile().then((text) => {
+    if (text === null) {
+      saveStatus = '没有选择文件';
+      saveTone = 'dim';
+      paintSavePanel();
+      return;
+    }
+    const res = decodeTransfer(text);
+    if (!res.ok) {
+      saveStatus = transferFailText(res.error, res.detail);
+      saveTone = 'warn';
+      paintSavePanel();
+      return;
+    }
+    const summary = transferSummary(res.state, formatRealm);
+    pendingImport = { text, summary };
+    savePhase = 'confirm';
+    saveStatus = '要导入这份：' + summary;
+    saveTone = 'warn';
+    paintSavePanel();
+  });
+}
+
+function doImportConfirm(): void {
+  if (pendingImport === null) {
+    saveStatus = '没有待导入的存档';
+    saveTone = 'warn';
+    paintSavePanel();
+    return;
+  }
+  const res = decodeTransfer(pendingImport.text);
+  if (!res.ok) {
+    saveStatus = transferFailText(res.error, res.detail);
+    saveTone = 'warn';
+    savePhase = 'idle';
+    paintSavePanel();
+    return;
+  }
+  // 覆盖前先把当前进度也存一次：导入失败/导错文件时玩家还有机会从自动存档里捡回来。
+  autosaver.saveNow();
+  const summary = pendingImport.summary;
+  const restored = sessionFromSave(res.state, { tables: TABLES });
+  session = restored;
+  autosaver.saveNow();
+  closeSavePanel();
+  session.log.push({ text: '已导入存档：' + summary, color: '#7ddca8', age: 0 });
+  pendingImport = null;
+}
+
+function doSaveAction(action: SavePanelAction): void {
+  if (action === 'export') doExport();
+  else if (action === 'import') doImportPick();
+  else if (action === 'confirm') doImportConfirm();
+  else {
+    pendingImport = null;
+    savePhase = 'idle';
+    saveStatus = '已取消';
+    saveTone = 'dim';
+    paintSavePanel();
+  }
 }
 
 /**
@@ -260,6 +387,16 @@ canvas.addEventListener('pointerdown', (e) => {
       confirmClass();
     }
     return;
+  }
+  if (renderer.savePanelVisible) {
+    const hitSave = savePanelButtons(canvas.width, canvas.height, savePhase).find(
+      (b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h,
+    );
+    if (hitSave) {
+      e.preventDefault();
+      doSaveAction(hitSave.id);
+    }
+    return; // 面板开着时，点别处不穿透到下面的 HUD（否则点"空白"会顺手关掉面板）
   }
   const btn = hitTestHudButtons(pt.x, pt.y, canvas.width);
   if (btn) {
@@ -522,6 +659,17 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   // M = 渊痕价目表（满级后唯一还在涨的数字，看不见就等于这个系统不存在）
+  if (renderer.savePanelVisible && e.code === 'Escape') {
+    e.preventDefault();
+    closeSavePanel();
+    session.log.push({ text: '关闭存档', color: '#6d665c', age: 0 });
+    return;
+  }
+  if (e.code === 'KeyS') {
+    e.preventDefault();
+    activatePanel('save');
+    return;
+  }
   if (e.code === 'KeyM') {
     activatePanel('marks');
     return;
@@ -681,6 +829,19 @@ declare global {
       classIds(): string[];
       /** 直接确认某个道统（探针免键盘路径用） */
       chooseClass(id: string): boolean;
+      /** 存档面板的当前状态（探针用它判断有没有打开、在确认阶段、有没有待导入） */
+      readonly savePanel: {
+        readonly phase: SavePanelPhase;
+        readonly status: string;
+        readonly pending: boolean;
+        readonly visible: boolean;
+      };
+      /** 导出文本（探针直接拿字符串，不必真触发下载） */
+      exportSaveText(): string;
+      /** 走「选文件之后」的同一条路径：解码 → 摘要 → 进入确认阶段 */
+      stageImportText(text: string): { readonly ok: boolean; readonly message: string };
+      /** 真正执行导入（覆盖当前 session） */
+      confirmImport(): boolean;
       /** 引导走到第几条（探针验收用；0 = 刚开局） */
       readonly tutorialStep: number;
       /** 引导总条数（探针断言「走完」时要跟这个数比，不许写死 9/10） */
@@ -795,6 +956,14 @@ declare global {
       panelsOpen(): string[];
       /** 选道统阶段的六张卡片矩形（探针点卡片用，不许猜中心） */
       classCards(): Array<{ readonly x: number; readonly y: number; readonly w: number; readonly h: number }>;
+      /** 存档面板的按钮矩形（探针点按钮用；布局唯一出处在 save-panel.ts） */
+      saveButtons(): Array<{
+        readonly id: SavePanelAction;
+        readonly x: number;
+        readonly y: number;
+        readonly w: number;
+        readonly h: number;
+      }>;
     };
   }
 }
@@ -884,6 +1053,31 @@ if (import.meta.env.DEV) {
     /** 面板光标（探针断言「方向键真的动了光标」） */
     get skillCursor() {
       return { skill: skillCursor.skill, slot: skillCursor.slot };
+    },
+    get savePanel() {
+      return {
+        phase: savePhase,
+        status: saveStatus,
+        pending: pendingImport !== null,
+        // 必须单独给 visible：关闭态与 idle 态的 phase 都是 'idle'，探针分不出来
+        visible: renderer.savePanelVisible,
+      };
+    },
+    exportSaveText: () => encodeTransfer(sessionToSave(session)),
+    stageImportText: (text: string) => {
+      const res = decodeTransfer(text);
+      if (!res.ok) return { ok: false, message: transferFailText(res.error, res.detail) };
+      pendingImport = { text, summary: transferSummary(res.state, formatRealm) };
+      savePhase = 'confirm';
+      saveStatus = '要导入这份：' + pendingImport.summary;
+      saveTone = 'warn';
+      paintSavePanel();
+      return { ok: true, message: pendingImport.summary };
+    },
+    confirmImport: () => {
+      if (pendingImport === null) return false;
+      doImportConfirm();
+      return true;
     },
     get tutorialLength() {
       return TUTORIAL_LENGTH;
@@ -978,8 +1172,21 @@ if (import.meta.env.DEV) {
       if (renderer.codexVisible) open.push('codex');
       if (renderer.achievementsVisible) open.push('achievement');
       if (renderer.marksPanelVisible) open.push('marks');
+      if (renderer.savePanelVisible) open.push('save');
       return open;
     },
+    /**
+     * 存档面板的按钮矩形（画布坐标）。
+     * 布局的唯一出处在 `save-panel.ts` 的 `savePanelButtons` —— 钩子只是把它透出去，
+     * 探针不许自己算坐标（算错会变成"按钮点不动"的假红，而这个项目的按钮已经踩过一次）。
+     */
+    saveButtons: () => savePanelButtons(canvas.width, canvas.height, savePhase).map((b) => ({
+      id: b.id,
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+    })),
     classCards: () => classCardRects(canvas.width, canvas.height).map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })),
   };
 }
