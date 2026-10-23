@@ -2876,3 +2876,23 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 1. **探针取样必须乘像素比**：D175 之后 `canvas.width ≠ 960`（1280×720 视口下 ratio = 1.333），用逻辑坐标去 `getImageData` 取到的是别的区域 ⇒ 第一版报「条没画」（其实画了）。
 2. **`tools/_serve.mjs` 是 `watch: null`**：改完源码不重启 server，探针测的是旧代码 —— 这一轮就因此白跑了一轮（旧代码也画一根红条，恰好让「有红像素」那条通过，而金色百分比 0 ⇒ 露馅）。**看到「部分通过」时先怀疑 server 是不是旧的，而不是代码有一半对。**
 3. 颜色判据要按实际合成色放宽：金色文字 `rgba(255,220,150,0.95)` 压到近黑底上约 `(243,210,145)`，我一开始写 `b < 130` 永远不成立 ⇒ 数到 0。
+### D184 探针契约：入口参数与汇总行必须机器可读
+
+**问题**（三个新探针进盘子后 `TOTAL 378/378 24/27 scripts RED=3 UNPARSED=3`）
+1. `_plate.ps1` 用 `node <probe> <baseUrl>` 统一调用，而 `probe-audio` / `probe-paperdoll` 把 `argv[2]` 当**截图路径** ⇒ URL 被 `fs.writeFileSync` 当文件名写，报
+   `ENOENT: no such file or directory, open 'F:\dsh-work\zhuoxian\http:\127.0.0.1:5292'`，exit=1 且一行汇总都没有。
+2. 三个探针汇总行写的是 `=== 22/22 ===`，而 `_plate-summary.mjs` 只认 `总计 p/t`、`结果：p/t`、`通过 p/t`、`p/t 通过` 四种 ⇒ 一律 PARSED 失败（`probe-boss-bar` 甚至 exit=0 也被记成 UNPARSED）。
+
+**修法**
+- 入口：`const ARGV = process.argv.slice(2); const BASE = process.env.PROBE_URL ?? BASE_URL ?? ARGV.find(a => a.startsWith('http')) ?? 默认; const SHOT = process.env.PROBE_SHOT ?? ARGV.find(a => a.endsWith('.png')) ?? 默认;`
+  —— **argv 顺序不可信，按「长什么样」认参数**；环境变量优先（手工跑不用记顺序）。
+- 输出：横幅之后补一行 `结果：N/M`（横幅保留，人看着舒服；机器只读 `结果：`）。
+
+**顺带修正**：`probe-touch` 有两处过期断言 ——
+- 默认 URL 是 `5288`（其它探针是 `5292`）⇒ 单跑必须 `$env:PROBE_URL=...`，否则报 `no hook`；顺手把「固定 sleep 2.5s 等钩子」改成**轮询 25×400ms**（冷启动 Vite 首次 transform 常超 5s）。
+- **`sound` 按钮是开关不是面板**（D181）—— 原来「每个按钮点开都只剩它自己那块面板」把它算进来必然红。拆成两组：`panelBtns`（除 sound）走「开/关」，sound 单验「点一次切静音、不弹遮罩、再点切回」。实测 **24/24**。
+
+**纪律（写进 `_plate.ps1` 注释与探针头注释）**
+1. **探针是盘子的一部分，就必须遵守盘子契约**：入口参数、汇总行格式、退出码 —— 三样任一不符，整盘读数就是错的（这次 `TOTAL 378/378` 看起来像全绿，其实 3 个脚本根本没跑）。
+2. **「部分通过」先怀疑 server 是旧的**：`_serve.mjs` 是 `watch: null`，改了源码不重启，探针测的是旧代码 —— 而旧代码也画了那根红条，恰好让「有红像素」通过、只有金色百分比 0 露馅。
+3. 盘点脚本自己也要被盘点：`TOTAL` 的分母来自「能解析出 p/t 的脚本数」，**分母比名单少就是有脚本没按契约说话**，不是「少测了几项」。
