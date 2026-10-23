@@ -395,8 +395,17 @@ canvas.addEventListener('pointerdown', (e) => {
     if (hitSave) {
       e.preventDefault();
       doSaveAction(hitSave.id);
+      return;
     }
-    return; // 面板开着时，点别处不穿透到下面的 HUD（否则点"空白"会顺手关掉面板）
+    // 存档面板开着时，**顶部按钮条仍然有效** —— 否则「点同一个按钮关不掉」，
+    // 而按钮是手机上关面板的唯一手段（Escape 只在键盘上）。点别处仍然不穿透。
+    const hudWhileSave = hitTestHudButtons(pt.x, pt.y, canvas.width);
+    if (hudWhileSave) {
+      e.preventDefault();
+      activatePanel(hudWhileSave.id);
+      return;
+    }
+    return; // 面板开着时，点空白不穿透到下面的 HUD（否则点"空白"会顺手把面板关掉）
   }
   const btn = hitTestHudButtons(pt.x, pt.y, canvas.width);
   if (btn) {

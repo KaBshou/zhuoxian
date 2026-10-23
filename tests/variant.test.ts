@@ -15,10 +15,12 @@ import {
   VARIANT_MIN_FLOOR,
   VARIANT_WAVE_EVERY,
 } from '../src/core/monster-roll';
-import { spawnRing } from '../src/core/battle';
+import { createBattle, createPlayerBattle, spawnMonster, spawnRing, tickBattle } from '../src/core/battle';
 import { Rng } from '../src/core/rng';
+import { createTurbid } from '../src/core/turbid';
+import { createCharacter } from '../src/core/character';
 import { MONSTER_QTY_CAP, getMonsterAffix, sumMonsterAffixes } from '../src/data/monster-affixes';
-import { monstersOfTier, tierOfFloor } from '../src/data/monsters';
+import { getMonster, monstersOfTier, tierOfFloor } from '../src/data/monsters';
 import { codexProgress, codexUnlockText, createCodex, hasVariant, recordMonsterKill, recordVariant } from '../src/core/codex';
 
 const rng = (seed = 0x5eed) => new Rng(seed);
@@ -178,5 +180,35 @@ describe('D170：异变体那一行必须走产品路径（不是只有测试能
     const c = recordMonsterKill(createCodex(), 'not-a-monster', true);
     expect(c.monsters).toEqual([]);
     expect(hasVariant(c)).toBe(true);
+  });
+});
+
+describe('D173 补：神通击杀也要把变体/妖纹身份交出去', () => {
+  // 事故：`playerStrike` 的击杀事件带了 `affixIds`/`variant`，`skillStrike` 那条**没带** ——
+  // 于是「用神通杀死的异变体不收录图鉴、也不吃妖纹的掉落加成」。单测只覆盖生成侧、
+  // 探针杀的那一下恰好是普攻，两套都绿。这类「两条路径只修了一条」是本项目的老病。
+  it('skillStrike 的 player-kill 事件里能看到 variant === true 与 affixIds', () => {
+    const ch = createCharacter('yujian');
+    const p = createPlayerBattle({
+      maxHp: 5000,
+      level: 20,
+      armor: 200,
+      damage: 1,
+      attackSpeed: 2,
+      critChance: 0,
+      range: 200,
+    });
+    const b = createBattle(p, createTurbid(), ch);
+    const def = getMonster('fangshi-yuanke');
+    expect(def, '测试用的怪必须在表里').toBeDefined();
+    if (!def) return;
+    const m = spawnMonster(def, 28, 900001, p.x + 40, p.y, 'magic', ['sha'], 0, true);
+    m.hp = 1; // 1 血：谁打都死，只剩「谁打」这一个变量
+    b.monsters = [m];
+    const rng = new Rng(7);
+    for (let i = 0; i < 300 && b.monsters.length > 0; i++) tickBattle(b, 1 / 30, rng);
+    const kill = b.events.find((e) => e.kind === 'player-kill');
+    expect(kill?.monster?.variant).toBe(true);
+    expect(kill?.monster?.affixIds).toEqual(['sha']);
   });
 });

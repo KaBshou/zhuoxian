@@ -23,8 +23,9 @@ node tools/probe-dist.mjs # 必须在子路径下 14/14（见第 3 节，为什�
 ```
 
 `dist/` 是**纯静态**目录（`index.html` + `assets/*`），没有任何服务端依赖。
-存档在浏览器 `localStorage`，键 `zhuoxian.save.v1` —— **换域名 = 换存档**，别指望自动迁
-（存档面板里有导出/导入，换设备靠它）。
+存档在浏览器 `localStorage`，键 `zhuoxian.save.v1` —— **换域名 = 换存档**（`localStorage` 按 origin 隔离，
+而且不会报错，玩家表现是「打开一看是新的」）。换设备 / 换域名 / 清缓存前，让玩家在游戏里按 **S**
+用「存档」面板导出一次 `.json`，到新地址再导入。这一段不是可选功能，是这条产品线的基本盘（D173）。
 
 ## 2. 三条硬约束（都是踩过的）
 
@@ -91,7 +92,7 @@ npx vite preview --host 0.0.0.0 --port 4173   # 用 dist 产物，不要用 dev
 
 - [ ] `node tools/gate.mjs` EXIT=0（类型 + 单测 + 构建 + 产物自检 四合一）
 - [ ] `node tools/run-timeline.mjs --seeds=6 --minutes=900 --post-cap --talents=off` EXIT=0（数值门禁）
-- [ ] 探针盘子全绿（`tools/_plate.ps1`，24 脚本 / 360 项）
+- [ ] 探针盘子全绿（`tools/_plate.ps1`，25 脚本 / 377 项；跑之前先 `node tools/_serve.mjs 5292`，**`_serve.mjs` 是 `watch: null`，改了源码必须重启它**）
 - [ ] 手机上真机点一次（触摸、分辨率、缩放；canvas 是 960×540 固定尺寸）
 - [ ] 发链接前自己用**无痕窗口**开一次（确认新号流程：选道统 → 引导 → 打完第一层）
 - [ ] 用游戏内「存档」面板导出一次存档，确认能导回来（防清缓存丢档）

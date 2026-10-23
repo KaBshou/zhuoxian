@@ -958,7 +958,9 @@ function playerStrike(state: BattleState, target: MonsterInPlay, rng: Rng): void
       label: `击杀 ${target.name}`,
       x: target.x,
       y: target.y,
-      // 身份牌交出去：掉落要按「死的这只怪」算，不能按「场上随便一只」算
+      // 身份牌交出去：掉落要按「死的这只怪」算，不能按「场上随便一只」算。
+      // affixIds / variant 必须一起交：神通击杀也吃妖纹的掉落加成、也要能收录异变体图鉴
+      // （D173 补：这一处曾经漏了变体与妖纹，导致「用神通杀死的异变体不收录」）。
       monster: {
         defId: target.defId,
         tier: target.tier,
@@ -966,6 +968,8 @@ function playerStrike(state: BattleState, target: MonsterInPlay, rng: Rng): void
         xp: target.xp,
         x: target.x,
         y: target.y,
+        affixIds: target.affixIds,
+        variant: target.variant === true,
       },
     });
     addTurbid(state.turbid, TURBID_PER_KILL);

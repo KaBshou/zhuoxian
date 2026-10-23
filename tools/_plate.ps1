@@ -5,9 +5,9 @@
 #   probe-detail now waits up to 60s for `equipped>=2`, and if the drop rate is unlucky it INJECTS
 #   a second item (灵品 with 2 affixes) instead of skipping, so the denominator is normally 8.
 #   It only prints SKIP when there is not even one template item to clone (fresh save bug).
-#   Therefore report the plate as "23 scripts / N items (detail denom 7|8)" -- N is 359 when
-#   detail is 7 and 360 when detail is 8. Never lower a threshold to make it green; re-derive
-#   the threshold from the panel row count instead.
+#   Therefore report the plate as "25 scripts / N items (detail denom 7|8)" -- N is 376 when
+#   detail is 7 and 377 when detail is 8 (D173 added probe-save-panel: 17 items).
+#   Never lower a threshold to make it green; re-derive the threshold from the panel row count.
 #
 # probe-cycle-24h: 1 item, NOT a browser probe and deliberately SKIP-able: it only reads the four
 #   `run-timeline --cycle=0..3` json artifacts (tmp/base-cN.json, ~15 min of simulation). When they
@@ -127,7 +127,12 @@ $probes = @(
   'F:\dsh-work\zhuoxian\tools\probe-death-mechanics.mjs',
   'F:\dsh-work\zhuoxian\tools\probe-cycle.mjs',
   'F:\dsh-work\zhuoxian\tools\probe-cycle-24h.mjs',
-  # 23rd: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
+  # 24th: save transfer panel (D173). 17 items. It needs a dev server on the current code
+  # (`_serve.mjs` is watch:null => restart it), and it prints EXIT=0/1 itself.
+  # Two things it deliberately owns: the confirm button is clicked via `saveButtons()` rectangles
+  # (never hardcoded coordinates) and "panel open + click outside" must NOT close the panel.
+  'F:\dsh-work\zhuoxian\tools\probe-save-panel.mjs',
+  # 25th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'
 )
