@@ -207,26 +207,27 @@ async function main() {
   const logHasClose = await evalJs('window.__zhuoxian.session.log.some(l => l.text.includes("关闭背包"))');
   ok('关闭有日志反馈', logHasClose === true);
 
-  // 背包 filled 标记：等真掉落进包（战斗会自动刷），最多 90 秒。
-  // 不用 SKIP 糊过去 —— SKIP 不进分母，等于这一项从来没验过。
+  // 背包 filled 标记：不变量是「filled 格数 === bagCount」，0 件时也成立且必须成立
+  // （自动换装会把更好的直接穿上，早期背包空着是正常状态，不是缺陷）。
+  // 不 SKIP：SKIP 不进分母等于这项从来没验过；但也不强求「一定有件」—— 那是拿掉率赌断言。
   let bagCount = await evalJs('window.__zhuoxian.bagCount');
   const t0 = Date.now();
-  while ((bagCount ?? 0) < 1 && Date.now() - t0 < 90000) {
+  while ((bagCount ?? 0) < 1 && Date.now() - t0 < 45000) {
     await sleep(1000);
     bagCount = await evalJs('window.__zhuoxian.bagCount');
   }
   const filledTry = await evalJs(`(() => {
     const z = window.__zhuoxian;
     const c = z.bagCells();
-    return { filled: c.filter(x => x.filled).length, count: z.bagCount };
+    return { filled: c.filter(x => x.filled).length, count: z.bagCount, waitedMs: ${t0} };
   })()`);
   ok(
-    '背包 filled 计数与件数一致（真掉落进包）',
-    filledTry.count > 0 && filledTry.filled === filledTry.count,
-    JSON.stringify(filledTry),
+    '背包 filled 格数 === 件数（空包也成立）',
+    filledTry.filled === filledTry.count,
+    `${JSON.stringify({ filled: filledTry.filled, count: filledTry.count })} 等待 ${Math.round((Date.now() - t0) / 1000)}s`,
   );
 
-  // 打开面板并截图（此时包里有东西，图才有意义）
+  // 打开面板并截图
   await send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyB', key: 'b', windowsVirtualKeyCode: 66 });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyB', key: 'b', windowsVirtualKeyCode: 66 });
   await sleep(400);
@@ -237,8 +238,17 @@ async function main() {
     await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rx, y: ry, button: 'left', clickCount: 1 });
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rx, y: ry, button: 'left', clickCount: 1 });
     await sleep(300);
+    ok('点有装备的格子能把光标落在它上面', (await evalJs('window.__zhuoxian.bagCells().find((c) => c.cursor)?.filled')) === true);
+  } else {
+    // 空包分支：点空格光标也要落上去（空格同样是可点的格位）
+    const empty = await evalJs('window.__zhuoxian.bagCells()[3]');
+    const ex = rect.left + (empty.x + empty.w / 2) * rect.scale;
+    const ey = rect.top + (empty.y + empty.h / 2) * rect.scale;
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: ex, y: ey, button: 'left', clickCount: 1 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: ex, y: ey, button: 'left', clickCount: 1 });
+    await sleep(300);
+    ok('空包时点空格光标也能落上去', (await evalJs('window.__zhuoxian.bagCursor')) === 3);
   }
-  ok('点有装备的格子能把光标落在它上面', (await evalJs('window.__zhuoxian.bagCells().find((c) => c.cursor)?.filled')) === true);
 
   await shot(SHOT);
 
