@@ -26,9 +26,32 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// Chrome 可执行文件位置要跨平台找：本机是 Windows 路径写死没事，但同一条探针
+// 现在也跑在 .github/workflows/deploy.yml 的 ubuntu 上 —— 写死 Windows 路径会让 CI 直接挂，
+// 而 CI 挂的表现是「部署失败」，很容易被误判成构建问题，浪费一次排查。
+// 优先级：环境变量 CHROME_PATH > 各平台常见路径 > 命令名兜底（交给 PATH 解析）。
+function resolveChrome() {
+  if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  // 都不存在时交给 PATH（GitHub runner 上常常只有 google-chrome 这个软链名）。
+  return 'google-chrome';
+}
+
+const CHROME = resolveChrome();
 const CDP_PORT = 9365;
 const RAW_ARG = process.argv[2];
 const ARG_IS_URL = typeof RAW_ARG === 'string' && /^https?:\/\//.test(RAW_ARG);
@@ -137,7 +160,9 @@ class Cdp {
   }
 }
 
-const profile = `${process.env.TEMP}\\probe-dist-${Date.now()}`;
+// 临时 profile 目录：用 os.tmpdir()，别用 process.env.TEMP —— 后者只在 Windows 存在，
+// 在 ubuntu 上会是 undefined，拼出来的路径虽然「能跑」但会留下一个叫 `undefined\...` 的怪目录。
+const profile = path.join(os.tmpdir(), `probe-dist-${Date.now()}`);
 fs.mkdirSync(profile, { recursive: true });
 const chrome = spawn(
   CHROME,
@@ -152,6 +177,11 @@ const chrome = spawn(
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',
     '--hide-scrollbars',
+    // CI（ubuntu runner / 容器里以 root 跑）不加这两条会直接起不来：
+    //   --no-sandbox            root 下 chrome 的沙箱会拒绝启动
+    //   --disable-dev-shm-usage /dev/shm 默认只有 64MB，无头 Chrome 容易崩
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
     'about:blank',
   ],
   { stdio: 'ignore' },
