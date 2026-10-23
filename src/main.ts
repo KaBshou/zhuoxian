@@ -32,6 +32,8 @@ import {
   syncAchievements,
   tickSession,
   drainSoundCues,
+  equipFromBag,
+  discardFromBag,
   type GameSession,
 } from './core/session';
 import { createLocalStorageAdapter } from './core/storage';
@@ -900,6 +902,19 @@ window.addEventListener('keydown', (e) => {
     activatePanel('save');
     return;
   }
+  // 背包动作（D189）：空格穿上、X 丢弃。只在面板开着时生效，且光标格必须是真件。
+  // 不做二次确认：这两件都是「再点一次就回来」的低风险操作（换下来的会回背包）。
+  if (renderer.bagVisible && (e.code === 'Space' || e.code === 'KeyX')) {
+    e.preventDefault();
+    const index = renderer.bagFocused;
+    const r = e.code === 'Space' ? equipFromBag(session, index) : discardFromBag(session, index);
+    if (!r.ok) {
+      session.log.push({ text: r.message, color: '#6d665c', age: 0 });
+    }
+    renderer.setBagCursor(renderer.bagFocused);
+    autosaver.saveNow();
+    return;
+  }
   if (e.code === 'KeyB') {
     e.preventDefault();
     activatePanel('bag');
@@ -1113,6 +1128,10 @@ declare global {
       }>;
       /** 按格号放光标（探针免键盘路径用） */
       setBagCursor(index: number): void;
+      /** 穿上背包第 index 件（探针免键盘路径用，与空格同一函数） */
+      equipBagItem(index: number): boolean;
+      /** 丢弃背包第 index 件 */
+      discardBagItem(index: number): boolean;
       /** 秘境图是否开着 */
       readonly floorMapVisible: boolean;
       /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
@@ -1375,6 +1394,18 @@ if (import.meta.env.DEV) {
     },
     setBagCursor: (index: number) => {
       renderer.setBagCursor(index);
+    },
+    equipBagItem: (index: number) => {
+      const r = equipFromBag(session, index);
+      renderer.setBagCursor(renderer.bagFocused);
+      autosaver.saveNow();
+      return r.ok;
+    },
+    discardBagItem: (index: number) => {
+      const r = discardFromBag(session, index);
+      renderer.setBagCursor(renderer.bagFocused);
+      autosaver.saveNow();
+      return r.ok;
     },
     get floorMapVisible() {
       return renderer.floorMapVisible;

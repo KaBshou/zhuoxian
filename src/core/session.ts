@@ -20,7 +20,7 @@ import {
   type BattleState,
   type MonsterInPlay,
 } from './battle';
-import { characterStats, createCharacter, gainXp, type CharacterState } from './character';
+import { characterStats, createCharacter, equip, gainXp, type CharacterState } from './character';
 import type { SoundName } from './audio';
 import { CURRENCY_SHARE, rollCurrency, type CurrencyId } from '../data/currency';
 import { GEM_SHARE, rollGemDrop } from '../data/gem-drops';
@@ -58,7 +58,7 @@ import {
 import type { AchievementFacts } from '../data/achievements';
 import { getLegendary } from '../data/legendary';
 import { getMonster } from '../data/monsters';
-import { pickup } from './inventory';
+import { pickup, slotForItem } from './inventory';
 import type { Item } from './item';
 import type { MonsterRarity } from '../data/monsters';
 import { Rng } from './rng';
@@ -1051,3 +1051,51 @@ export function prestige(s: GameSession): boolean {
   pushCue(s, 'ascend');
   return true;
 }
+
+/**
+ * 把背包第 index 件穿上（D189）。
+ *
+ * 为什么必须有：自动换装（`decideEquip`）只在「同部位战力比 ≥ 1.02」时动手，而玩家
+ * 常常想穿一件「战力略低但有传奇 / 有对口词条」的法宝 —— 没有手动入口，那些件只能烂在包里。
+ *
+ * 语义（与装备坑的「戒指两坑」兼容）：
+ * - 用 `slotForItem` 决定装哪一坑（戒指优先空坑，都满则换较弱那个）；
+ * - **换下来的那件回背包**，不凭空消失（否则玩家会以为被吞了）；
+ * - 穿上后立刻 `syncBattleFromCharacter`（否则面板变了、战斗里的属性没变）。
+ */
+export function equipFromBag(s: GameSession, index: number): { ok: boolean; message: string } {
+  if (!Number.isInteger(index) || index < 0 || index >= s.bag.length) {
+    return { ok: false, message: '这一格是空的' };
+  }
+  const item = s.bag[index];
+  if (!item) return { ok: false, message: '这一格是空的' };
+  const slot = slotForItem(s.character, item);
+  if (!slot) return { ok: false, message: `不知道 ${item.name} 该装在哪` };
+  const res = equip(s.character, slot, item);
+  if (!res.ok) return { ok: false, message: res.message };
+  const nextBag = s.bag.filter((_, i) => i !== index);
+  if (res.replaced) nextBag.push(res.replaced);
+  s.character = res.character;
+  s.bag = nextBag;
+  syncBattleFromCharacter(s);
+  pushLog(s, `已装备 ${item.name}`, '#d4a13c');
+  return { ok: true, message: res.message };
+}
+
+/**
+ * 把背包第 index 件丢掉（D189）。**不给任何产出** —— 它只是「垃圾清理」通道。
+ *
+ * 为什么不给分解产出：掉率与通货供给都是 BALANCE 精确标定过的（§5 / §16），
+ * 在这里凭空发钱等于给经济开第二套出口，会把段② 时长压出窗口而没人知道为什么。
+ */
+export function discardFromBag(s: GameSession, index: number): { ok: boolean; message: string } {
+  if (!Number.isInteger(index) || index < 0 || index >= s.bag.length) {
+    return { ok: false, message: '这一格是空的' };
+  }
+  const item = s.bag[index];
+  if (!item) return { ok: false, message: '这一格是空的' };
+  s.bag = s.bag.filter((_, i) => i !== index);
+  pushLog(s, `丢弃 ${item.name}`, '#6d665c');
+  return { ok: true, message: `已丢弃 ${item.name}` };
+}
+

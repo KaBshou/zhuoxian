@@ -273,6 +273,6 @@ export function drawBagPanel(
 
   ctx.font = '11px "Noto Sans SC", sans-serif';
   ctx.fillStyle = C.dim;
-  ctx.fillText('↑↓←→ 选格　·　点格子看详情　·　B / Esc 关闭', geo.x + 14, geo.y + geo.h - 9);
+  ctx.fillText('点格子看详情　·　空格 穿上　·　X 丢弃　·　B / Esc 关闭', geo.x + 14, geo.y + geo.h - 9);
   return geo;
 }

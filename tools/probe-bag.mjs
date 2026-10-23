@@ -250,6 +250,50 @@ async function main() {
     ok('空包时点空格光标也能落上去', (await evalJs('window.__zhuoxian.bagCursor')) === 3);
   }
 
+  // ── D189 背包动作：穿上 / 丢弃 ──────────────────────────────────────────
+  // 用钩子走与按键同一条产品函数（免去造装备的键盘路径），但断言的是
+  // 「件数守恒」与「装备坑真换了」这两个不变量 —— 不看日志文案。
+  await evalJs(`(() => {
+    // 造 3 件明显不同的件放进背包：一件更强、两件垃圾
+    const z = window.__zhuoxian;
+    const mk = (name, value) => ({
+      uid: 'probe-' + name,
+      slot: 'sword',
+      rarity: 'bao',
+      ilvl: 20,
+      name,
+      base: [{ stat: 'damage', op: 'flat', value }],
+      affixes: [],
+    });
+    z.session.bag = [mk('探针强剑', 200), mk('探针废剑', 1), mk('探针中剑', 20)];
+    return z.bagCount;
+  })()`);
+  await sleep(200);
+  const bagBefore = await evalJs('window.__zhuoxian.bagCount');
+  ok('钩子能造出 3 件背包件', bagBefore === 3, `bagCount=${bagBefore}`);
+
+  const equipOk = await evalJs('window.__zhuoxian.equipBagItem(0)');
+  await sleep(200);
+  const afterEquip = await evalJs(`(() => {
+    const z = window.__zhuoxian;
+    return {
+      ok: ${'true'},
+      bag: z.bagCount,
+      sword: z.session.character.equipment.sword?.name ?? null,
+    };
+  })()`);
+  ok('穿上成功', equipOk === true, String(equipOk));
+  ok('背包件数不变（换下来的那件回到背包）', afterEquip.bag === 3, JSON.stringify(afterEquip));
+  ok('装备坑里真的是刚穿的那件', afterEquip.sword === '探针强剑', String(afterEquip.sword));
+
+  const discardOk = await evalJs('window.__zhuoxian.discardBagItem(0)');
+  await sleep(200);
+  const afterDiscard = await evalJs('window.__zhuoxian.bagCount');
+  ok('丢弃后件数 -1（只减不加）', discardOk === true && afterDiscard === 2, `${afterDiscard}`);
+
+  const badEquip = await evalJs('window.__zhuoxian.equipBagItem(9)');
+  ok('越界穿上安静失败（不崩）', badEquip === false, String(badEquip));
+
   await shot(SHOT);
 
   // 控制台报错
