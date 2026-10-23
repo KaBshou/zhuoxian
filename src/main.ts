@@ -448,6 +448,15 @@ function doSaveAction(action: SavePanelAction): void {
   if (action === 'export') doExport();
   else if (action === 'import') doImportPick();
   else if (action === 'confirm') doImportConfirm();
+  else if (action === 'restart') {
+    // 第一步只切阶段：按钮变成「确认重开（当前进度会没）」。
+    // 不做二次确认的删档按钮，早晚会有玩家在直播里点到它。
+    savePhase = 'restart';
+    saveStatus = '重开会清空这份存档（境界 / 装备 / 渊痕全部归零，且不可恢复）。';
+    saveTone = 'warn';
+    pendingImport = null;
+    paintSavePanel();
+  } else if (action === 'restartConfirm') doRestart();
   else {
     pendingImport = null;
     savePhase = 'idle';
@@ -455,6 +464,23 @@ function doSaveAction(action: SavePanelAction): void {
     saveTone = 'dim';
     paintSavePanel();
   }
+}
+
+/**
+ * 重开新档（D191）。
+ *
+ * 三件事必须按顺序：先立 `suppressFlush` 标记，再清存档，最后 reload。
+ * 顺序反了会怎样：`autosaver.clear()` 之后 reload 触发的 `pagehide` 把**当前内存里的会话**
+ * 又写回 localStorage —— 清了等于没清，玩家会看到「点了重开，进度还在」（这个坑探针清档
+ * 已经踩过一次，见 D102）。
+ *
+ * 为什么 reload 而不是原地重建 session：重开要连「选道统」阶段一起回到开场，
+ * 原地重建得手工收拾 phase / 引导 / 相机 / 面板十个状态，漏一个就是半新半旧。
+ */
+function doRestart(): void {
+  suppressFlush = true;
+  autosaver.clear();
+  location.reload();
 }
 
 /**

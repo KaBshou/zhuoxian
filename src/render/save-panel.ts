@@ -10,6 +10,8 @@
  * - 按钮矩形由 `savePanelButtons()` 一处算，绘制与点击都用它 —— 两边各算一遍必然错位；
  * - 导入是**破坏性操作**（覆盖当前进度），必须两步：先选文件 → 显示摘要 → 再点确认。
  *   一步就覆盖的界面，玩家手滑一次就没了。
+ * - 「重开新档」同样两步（点 → 二次确认）。它是玩家唯一的「从头开始」手段：轮回要满级，
+ *   而新手想推倒重来通常发生在满级之前 —— 没有这个按钮，他只能去开无痕窗口。
  */
 
 const W = 560;
@@ -34,8 +36,8 @@ const C = {
   btnEdge: 'rgba(212, 161, 60, 0.55)',
 };
 
-export type SavePanelPhase = 'idle' | 'confirm';
-export type SavePanelAction = 'export' | 'import' | 'confirm' | 'cancel';
+export type SavePanelPhase = 'idle' | 'confirm' | 'restart';
+export type SavePanelAction = 'export' | 'import' | 'restart' | 'restartConfirm' | 'confirm' | 'cancel';
 
 export interface SavePanelButton {
   readonly id: SavePanelAction;
@@ -50,8 +52,10 @@ export const SAVE_PANEL_W = W;
 
 export function savePanelHeight(phase: SavePanelPhase = 'idle'): number {
   // 确认态多一行摘要 ⇒ 状态区多 20px
-  const status = phase === 'confirm' ? STATUS_H + 20 : STATUS_H;
-  return PAD + TITLE_H + BODY_H + BTN_H + BTN_GAP + status + FOOT_H;
+  const status = phase === 'idle' ? STATUS_H : STATUS_H + 20;
+  // idle 现在是两行按钮（导出/导入 + 重开），多一行就多 BTN_H + BTN_GAP
+  const rows = phase === 'idle' ? 2 : 1;
+  return PAD + TITLE_H + BODY_H + BTN_H * rows + BTN_GAP * rows + status + FOOT_H;
 }
 
 /** 按钮布局唯一出处：绘制与命中测试都调它。 */
@@ -70,9 +74,24 @@ export function savePanelButtons(canvasW: number, canvasH: number, phase: SavePa
       { id: 'cancel', label: '取消', x: right, y: btnY, w: btnW, h: BTN_H },
     ];
   }
+  if (phase === 'restart') {
+    return [
+      { id: 'restartConfirm', label: '确认重开（当前进度会没）', x: left, y: btnY, w: btnW, h: BTN_H },
+      { id: 'cancel', label: '取消', x: right, y: btnY, w: btnW, h: BTN_H },
+    ];
+  }
   return [
     { id: 'export', label: '导出存档（下载文件）', x: left, y: btnY, w: btnW, h: BTN_H },
     { id: 'import', label: '导入存档（选文件）', x: right, y: btnY, w: btnW, h: BTN_H },
+    // 重开独占第二行：它和「导出」长得像会很危险（一个救档、一个毁档）
+    {
+      id: 'restart',
+      label: '重开新档（清空进度）',
+      x: left,
+      y: btnY + BTN_H + BTN_GAP,
+      w: inner,
+      h: BTN_H,
+    },
   ];
 }
 
@@ -143,7 +162,8 @@ export function drawSavePanel(
     ctx.strokeStyle = C.btnEdge;
     ctx.lineWidth = 1;
     ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
-    ctx.fillStyle = b.id === 'confirm' ? C.warn : C.gold;
+    const danger = b.id === 'confirm' || b.id === 'restart' || b.id === 'restartConfirm';
+    ctx.fillStyle = danger ? C.warn : C.gold;
     ctx.font = '12px "Noto Sans SC", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 4);
@@ -151,7 +171,8 @@ export function drawSavePanel(
   ctx.textAlign = 'left';
 
   // 状态区
-  const statusTop = y + PAD + TITLE_H + BODY_H + BTN_H + BTN_GAP + 16;
+  const rows = phase === 'idle' ? 2 : 1;
+  const statusTop = y + PAD + TITLE_H + BODY_H + BTN_H * rows + BTN_GAP * rows + 16;
   ctx.font = '12px "Noto Sans SC", system-ui, sans-serif';
   const tone = paint.statusTone ?? 'dim';
   ctx.fillStyle = tone === 'ok' ? C.ok : tone === 'warn' ? C.warn : C.dim;

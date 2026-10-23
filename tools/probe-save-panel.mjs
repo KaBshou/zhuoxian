@@ -302,6 +302,57 @@ try {
     check('Escape 能关掉面板', p4.visible === false, JSON.stringify(p4));
   }
 
+  // ── 6.5 重开新档（D191）：两步确认，且取消真的取消 ─────────
+  // 删档按钮的全部价值在「不小心点到也不会毁档」，所以这里验的不是"能删"，而是"第一步不删"。
+  await cdp.eval("window.__zhuoxian.openSavePanel ? window.__zhuoxian.openSavePanel() : null");
+  await cdp.key("KeyS", "s");
+  await sleep(400);
+  let rb = await cdp.eval("window.__zhuoxian.saveButtons()");
+  check(
+    "默认态有「重开」按钮（且和导出/导入同属一份布局）",
+    Array.isArray(rb) && rb.some((b) => b.id === "restart"),
+    JSON.stringify(rb?.map?.((b) => b.id)),
+  );
+  const beforeMarks = await cdp.eval("window.__zhuoxian.session.character.marks ?? 0");
+  const rstBtn = (rb ?? []).find((b) => b.id === "restart");
+  if (rstBtn) {
+    const [rx, ry] = toClient(rstBtn.x + rstBtn.w / 2, rstBtn.y + rstBtn.h / 2);
+    await cdp.click(rx, ry);
+    await sleep(400);
+  }
+  const phaseStep1 = await cdp.eval("window.__zhuoxian.savePanel");
+  check(
+    "点「重开」只进确认态，不立刻清档",
+    phaseStep1.phase === "restart" && phaseStep1.visible === true,
+    JSON.stringify(phaseStep1),
+  );
+  const stillSaved = await cdp.eval(`(() => {
+    const raw = localStorage.getItem("zhuoxian.save.v1");
+    return { has: typeof raw === "string" && raw.length > 100 };
+  })()`);
+  check("第一步之后存档还在（没被提前清掉）", stillSaved.has === true, JSON.stringify(stillSaved));
+  rb = await cdp.eval("window.__zhuoxian.saveButtons()");
+  check(
+    "确认态给的是「确认重开」+「取消」",
+    JSON.stringify(rb?.map?.((b) => b.id)) === JSON.stringify(["restartConfirm", "cancel"]),
+    JSON.stringify(rb?.map?.((b) => b.id)),
+  );
+  const cancelBtn = (rb ?? []).find((b) => b.id === "cancel");
+  if (cancelBtn) {
+    const [cx2, cy2] = toClient(cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2);
+    await cdp.click(cx2, cy2);
+    await sleep(400);
+  }
+  const afterCancel = await cdp.eval("window.__zhuoxian.savePanel");
+  const marksAfterCancel = await cdp.eval("window.__zhuoxian.session.character.marks ?? 0");
+  check(
+    "点「取消」回到默认态且进度没动",
+    afterCancel.phase === "idle" && marksAfterCancel === beforeMarks,
+    `phase=${afterCancel.phase} marks=${beforeMarks}→${marksAfterCancel}`,
+  );
+  await cdp.key("Escape", "Escape");
+  await sleep(300);
+
   // ── 7. 导入后写盘、刷新还在 ────────────────────────────────
   const persisted = await cdp.eval(`(() => {
     const raw = localStorage.getItem('zhuoxian.save.v1');
