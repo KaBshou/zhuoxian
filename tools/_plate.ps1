@@ -149,6 +149,9 @@ $probes = @(
   # The probe reads cell geometry from floorMapCells() and asserts the FLOOR NUMBER really changed --
   # logging "jumped" proves nothing if setFloor rejected the move silently.
   'F:\dsh-work\zhuoxian\tools\probe-floormap.mjs',
+  # 28th: bag panel (40-cell grid, D187). 15 items.
+  # Geometry comes from bagCells(); the probe never hardcodes cell coordinates.
+  'F:\dsh-work\zhuoxian\tools\probe-bag.mjs',
   # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'

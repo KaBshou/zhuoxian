@@ -2944,3 +2944,24 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 - `powershell -File tools\_plate.ps1` → **430/430 · 28/28 scripts · SKIP=0 · RED=0 · UNPARSED=0**（`tools/_plate-20261024-063342.txt`）
 - `node tools\gate.mjs` 四道门全绿（类型 2.2s / 单测 3.5s / 构建 1.6s / 产物自检 21.0s）
 - 线上 `node tools\probe-live.mjs`（`LIVE_PROXY=http://127.0.0.1:7897`）**10/10**，Actions `run=40034091958` head `7a5e4fa` **completed/success**
+### D187 背包面板（B）：40 格网格 + 选中看词条与「换上会怎样」
+
+**为什么做**：自动换装（`inventory.pickup`）替玩家做了决定，但玩家看不见它换了什么、也不知道背包里还躺着什么 —— HUD 的背包块只列前 4 行文字，等于**背包里剩下的 36 件不存在**。对一个「刷装备凑词条」的游戏，「我攒了什么、换上去会怎样」这层信息就是奖励本身，不是附加功能。
+
+**做法**
+- 新建 `src/render/bag-panel.ts`：`BAG_COLS=8` / `BAG_CELLS=40`（= `BAG_CAPACITY`）/ `BAG_CELL_W=64` / `BAG_CELL_H=38`；`bagGridLayout(ox, oy)`（40 格行优先，**空位也占格**，网格要稳）、`bagPanelGeometry(cw, ch)`（**布局唯一出处**）、`hitTestBagGrid`（闭区间）、`clampBagIndex`（脏光标归 0）、`bagCellText`、`bagCompareLines`、`drawBagPanel`。
+- 右侧详情：基底 + 全部灵纹（走 `formatModifier`，D179 的量纲修复）+ 传奇说明 + 两行对比 —— `战力比`（与判据 C 同口径）与 `换装对比`（`powerDeltaText`，同部位差值）。**两个数回答两个问题，不能只给一个**。
+- `hud-buttons.ts` 加 `'bag'`（`B` 键，第 11 个按钮）；`battle-renderer.ts` 加 `showBag/bagCursor/toggleBag/setBagCursor/bagVisible/panelOpen/closeAllPanels/activeButtons/render`；`main.ts` 加 `PANEL_NAME`/`PANEL_CLOSE_HINT`/`activatePanel` 分支/`KeyB`/`pointerdown` 网格分支/`openPanelIds`（Escape 兜底）/四个调试钩子。
+
+**顺带修的真 bug（布局层）**：第 11 个按钮让按钮条总宽 742px，从 `x = 960−14−742 = 204` 起画，**压在左列法宝面板（14..224）上**。修法：`hud-buttons.ts` 新增 `BTN_MIN_X = 236`，可用宽度从「左列右边缘」算到「右边距」（`avail = rightEdge − BTN_MIN_X`），按钮条饱和时**往右缩而不是往左长**。这条约束只有几何测试能抓（`hud-layout.test.ts` 立刻红了）。
+
+**验收（本次真跑 06:51–06:54）**
+- `npx tsc --noEmit` **0**
+- `npx vitest run` **864 passed / 57 files**（新增 `tests/bag-panel.test.ts` 10 条：格子数=容量、行优先连续、任意两格不重叠、面板装得下且在 960×540 内、每格中心/左上/右下闭区间命中、面板外与格缝判 null、光标夹取、空位文案、品阶+纹数文案、对比两行含「战力比」「换装对比」）
+- `node tools\probe-bag.mjs`（新建，CDP **9391**）**15/15**：钩子、40 格、新号不显示、按 B 打开、左缘金条 0→1320、遮罩压暗 26.8→13.8、互斥清单 `["bag"]`、点第 6 格光标=5、点面板外关闭、金条回落 1320→0、关闭日志、**真掉落进包后 filled 计数一致**、点有装备的格子光标落在它上面、控制台零报错
+- `tools/_plate.ps1` 探针 28 → 29 个；`node tools/gate.mjs` 四门全绿
+
+**三条探针教训（本轮新增）**
+1. **画布是居中的** —— `rect.left` 可能 > 0（本机 1280 窗口下是 76px）。直接发 CSS 坐标 `(12, 520)` 落在画布外，`pointerdown` 根本没触发，探针却报「点空白关不掉」。**所有点击坐标必须 `rect.left + 逻辑坐标 × rect.scale`**。
+2. **不许用 SKIP 糊覆盖率** —— 「本局背包为空所以跳过」等于这一项从未验过。改成**等真掉落进包**（最多 90 秒）再断言 `filled === bagCount`。
+3. 断言要读**产品同源的几何**（`bagCells()`），不写死格子坐标（D177/D178/D185 已是同一族第 3 次）。

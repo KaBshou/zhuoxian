@@ -35,6 +35,7 @@ import { drawAchievementPanel } from './achievement-panel';
 import { drawMarksPanel } from './marks-panel';
 import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-panel';
 import { drawFloorMap } from './floor-map';
+import { drawBagPanel, clampBagIndex } from './bag-panel';
 import { bossBarGeometry, bossBarVisible, bossPercentText } from './boss-bar';
 import type { SkillCursor } from './skill-panel';
 import { drawTutorial } from './tutorial-overlay';
@@ -123,6 +124,8 @@ export class BattleRenderer {
   /** 秘境图（D185）：76 层网格，点格子跳层。 */
   private showFloorMap = false;
   private floorMapFocus: number | null = null;
+  private showBag = false;
+  private bagCursor = 0;
   /** 存档面板的状态（null = 关着）。文案与阶段都由 main.ts 给，渲染器不自己编事实。 */
   private savePaint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null = null;
   /** 成就（按 J，D87）：24h 缺口里「有终点」的收集。看不见的进度等于不存在 */
@@ -235,6 +238,25 @@ export class BattleRenderer {
     return this.floorMapFocus;
   }
 
+  /** 背包面板（B）。光标只在面板开着时有意义，格子数固定 40。 */
+  toggleBag(): boolean {
+    this.showBag = !this.showBag;
+    this.bagCursor = clampBagIndex(this.bagCursor);
+    return this.showBag;
+  }
+
+  get bagVisible(): boolean {
+    return this.showBag;
+  }
+
+  setBagCursor(index: number): void {
+    this.bagCursor = clampBagIndex(index);
+  }
+
+  get bagFocused(): number {
+    return this.bagCursor;
+  }
+
   /** 存档面板没有「切换」语义：打开时由 main.ts 给初始 paint，关闭时置 null。 */
   setSavePanel(paint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null): void {
     this.savePaint = paint;
@@ -311,6 +333,8 @@ export class BattleRenderer {
         return false;
       case 'floormap':
         return this.showFloorMap;
+      case 'bag':
+        return this.showBag;
     }
   }
 
@@ -332,6 +356,7 @@ export class BattleRenderer {
     this.savePaint = null;
     this.showFloorMap = false;
     this.floorMapFocus = null;
+    this.showBag = false;
     this.showAchievements = false;
     this.skillCursor = null;
   }
@@ -354,6 +379,7 @@ export class BattleRenderer {
     if (this.showMarksPanel) on.push('marks');
     if (this.savePaint !== null) on.push('save');
     if (this.showFloorMap) on.push('floormap');
+    if (this.showBag) on.push('bag');
     return on;
   }
 
@@ -427,6 +453,9 @@ export class BattleRenderer {
       });
     // 按钮条画在**所有面板之后**：面板盖住它就看不出还能点，而且它本身是"退出面板"的唯一手段
     // （手机上没有 Escape 键，除了再点一次按钮没有别的关法）。
+    if (this.showBag) {
+      drawBagPanel(this.ctx, s, BATTLE_W, BATTLE_H, this.bagCursor);
+    }
     if (this.showFloorMap) {
       drawFloorMap(this.ctx, s, BATTLE_W, BATTLE_H, this.floorMapFocus);
     }

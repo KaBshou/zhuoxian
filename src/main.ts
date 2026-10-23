@@ -61,6 +61,11 @@ import {
   floorMapWidth,
   hitTestFloorMap,
 } from './render/floor-map';
+import {
+  bagGridLayout,
+  bagPanelGeometry,
+  hitTestBagGrid,
+} from './render/bag-panel';
 import { hitTestPaperdoll, paperdollLayout } from './render/paperdoll';
 import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
 import { isSlotId } from './data/slots';
@@ -230,6 +235,7 @@ const PANEL_NAME: Record<HudButtonId, string> = {
   marks: '渊痕价目表',
   save: '存档',
   floormap: '秘境图',
+  bag: '背包',
   sound: '音效',
 };
 
@@ -244,6 +250,7 @@ const PANEL_CLOSE_HINT: Record<HudButtonId, string> = {
   marks: '（再按 M 或点按钮关闭）',
   save: '（再按 S 或点按钮关闭）',
   floormap: '（再按 P 或点按钮关闭）',
+  bag: '（再按 B 或点按钮关闭）',
   sound: '',
 };
 function activatePanel(id: HudButtonId): void {
@@ -287,6 +294,8 @@ function activatePanel(id: HudButtonId): void {
     renderer.setAchievementCursor(achievementCursor);
   } else if (id === 'save') {
     openSavePanel();
+  } else if (id === 'bag') {
+    renderer.toggleBag();
   } else if (id === 'floormap') {
     renderer.toggleFloorMap();
   } else {
@@ -322,6 +331,7 @@ function openPanelIds(): string[] {
   if (renderer.marksPanelVisible) open.push('marks');
   if (renderer.savePanelVisible) open.push('save');
   if (renderer.floorMapVisible) open.push('floormap');
+  if (renderer.bagVisible) open.push('bag');
   return open;
 }
 
@@ -537,6 +547,28 @@ canvas.addEventListener('pointerdown', (e) => {
   if (btn) {
     e.preventDefault();
     activatePanel(btn.id);
+    return;
+  }
+  // 背包面板开着时，点击只对网格生效：点格子看详情、点面板外关面板。
+  // 与秘境图同一个理由：面板压在最上层，必须优先于纸娃娃与底下的 HUD。
+  if (renderer.bagVisible) {
+    const geo = bagPanelGeometry(LOGICAL_W, LOGICAL_H);
+    const cell = hitTestBagGrid(pt.x, pt.y, geo);
+    if (cell !== null) {
+      e.preventDefault();
+      renderer.setBagCursor(cell);
+      const item = session.bag[cell];
+      if (item) {
+        session.log.push({ text: '查看 ' + item.name, color: '#6d665c', age: 0 });
+      }
+      return;
+    }
+    const inside = pt.x >= geo.x && pt.x < geo.x + geo.w && pt.y >= geo.y && pt.y < geo.y + geo.h;
+    if (!inside) {
+      e.preventDefault();
+      renderer.toggleBag();
+      session.log.push({ text: '关闭背包', color: '#6d665c', age: 0 });
+    }
     return;
   }
   // 秘境图开着时，点击只对网格生效：点格子跳层、点空白关面板（D185）。
@@ -868,6 +900,11 @@ window.addEventListener('keydown', (e) => {
     activatePanel('save');
     return;
   }
+  if (e.code === 'KeyB') {
+    e.preventDefault();
+    activatePanel('bag');
+    return;
+  }
   if (e.code === 'KeyP') {
     e.preventDefault();
     activatePanel('floormap');
@@ -1058,6 +1095,24 @@ declare global {
         readonly w: number;
         readonly h: number;
       }>;
+      /** 背包面板是否开着 */
+      readonly bagVisible: boolean;
+      /** 背包件数（不含空位） */
+      readonly bagCount: number;
+      /** 背包光标格号 */
+      readonly bagCursor: number;
+      /** 背包 40 格几何 + 是否有东西 + 光标（探针按几何采样，不写死坐标） */
+      bagCells(): Array<{
+        readonly index: number;
+        readonly x: number;
+        readonly y: number;
+        readonly w: number;
+        readonly h: number;
+        readonly filled: boolean;
+        readonly cursor: boolean;
+      }>;
+      /** 按格号放光标（探针免键盘路径用） */
+      setBagCursor(index: number): void;
       /** 秘境图是否开着 */
       readonly floorMapVisible: boolean;
       /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
@@ -1296,6 +1351,30 @@ if (import.meta.env.DEV) {
     },
     closePanels: () => {
       renderer.closeAllPanels();
+    },
+    get bagVisible() {
+      return renderer.bagVisible;
+    },
+    get bagCount() {
+      return session.bag.length;
+    },
+    get bagCursor() {
+      return renderer.bagFocused;
+    },
+    bagCells: () => {
+      const geo = bagPanelGeometry(LOGICAL_W, LOGICAL_H);
+      return bagGridLayout(geo.gridX, geo.gridY).map((c) => ({
+        index: c.index,
+        x: c.x,
+        y: c.y,
+        w: c.w,
+        h: c.h,
+        filled: session.bag[c.index] !== undefined,
+        cursor: renderer.bagFocused === c.index,
+      }));
+    },
+    setBagCursor: (index: number) => {
+      renderer.setBagCursor(index);
     },
     get floorMapVisible() {
       return renderer.floorMapVisible;

@@ -26,7 +26,8 @@ export type HudButtonId =
   | 'marks'
   | 'save'
   | 'sound'
-  | 'floormap';
+  | 'floormap'
+  | 'bag';
 
 export interface HudButton {
   readonly id: HudButtonId;
@@ -40,6 +41,12 @@ export interface HudButton {
 }
 
 const BTN_W = 62;
+/**
+ * 按钮条最左允许起点。左列法宝面板宽 210 且从 x=14 起 ⇒ 右边缘 224，留 12px 空隙。
+ * 加按钮时必须让按钮条「往右缩」，而不是「往左长」—— 第 11 个按钮（背包）时，
+ * 一条 62px 的按钮条会从 204 起画，直接压住法宝格（D176 的布局约束）。
+ */
+export const BTN_MIN_X = 236;
 const BTN_H = 22;
 const BTN_GAP = 6;
 const EDGE = 14;
@@ -77,9 +84,12 @@ export function layoutHudButtons(canvasW: number, canvasH = 540): readonly HudBu
     { id: 'sound', label: '音效', key: 'V' },
     // 76 层只能靠 ←→ 一层一层挪 = 等于没有回刷（D185），所以给它一个网格面板。
     { id: 'floormap', label: '秘境', key: 'P' },
+    { id: 'bag', label: '背包', key: 'B' },
   ];
   const n = specs.length;
-  const avail = Math.max(0, canvasW - EDGE * 2);
+  const rightEdge = canvasW - EDGE;
+  // 可用宽度从「左列右边缘」算到「右边距」，而不是从画布左边算。
+  const avail = Math.max(0, rightEdge - Math.min(BTN_MIN_X, Math.max(EDGE, rightEdge - BTN_W)));
   let btnW = BTN_W;
   if (n * btnW + (n - 1) * BTN_GAP > avail) {
     btnW = Math.floor((avail - (n - 1) * BTN_GAP) / n);
@@ -88,7 +98,7 @@ export function layoutHudButtons(canvasW: number, canvasH = 540): readonly HudBu
   const perRow = btnW >= 40 ? n : Math.ceil(n / 2);
   btnW = Math.max(24, Math.min(btnW, Math.floor((avail - (perRow - 1) * BTN_GAP) / perRow)));
   const rowW = perRow * btnW + (perRow - 1) * BTN_GAP;
-  const startX = Math.round(Math.max(EDGE, canvasW - EDGE - rowW));
+  const startX = Math.round(Math.max(EDGE, rightEdge - rowW));
   return specs.map((s, i) => {
     const row = Math.floor(i / perRow);
     const col = i % perRow;
