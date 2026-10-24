@@ -1118,3 +1118,23 @@ export function discardFromBag(s: GameSession, index: number): { ok: boolean; me
   return { ok: true, message: `已丢弃 ${item.name}` };
 }
 
+
+/**
+ * 底栏「还有几波见到镇守」的文案（D194）。
+ *
+ * 一层 = BOSS_EVERY 波，第 BOSS_EVERY 波出镇守。玩家要自己心算「还差几波」太累，
+ * 而挂机游戏里「离下一个里程碑多远」是最基本的反馈。
+ *
+ * 四态：本波镇守 / 距镇守 N 波 / 下潜中（层 28+ 的大多数层没有镇守，那里写
+ * 「距镇守 7 波」是骗人）/ 渊底（末层既无镇守也无下一层，写「下潜中」会让玩家一直等
+ * 一个不会来的东西）。脏值按第 1 波处理，绝不吐 NaN。
+ */
+export function bossWaveHint(s: GameSession): string {
+  const wave = Number.isFinite(s.wave) && s.wave > 0 ? Math.floor(s.wave) : 1;
+  const boss = hasBossFloor(Number.isFinite(s.floor) ? s.floor : 1);
+  // 末层没有镇守也没有下一层：写「下潜中」会让玩家一直等一个不会来的东西。
+  if (!boss) return (Number.isFinite(s.floor) ? s.floor : 1) >= MAX_FLOOR ? '渊底' : '下潜中';
+  const rest = BOSS_EVERY - (wave % BOSS_EVERY);
+  if (wave % BOSS_EVERY === 0) return '本波镇守';
+  return `距镇守 ${rest} 波`;
+}

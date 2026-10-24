@@ -131,9 +131,11 @@ const regions = await evaluate(`(() => {
       // 饱和色（血条是锈红、浊气是紫、罡气是金；文字基本是灰白）
       if (Math.max(r, gg, b) - Math.min(r, gg, b) > 60) chroma += 1;
     }
-    return { lit, gold, teal, chroma };
+    return {
+    footerHint: (() => { const z = window.__zhuoxian; return z && typeof z.bossWaveHint === 'function' ? z.bossWaveHint() : ''; })(), lit, gold, teal, chroma };
   };
   return {
+    footerHint: (() => { const z = window.__zhuoxian; return z && typeof z.bossWaveHint === 'function' ? z.bossWaveHint() : ''; })(),
     canvas: { w: W, h: H },
     buttons: window.__zhuoxian?.hudButtons?.()?.length ?? -1,
     phase: window.__zhuoxian?.phase ?? '?',
@@ -170,6 +172,8 @@ const checks = [
   ['血条区有饱和色（气血锈红 / 浊气紫 / 罡气金）', regions.barArea.chroma > 200],
   // 只证「画出来了」：刚开局进度条只有几个像素宽，阈值不能按满格定（那是拿掉率/时长赌断言）
   ['修为进度条画出来了（右列青色像素）', regions.xpBar.teal > 6],
+  // D194：底栏要有镇守倒计时（不断言具体数字——数字随开局计时浮动）
+  ['底栏显示镇守倒计时（D194）', /距镇守 \d+ 波|本波镇守|下潜中|渊底/.test(String(regions.footerHint ?? ''))],
 ];
 let bad = 0;
 for (const [name, ok] of checks) {

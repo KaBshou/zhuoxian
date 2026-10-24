@@ -19,7 +19,7 @@ import {
   type BattleState,
   type MonsterInPlay,
 } from '../core/battle';
-import { pushLog, sessionAchievementFacts, tickSession, type GameSession } from '../core/session';
+import { bossWaveHint, pushLog, sessionAchievementFacts, tickSession, type GameSession } from '../core/session';
 import type { TurbidState } from '../core/turbid';
 import { TURBID_MAX } from '../core/turbid';
 import type { ElementTag } from '../data/tags';
@@ -1109,7 +1109,7 @@ export class BattleRenderer {
     ctx.textAlign = 'right';
     ctx.fillStyle = C.dim;
     ctx.fillText(
-      `${s.cycle > 0 ? '第 ' + s.cycle + ' 周目 · ' : ''}第 ${s.wave} 波　${s.floor} 层　击杀 ${s.battle.kills}　掉落 ${s.dropsFound}　←→ 回刷　1/2/3 渊痕　E 法宝　D 详解　T 周天　G 神通　K 图鉴　J 成就　M 渊痕　N 轮回　S 存档　V 音效　[ ] 音量`,
+      `${s.cycle > 0 ? '第 ' + s.cycle + ' 周目 · ' : ''}第 ${s.wave} 波（${bossWaveHint(s)}）　${s.floor} 层　击杀 ${s.battle.kills}　掉落 ${s.dropsFound}　←→ 回刷　1/2/3 渊痕　E 法宝　D 详解　T 周天　G 神通　K 图鉴　J 成就　M 渊痕　N 轮回　S 存档　V 音效　[ ] 音量`,
       BATTLE_W - 16,
       BATTLE_H - 14,
     );

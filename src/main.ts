@@ -23,19 +23,7 @@ import {
 import { gainXp } from './core/character';
 import { equipmentSummary, pickup } from './core/inventory';
 import { RARITY_NAME } from './data/rarity';
-import {
-  createSession,
-  floorSelectableMax,
-  setFloor,
-  startWave,
-  sessionAchievementFacts,
-  syncAchievements,
-  tickSession,
-  drainSoundCues,
-  equipFromBag,
-  discardFromBag,
-  type GameSession,
-} from './core/session';
+import { bossWaveHint, createSession, discardFromBag, drainSoundCues, equipFromBag, floorSelectableMax, sessionAchievementFacts, setFloor, startWave, syncAchievements, tickSession, type GameSession } from './core/session';
 import { createLocalStorageAdapter } from './core/storage';
 import { createAudioEngine } from './core/audio';
 import { FRAGMENT_TERM, type FragmentElement } from './data/fragments';
@@ -1249,6 +1237,7 @@ declare global {
       readonly tutorialLength: number;
   /** D193：轮回是否处于「待确认」窗口（探针据此验二次确认，不去解析日志文案）。 */
   readonly prestigeArmed: boolean;
+  readonly bossWaveHint: () => string;
   readonly viewport: () => { readonly logicalW: number; readonly logicalH: number; readonly ratio: number };
       /** 一口气把引导推到底（探针不想等 12 秒时用） */
       finishTutorial(): void;
@@ -1575,6 +1564,7 @@ if (import.meta.env.DEV) {
     /** 画布像素比（后备缓冲 / 逻辑 960）：探针把「逻辑坐标」换算成「缓冲像素」时要乘它 */
   viewport: () => ({ logicalW: LOGICAL_W, logicalH: LOGICAL_H, ratio: pixelRatio }),
 
+  bossWaveHint: () => bossWaveHint(session),
   get prestigeArmed() {
     return prestigeConfirmArmed({ armedAt: prestigeArmedAt, nowMs: Date.now() });
   },
