@@ -20,6 +20,9 @@ import { MAX_FLOOR, MAIN_FLOOR_END, depthRarityBonus } from '../data/monsters';
 import { TOTAL_STEPS, xpForStep } from '../core/progression';
 import { affordableSinks } from '../data/marks';
 import { drawPaperdoll, paperdollHeight } from './paperdoll';
+import { CODEX_TOTAL, codexProgress } from '../core/codex';
+import { achievementSummary } from '../core/achievement';
+import { ACHIEVEMENT_TOTAL } from '../data/achievements';
 
 const C = {
   panel: 'rgba(11, 10, 12, 0.82)',
@@ -185,6 +188,18 @@ export function drawStatusPanel(
     },
     { label: '击杀', value: `${s.battle.kills}（死 ${s.floorDeaths}）`, color: C.dim },
   ];
+  // 收集（D195）：图鉴与成就各自有面板，但没有一个地方告诉玩家「它们存在、现在几成」。
+  // 挂机游戏里「还差几个」比「有几个」更能驱动，所以两个分母都写出来。
+  {
+    const codexGot = s.codex ? codexProgress(s.codex).total.got : 0;
+    const achGot = s.achievements ? achievementSummary(s.achievements).got : 0;
+    lines.push({
+      label: '收集',
+      value: `图鉴 ${codexGot}/${CODEX_TOTAL}　成就 ${achGot}/${ACHIEVEMENT_TOTAL}`,
+      color: codexGot > 0 || achGot > 0 ? C.teal : C.dim,
+    });
+  }
+
   // 渊痕只在满级后才有意义（它是满级后的唯一积累物，不产生战力）。
   // 露出「可换什么」比只显示数字有用：玩家看到 20 万就能换一次深层落脚点。
   if (maxed || marks > 0) {
