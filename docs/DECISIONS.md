@@ -3498,3 +3498,28 @@ node tools\audit-dead-wiring.mjs --json=tmp\dead.json
 ```
 
 **纪律**：**「有实现」不等于「有接线」，「有测试」更不等于**。三个信号里只有「产品路径上有人调用」才算功能存在；判断这件事只能看 `src/` 的引用数，不能看测试通过数。
+### D211 图鉴「异变体」那一行从来没被画出来（D160 加了行，D210 才扫出来）
+
+**怎么发现的**：D210 的死接线审计列出 `src/render/codex-panel.ts` 有 3 个零引用导出（`codexPanelHeight` / `CODEX_PANEL_SIZE` / `codexElementColor`），我去看这个文件「为什么高度函数没人用」，顺手读到 `drawCodexPanel` 的分组：
+
+```ts
+const monsters = entries.filter((e) => e.kind === 'monster');
+const legendaries = entries.filter((e) => e.kind === 'legendary');
+```
+
+而 `codexEntries()` 产出 **三种** kind：`monster` / `variant` / `legendary`。**`variant` 被两次 filter 都漏掉** ⇒ D160 加的「异变体」那一行从上线到现在**一次都没画出来过**。
+
+**两个连带问题**：
+
+1. **光标错位**：`drawCol(..., baseIndex)` 用 `baseIndex + i` 算绝对行号，右列传的是 `monsters.length`（21）。但 `codexEntries` 里异变体排在浊物之后、传奇之前 ⇒ 传奇的真实绝对索引是 **22..33**，而面板按 **21..32** 算 ⇒ 光标停在任何一条传奇上，高亮的都是**上一条**。
+2. **高度少算一行**：`codexPanelHeight()` 同样只按 monster / legendary 取 `max`，漏了异变体 ⇒ 高度比实际矮 17px，而「面板装得进 540」那条测试用的正是这个数 —— **少报高度等于那条测试没在保护真实高度**（D208 的 `rowsPerCol` 同型）。
+
+**修法**（`src/render/codex-panel.ts`）：
+
+- 保留**绝对索引**：`const indexed = entries.map((e, i) => ({ e, i }))`，分组只决定「画在哪一列」，不再决定「行号是多少」。
+- 右列收 `kind !== 'monster'`（异变体 + 传奇），标题改成 **`异变体 · 传奇`** —— 只写「传奇」会让第一行（异变体）看起来像传奇。
+- 新增 `codexColumnRows(codex)` 作为行数的**唯一出处**，`codexPanelHeight()` 与 `drawCodexPanel()` 都调它（绘制与高度同源）。
+
+**验收**：新测 `tests/codex-panel-layout.test.ts` **8/8** —— 异变体那行真的画出来 / 右列标题含「异变体」/ 列行数 21 / **面板 fillRect 高度 === `codexPanelHeight()`** / 装得进 540 / 光标指向异变体（绝对索引 18）时有高亮 / 已收录带 `·`、未收录带 `？`。`F:\dsh-work\tools\probe-codex.mjs` 真机 **23/23**。`tsc 0` / `vitest 1018 passed / 77 files`。
+
+**纪律**：**加一条数据行时，必须同时问「它会被画出来吗、它会让别的行号偏移吗、它会让高度算错吗」** —— 三件事都不会报错。D160 加异变体时只测了 `codexEntries` 的条数与顺序（那三件都测不出来），而面板是另一个消费者。

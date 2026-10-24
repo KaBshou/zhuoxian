@@ -93,9 +93,14 @@ export function drawCodexPanel(
   cursor = -1,
 ): CodexPanelResult {
   const entries = codexEntries(codex);
-  const monsters = entries.filter((e) => e.kind === 'monster');
-  const legendaries = entries.filter((e) => e.kind === 'legendary');
-  const rows = Math.max(monsters.length, legendaries.length);
+  // D211：**不能按 kind 过滤掉「异变体」**。它在 codexEntries 里是一条独立行（D160），
+  // 但这里原来只筛 monster / legendary ⇒ 那一行永远不会被画出来，
+  // 而它又占着 entries 的绝对索引 ⇒ 右列每一行的光标都错位一格。
+  // 现在保留绝对索引（indexed），分组只决定画在哪一列。
+  const indexed = entries.map((e, i) => ({ e, i }));
+  const monsters = indexed.filter((x) => x.e.kind === 'monster');
+  const others = indexed.filter((x) => x.e.kind !== 'monster');
+  const rows = Math.max(monsters.length, others.length);
   const h = PAD * 2 + 34 + rows * ROW_H + 26;
   const x = Math.round((canvasW - W) / 2);
   const y = Math.round((canvasH - h) / 2);
@@ -122,15 +127,19 @@ export function drawCodexPanel(
   );
 
   const top = y + PAD + 30;
-  const drawCol = (title: string, list: readonly CodexEntry[], colX: number, baseIndex: number): void => {
+  const drawCol = (
+    title: string,
+    list: readonly { readonly e: CodexEntry; readonly i: number }[],
+    colX: number,
+  ): void => {
     ctx.font = 'bold 12px "Microsoft YaHei", "PingFang SC", sans-serif';
     ctx.fillStyle = C.teal;
     ctx.fillText(title, colX, top - 2);
     ctx.font = '12px "Microsoft YaHei", "PingFang SC", sans-serif';
-    list.forEach((e, i) => {
+    list.forEach((row, i) => {
       const rowY = top + 16 + i * ROW_H;
-      const index = baseIndex + i;
-      if (index === cursor) {
+      const e = row.e;
+      if (row.i === cursor) {
         ctx.fillStyle = C.frameSoft;
         ctx.fillRect(colX - 4, rowY - 2, COL_W, ROW_H - 1);
         ctx.strokeStyle = C.frame;
@@ -148,8 +157,9 @@ export function drawCodexPanel(
     });
   };
 
-  drawCol('浊物', monsters, x + PAD, 0);
-  drawCol('传奇', legendaries, x + PAD + COL_W + COL_GAP, monsters.length);
+  drawCol('浊物', monsters, x + PAD);
+  // 右列标题写清「异变体」也在这一列 —— 只写「传奇」会让第一行（异变体）看起来像传奇
+  drawCol('异变体 · 传奇', others, x + PAD + COL_W + COL_GAP);
 
   ctx.font = '11px "Microsoft YaHei", "PingFang SC", sans-serif';
   ctx.fillStyle = C.gold;
@@ -159,13 +169,19 @@ export function drawCodexPanel(
   return { rows: entries.length, got: prog.total.got, total: prog.total.total, cursor };
 }
 
+/**
+ * 两列各有多少行（D211：绘制与高度必须同源 —— 原来这里少算了异变体那一行，
+ * 高度比实际矮 17px，而「面板装得进 540」那条测试用的正是这个数）。
+ */
+export function codexColumnRows(codex: CodexState): number {
+  const entries = codexEntries(codex);
+  const left = entries.filter((e) => e.kind === 'monster').length;
+  return Math.max(left, entries.length - left);
+}
+
 /** 面板高度（测试用：判断会不会画出画布外） */
 export function codexPanelHeight(codex: CodexState): number {
-  const rows = Math.max(
-    codexEntries(codex).filter((e) => e.kind === 'monster').length,
-    codexEntries(codex).filter((e) => e.kind === 'legendary').length,
-  );
-  return PAD * 2 + 34 + rows * ROW_H + 26;
+  return PAD * 2 + 34 + codexColumnRows(codex) * ROW_H + 26;
 }
 
 export const CODEX_PANEL_SIZE = { w: W, rowsPerCol: ROWS_PER_COL, rowH: ROW_H } as const;
