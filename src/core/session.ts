@@ -135,6 +135,15 @@ export const WAVE_GAP = 0.9;
 export const BOSS_EVERY = 10;
 
 /**
+ * 同一层泡了多久给一次「卡住了」提示（秒）。D205。
+ *
+ * 8 分钟是量出来的：一阶一层约 3.7 分钟（BALANCE 四段下界 27min / 约 7 层），
+ * 8 分钟 ≈ 两层的时间，正常推进几乎不会触发；反过来说，真触发了就说明停住了。
+ * 距离「挂机一晚」那种规模（几小时）又差得远，不会打扰正常挂机的玩家。
+ */
+export const STUCK_HINT_SECONDS = 8 * 60;
+
+/**
  * 一波几只普通浊物。
  *
  * BALANCE v4 定标：6→10→6→4。现在是 4 —— 因为「每波挨打总量」按同屏数近似平方涨
@@ -225,6 +234,14 @@ export interface GameSession {
   floorKills: number;
   /** 本层停留分钟数（换层清零）。运行时态，不进存档 */
   floorMinutes: number;
+  /**
+   * 「卡住了」提示已经给过的层（D205，运行时态）。
+   *
+   * 每层只提示一次：一直挂机在同一层是**正常玩法**（挂机本来就不该被催），
+   * 但连续 8 分钟一层都没过、又不是在镇守波上，多半是打不动了 —— 这时给一次
+   * 「往哪走」的话术，比让玩家自己发现「原来能回刷」强得多。
+   */
+  stuckHintFloor?: number;
   /** 累计突破次数 */
   breakthroughs: number;
   /**
@@ -837,6 +854,10 @@ export function tickSession(s: GameSession, dt: number): void {
 
   // 4.5) 震动衰减（纯显示态；放在浮字之前，让本帧刚产生的事件不被同帧衰减）
   s.shake = decayShake(s.shake, dt);
+  // D205：floorMinutes 之前只声明、从没累加过（注释说它算「本层真实击杀率」，
+  // 但没人喂它 ⇒ 永远是 0，任何读它的诊断都在读假数）。这里与 playedSeconds 同口径累加。
+  s.floorMinutes += Math.max(0, Math.min(0.25, Number.isFinite(dt) ? dt : 0));
+  maybeStuckHint(s);
   s.playedSeconds += Math.max(0, Math.min(0.25, Number.isFinite(dt) ? dt : 0));
 
   // 5) 浮字与日志变老
@@ -970,6 +991,25 @@ export function pushLog(s: GameSession, text: string, color: string): void {
 /** 往画面上飘一个字 */
 export function pushFloat(s: GameSession, spec: Omit<FloatText, 'age'>): void {
   s.floats.push({ ...spec, age: 0 });
+}
+
+/**
+ * 同一层泡太久就给一次「往哪走」的提示（D205）。
+ *
+ * 只在**没有在等复活**、且这一层还没提示过时触发。文案刻意给三条具体动作，
+ * 而不是「加油」：卡住的玩家需要的是出口，不是鼓励。
+ */
+export function maybeStuckHint(s: GameSession): void {
+  if (s.floorMinutes < STUCK_HINT_SECONDS) return;
+  if (s.stuckHintFloor === s.floor) return;
+  // 死亡冷却里不算卡住 —— 那是「正在被劝退」，提示会显得像在嘲讽。
+  if (s.battle.reviveCooldown > 0) return;
+  s.stuckHintFloor = s.floor;
+  pushLog(
+    s,
+    `第 ${s.floor} 层泡了 ${Math.floor(s.floorMinutes / 60)} 分钟：P 回浅层攒装备 · T 看周天图 · H 看操作`,
+    '#6d665c',
+  );
 }
 
 /**

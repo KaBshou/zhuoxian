@@ -223,6 +223,38 @@ try {
     );
   }
 
+  // ── 6. D205 floorMinutes 真在累加 + 卡住提示每层一次 ────────────
+  {
+    const s = sessionMod.createSession({
+      classId: 'yujian',
+      seed: 2026,
+      tables: { bases: basesMod.ITEM_BASES, affixes: affixMod.AFFIXES },
+    });
+    for (let i = 0; i < 90; i += 1) sessionMod.tickSession(s, 1 / 30);
+    check(
+      '本层停留分钟数真的在涨（D205：以前只声明没人写）',
+      s.floorMinutes > 2.9 && s.floorMinutes < 3.2,
+      `floorMinutes=${fix(s.floorMinutes, 3)}s played=${fix(s.playedSeconds, 3)}s`,
+    );
+    s.floorMinutes = sessionMod.STUCK_HINT_SECONDS + 1;
+    sessionMod.maybeStuckHint(s);
+    sessionMod.maybeStuckHint(s);
+    const stuckHits = s.log.filter((l) => l.text.includes('泡了'));
+    check(
+      '同一层泡久了只提示一次，且给的是三条具体出口（D205）',
+      stuckHits.length === 1 && stuckHits[0].text.includes('P 回浅层') && stuckHits[0].text.includes('H 看操作'),
+      `hits=${stuckHits.length} text=${stuckHits[0]?.text ?? ''}`,
+    );
+    s.floor = 9;
+    s.floorMinutes = sessionMod.STUCK_HINT_SECONDS + 1;
+    sessionMod.maybeStuckHint(s);
+    check(
+      '换层之后可以再提示一次（每层各一次，不是全局一次性）',
+      s.log.filter((l) => l.text.includes('泡了')).length === 2,
+      `floor=${s.floor}`,
+    );
+  }
+
 } finally {
   await close();
 }
