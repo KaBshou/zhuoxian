@@ -161,6 +161,7 @@ $probes = @(
   # 31st: stats panel (D200). 9 items. Opened by Y; asserts the panel is drawn (left gold bar),
   # playtime actually accumulates, and mutual exclusion with the other panels still holds.
   'F:\dsh-work\zhuoxian\tools\probe-stats.mjs',
+  'F:\dsh-work\zhuoxian\tools\probe-save-backup.mjs',
   # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'

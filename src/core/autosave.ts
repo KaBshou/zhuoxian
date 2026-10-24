@@ -12,7 +12,7 @@
  * 已经足够——挂机游戏最坏丢 30 秒进度，玩家感知不到。
  */
 import type { StorageAdapter } from './storage';
-import { SAVE_KEY } from './storage';
+import { SAVE_BACKUP_KEY, SAVE_KEY } from './storage';
 import type { GameSession } from './session';
 import { sessionToSave, sessionFromSave } from './save-bridge';
 import { deserialize } from './save';
@@ -31,6 +31,11 @@ export interface LoadResult {
   readonly session: GameSession;
   /** 距上次存档过了多少秒（离线收益用） */
   readonly offlineSeconds: number;
+  /**
+   * true = 主档读不出来、这份是从备份恢复的（D201）。
+   * 调用方必须**告诉玩家**：静默回退会让玩家以为「我明明练到 30 重怎么回到 27 了」。
+   */
+  readonly restoredFromBackup: boolean;
 }
 
 /**
@@ -81,7 +86,12 @@ export class Autosaver {
   saveNow(): boolean {
     try {
       const state = sessionToSave(this.getSession());
-      this.adapter.write(SAVE_KEY, JSON.stringify(state));
+      const next = JSON.stringify(state);
+      // 先搬旧档（顺序反了就等于没备份：新档会先覆盖旧档，备份里就变成新档）。
+      // 旧档读不到（第一次存）时跳过 —— 写空备份会把「没有备份」伪装成「备份坏了」。
+      const prev = this.adapter.read(SAVE_KEY);
+      if (prev) this.adapter.write(SAVE_BACKUP_KEY, prev);
+      this.adapter.write(SAVE_KEY, next);
       this.lastSavedAt = Date.now();
       this.saveCount += 1;
       this.lastError = null;
@@ -92,9 +102,23 @@ export class Autosaver {
     }
   }
 
-  /** 读档。没有档 / 档坏了 / 版本不兼容都返回 null（调用方建新档） */
+  /**
+   * 读档。没有档 / 档坏了 / 版本不兼容都返回 null（调用方建新档）。
+   *
+   * 主档坏了会尝试备份（D201）。备份也坏才算真没档 —— 但**不删坏档**：
+   * 玩家还能导出它，至少能亲眼确认「确实坏了」而不是「游戏把我清了」。
+   */
   load(now = Date.now()): LoadResult | null {
-    const raw = this.adapter.read(SAVE_KEY);
+    const main = this.tryLoadKey(SAVE_KEY, now);
+    if (main) return { ...main, restoredFromBackup: false };
+    const backup = this.tryLoadKey(SAVE_BACKUP_KEY, now);
+    if (backup) return { ...backup, restoredFromBackup: true };
+    return null;
+  }
+
+  /** 从指定键读一份存档；读不出来返回 null（不抛、不删） */
+  private tryLoadKey(key: string, now: number): { session: GameSession; offlineSeconds: number } | null {
+    const raw = this.adapter.read(key);
     if (!raw) return null;
     try {
       const parsed = deserialize(JSON.parse(raw));
@@ -111,7 +135,10 @@ export class Autosaver {
 
   /** 删档（重置游戏 / 测试用） */
   clear(): void {
+    // 备份也要清：`clear()` 只有一个语义是「重开新档」，留着备份会让玩家
+    // 下一秒又回到旧进度（那正是 D201 之前「清了等于没清」的事故形状）。
     this.adapter.remove(SAVE_KEY);
+    this.adapter.remove(SAVE_BACKUP_KEY);
     this.lastSavedAt = 0;
   }
 }

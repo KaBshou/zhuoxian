@@ -3241,3 +3241,27 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 - `npx tsc --noEmit` **0**；`npx vitest run` **953 passed / 68 files**；`tools/_plate.ps1` 探针 31 → **32**。
 
 **教训。** 「没有的数据不编」比「看起来完整」重要：面板里每一个数都要能说清**它从哪来**。凑一个「累计游玩时长」只要一行代码，但它会和玩家的记忆打架，而玩家一旦发现某个数字是编的，就会开始怀疑所有数字。
+### D201 存档双写：主档坏了还有上一份
+
+**问题**：`localStorage` 只有一份档。真机上「主档被写坏」并不罕见 —— 写入过程中断电/关标签、浏览器配额清理写一半、扩展篡改。写坏的后果不是报错，是**打开后一切归零**（`deserialize` 返回 ok:false → 调用方建新档），玩家看到的是「我练到 30 重，一夜回到练气一重」，而且**没有任何提示**。
+
+**做法（一层安全网，不是历史存档）**：
+
+| 位置 | 改动 |
+|---|---|
+| `src/core/storage.ts` | `export const SAVE_BACKUP_KEY = 'zhuoxian.save.v1.bak';` |
+| `src/core/autosave.ts` | `saveNow()`：先读旧主档 → 有则写备份 → 再写新主档（**顺序反了等于没备份**：新档先覆盖，备份里就变成新档）；旧档不存在时跳过写备份（写空备份会把「没有备份」伪装成「备份坏了」） |
+| 同上 | `LoadResult` 加 `readonly restoredFromBackup: boolean`；`load()` 拆出 `private tryLoadKey(key, now)`，主档失败回退备份；**坏档不删**（玩家还能导出它，至少能亲眼确认坏了） |
+| 同上 | `clear()` 连备份一起清 —— `clear()` 只有一个语义「重开新档」，留着备份会让玩家下一秒又回到旧进度（这正是 D191 之前「清了等于没清」的同一形状） |
+| `src/main.ts` | `const restoredFromBackup = loaded?.restoredFromBackup === true;`，session 建好后 pushLog「主存档损坏，已回退到上一次备份」+「想保住这一份，按 S 导出备份」 |
+
+**验收（本次真跑 2026-10-24 14:0x）**：
+- 新测 `tests/save-backup.test.ts` **7/7**：第一次保存不写空备份 / 第二次把上一份主档搬进备份 / 主档正常不标记 restoredFromBackup / 主档坏→标记且坏档仍在 / 主档与备份都坏→返回 null 不抛 / `clear()` 连备份清 / 从备份恢复时离线秒数按**备份的 savedAt** 算。
+- 新探针 `tools/probe-save-backup.mjs`（CDP 9395）**7/7**：钩子存在 / 第一次保存只写主档（`bak=false`）/ 第二次产生备份（`bakLen=659`）/ 主档坏且**无 flush** 时 `autosaver.load()` 能从备份恢复并标记 `restoredFromBackup` / 坏档没被悄悄删 / 再存一次主档恢复合法 JSON / 控制台零报错。
+- `npx tsc --noEmit` **0**；`npx vitest run` **960 passed / 69 files**；`node tools/gate.mjs` 四道门全绿；整盘 33 脚本 / 493 项全绿；`git commit 0f1e2ca` + push；Actions success；`probe-live` 线上 10/10。
+
+**探针为什么会假绿两次（值得单列）**：
+1. 第一版用 `Page.reload` 模拟「主档坏了」。**页面离开会触发 `pagehide` → `flush()`**，把还活着的内存会话写回主档 ⇒ 坏档当场被治好，fallback 根本没走到，但断言「能进游戏」是过的。**教训：要测「下次启动的读档路径」，就得直接调那个入口，不能让浏览器顺手替你修好。**
+2. 第二版还断言「日志里有『主存档损坏』」—— 那条日志只在**页面启动时**写，而我们已经绕过启动所以永远不会有。测试口径和实现路径必须同一条，否则测的是自己的假设。
+
+**纪律（并入 D101 族）**：**任何「兜底」都必须有一条能证明兜底真的被执行过的用例**。只测「兜底后还能用」是测不出来的 —— 正常路径也「还能用」。

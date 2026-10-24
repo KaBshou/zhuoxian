@@ -21,6 +21,18 @@ export interface StorageAdapter {
 /** 存档在存储里的键。带版本号，版本不兼容时换 key 而不是覆盖老档 */
 export const SAVE_KEY = 'zhuoxian.save.v1';
 
+/**
+ * 存档备份键（D201）。
+ *
+ * 每次写主档前，把**上一份**主档原样搬到这个键下：
+ * - 主档被浏览器写坏（配额、断电、扩展干扰）时还有一份能开；
+ * - 玩家点了「重开新档」误操作时，备份里是上一次的进度。
+ *
+ * 只留一份、只留上一次 —— 备份不是历史存档，是安全网。留多了会出现
+ * 「到底哪个才是我的档」这种更难解释的问题。
+ */
+export const SAVE_BACKUP_KEY = 'zhuoxian.save.v1.bak';
+
 /** 浏览器 localStorage 适配器。任何异常都吞掉（写满/无痕模式/被禁用） */
 export function createLocalStorageAdapter(): StorageAdapter {
   const safe = (): Storage | null => {

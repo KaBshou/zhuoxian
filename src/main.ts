@@ -131,6 +131,11 @@ let session: GameSession = createSession({
 const autosaver = new Autosaver(storage, () => session, TABLES);
 const loaded = autosaver.load();
 
+// 主档读不出来、从备份恢复时必须说出来（D201）。
+// 静默回退的形状是：玩家记得自己练到第 30 重，打开发现第 27 重，然后开始怀疑游戏在偷偷改档。
+// 日志在 session 建好之后才写，所以先记下来。
+const restoredFromBackup = loaded?.restoredFromBackup === true;
+
 /**
  * 音效引擎（D181）。
  *
@@ -676,6 +681,12 @@ if (loaded && loaded.offlineSeconds >= OFFLINE_MIN_SECONDS) {
     capped: gain.capped,
     age: 0,
   };
+}
+
+// 从备份恢复要说出来（D201）：静默回退是最伤信任的一种「贴心」。
+if (restoredFromBackup) {
+  session.log.push({ text: '主存档损坏，已回退到上一次备份', color: '#c25a48', age: 0 });
+  session.log.push({ text: '想保住这一份，按 S 导出备份', color: '#8a8272', age: 0 });
 }
 
 // ── 3 & 4. 主循环 + 自动存档 ───────────────────────────────
