@@ -10,7 +10,7 @@
  */
 import type { GameSession } from '../core/session';
 import { prestigeReady } from '../core/session';
-import { characterPower, equipmentSummary, itemPower, slotForItem } from '../core/inventory';
+import { BAG_CAPACITY, characterPower, equipmentSummary, itemPower, slotForItem } from '../core/inventory';
 import { powerDeltaText, powerRatioText, rarityRankText } from '../core/power-rank';
 import { SLOT_NAME, type SlotId } from '../data/slots';
 import { RARITY_NAME, type Rarity } from '../data/rarity';
@@ -289,7 +289,9 @@ export function drawBagPanel(
     value: lineOf(item),
     color: RARITY_COLOR[item.rarity],
   }));
-  return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines, `背包 ${s.bag.length}/40`);
+  const bagFull = s.bag.length >= BAG_CAPACITY;
+  // 满了要写出来：挂机时背包满了会**静默丢弃最差的件**，不提示等于玩家不知道自己丢了什么（D198）
+  return drawPanel(ctx, PANEL_X_RIGHT, topOffset, lines, bagFull ? `背包 ${s.bag.length}/${BAG_CAPACITY} · 满` : `背包 ${s.bag.length}/${BAG_CAPACITY}`);
 }
 
 /**

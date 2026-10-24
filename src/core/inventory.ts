@@ -177,6 +177,14 @@ export interface PickupResult {
   /** 给玩家看的一句话（"换上了青锋法剑" 之类） */
   readonly message: string;
   readonly equipped: boolean;
+  /**
+   * 因为背包满而被丢掉的件（空数组 = 没丢）。
+   *
+   * 为什么要把「丢了什么」传出来：`trimBag` 的规则是「丢最差的」，
+   * 它一直是静默的 —— 玩家看到日志写「收起 X」就以为 X 进包了，
+   * 其实 X 可能是被丢掉的那一件。**日志不能说谎。**
+   */
+  readonly discarded: readonly Item[];
 }
 
 /**
@@ -193,24 +201,56 @@ export function pickup(ch: CharacterState, bag: readonly Item[], item: Item): Pi
     const { character, replaced } = equip(ch, decision.targetSlot, item);
     if (replaced) nextBag.push(replaced);
     const pct = Number.isFinite(decision.gain) ? `（强 ${((decision.gain - 1) * 100).toFixed(0)}%）` : '';
+    const trimmed = trimBagDetailed(nextBag);
+    const lostEquip = trimmed.discarded.length > 0;
     return {
       character,
-      bag: trimBag(nextBag),
-      message: `换上 ${item.name}${pct}`,
+      bag: trimmed.bag,
+      message: lostEquip
+        ? `换上 ${item.name}${pct}（背包已满，丢掉最差的 ${trimmed.discarded[0].name}）`
+        : `换上 ${item.name}${pct}`,
       equipped: true,
+      discarded: trimmed.discarded,
     };
   }
 
   nextBag.push(item);
-  return { character: ch, bag: trimBag(nextBag), message: `收起 ${item.name}`, equipped: false };
+  const trimmed = trimBagDetailed(nextBag);
+  // 新件自己就是最差的那件时，别写「收起」—— 那是骗人
+  const lostSelf = trimmed.discarded.some((d) => d.uid === item.uid);
+  return {
+    character: ch,
+    bag: trimmed.bag,
+    message: lostSelf
+      ? `背包已满，丢掉 ${item.name}（比手里的都差）`
+      : trimmed.discarded.length > 0
+        ? `收起 ${item.name}（背包已满，丢掉最差的 ${trimmed.discarded[0].name}）`
+        : `收起 ${item.name}`,
+    equipped: false,
+    discarded: trimmed.discarded,
+  };
 }
 
-/** 背包超了就丢最差的（挂机不能因为背包满而停止收货） */
+export interface TrimResult {
+  readonly bag: Item[];
+  readonly discarded: readonly Item[];
+}
+
+/**
+ * 背包超了就丢最差的（挂机不能因为背包满而停止收货）。
+ *
+ * `trimBagDetailed` 是唯一实现：它同告诉调用方「丢了哪几件」，
+ * 让上层能把这件事写进日志。静默丢弃在挂机游戏里等于「我明明看见了它却没了」。
+ */
+export function trimBagDetailed(bag: readonly Item[]): TrimResult {
+  if (bag.length <= BAG_CAPACITY) return { bag: [...bag], discarded: [] };
+  const sorted = [...bag].sort((a, b) => itemPower(b) - itemPower(a));
+  return { bag: sorted.slice(0, BAG_CAPACITY), discarded: sorted.slice(BAG_CAPACITY) };
+}
+
+/** 只要包、不要丢弃信息的调用方走这里（现在只剩测试和旧代码） */
 export function trimBag(bag: readonly Item[]): Item[] {
-  if (bag.length <= BAG_CAPACITY) return [...bag];
-  return [...bag]
-    .sort((a, b) => itemPower(b) - itemPower(a))
-    .slice(0, BAG_CAPACITY);
+  return trimBagDetailed(bag).bag;
 }
 
 /** 背包里最好的几件（UI 用来展示"你有好东西没穿"） */
