@@ -18,6 +18,7 @@ import { SLOT_NAME, type SlotId } from '../data/slots';
 import { RARITY_NAME, type Rarity } from '../data/rarity';
 import { STAT_META, formatModifier } from '../data/stats';
 import { legendaryOf } from '../core/item';
+import { characterStats } from '../core/character';
 import { TERM } from '../data/glossary';
 
 const RARITY_COLOR: Record<Rarity, string> = {
@@ -199,7 +200,28 @@ export function drawEquipmentDetail(
 
   ctx.textAlign = 'left';
   ctx.font = '12px "Noto Sans SC", sans-serif';
+  // D206：角色属性汇总。
+  //
+  // 详情面板以前只列 10 件装备的灵纹 —— 玩家想算「我现在多少伤害/破绽/抗性」只能自己
+  // 拿纸加；而这是个 build 游戏，看不见的属性等于不存在的属性。
+  // 数据直接取 `characterStats`（与战斗同一份，不另算一遍），只做四舍五入显示。
+  const st = characterStats(s.character);
+  const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+  const attrY = baseY + totalH + 16;
+  ctx.fillStyle = '#9a9184';
+  ctx.fillText(
+    `气血 ${Math.round(st.life)} · 护体 ${Math.round(st.armor)} · 罡气 ${Math.round(st.shield)} · 真元 ${Math.round(st.mana)} · 出手 ${st.attackSpeed.toFixed(2)}/秒`,
+    baseX,
+    attrY,
+  );
+  ctx.fillText(
+    `伤害 ${Math.round(st.damage * 100) / 100} · 破绽 ${pct(st.critChance)} 伤害 ×${st.critMulti.toFixed(2)} · 抗性 金 ${pct(st.resMetal)} 火 ${pct(st.resFire)} 水 ${pct(st.resWater)} · 仙缘 +${pct(st.lootRarity)} 机缘 +${pct(st.lootQuantity)}`,
+    baseX,
+    attrY + 15,
+  );
+  // 关闭提示挪到标题行右侧：底部两行属性已经占到 532，再往下会画到画面外。
+  ctx.textAlign = 'right';
   ctx.fillStyle = '#6d665c';
-  ctx.fillText('按 E 关闭', baseX, baseY + totalH + 18);
+  ctx.fillText('按 E 关闭', 960 - 14, baseY - 10);
   return true;
 }
