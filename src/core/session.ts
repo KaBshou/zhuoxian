@@ -45,8 +45,9 @@ import {
 import { MONSTER_QTY_CAP, sumMonsterAffixes } from '../data/monster-affixes';
 import { VARIANT_EXTRA_DROP } from './monster-roll';
 import { clampCycle, cycleMarksMul, cycleName } from '../data/cycles';
-import { switchOverridesFor, type TalentSwitchOverrides } from './talents-runtime';
+import { allocateTalent, switchOverridesFor, type TalentSwitchOverrides } from './talents-runtime';
 import { autoAllocateTalents } from './talents-auto';
+import { getTalent } from '../data/talents';
 import { unlockedSkills } from './skills-runtime';
 import { codexUnlockText, createCodex, recordLegendary, recordMonsterKill, type CodexState } from './codex';
 import {
@@ -699,7 +700,11 @@ export function tickSession(s: GameSession, dt: number): void {
         });
         // 突破会改属性，战斗态必须跟着重算 —— 否则升了境界伤害不变，玩家会以为没生效
         // 顺手把新到手的天赋点花掉（放置游戏不让玩家手点 130 次，理由见 talents-auto.ts）
-        if (s.autoTalents) s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
+        // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
+        // 下一次突破就把点数接管走了，「手动」变成临时状态。
+        if (s.autoTalents && s.character.manualTalents !== true) {
+          s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
+        }
         syncBattleFromCharacter(s);
       }
 
@@ -842,7 +847,11 @@ export function tickSession(s: GameSession, dt: number): void {
         if (!s.firstClearedFloors.includes(cleared)) {
           s.firstClearedFloors.push(cleared);
           // 首通给 2 点天赋，也要立刻花掉（否则点数攒着不生效）
-          if (s.autoTalents) s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
+          // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
+        // 下一次突破就把点数接管走了，「手动」变成临时状态。
+        if (s.autoTalents && s.character.manualTalents !== true) {
+          s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
+        }
           syncBattleFromCharacter(s);
         }
       }
@@ -1232,4 +1241,25 @@ export function bossWaveHint(s: GameSession): string {
   const rest = BOSS_EVERY - (wave % BOSS_EVERY);
   if (wave % BOSS_EVERY === 0) return '本波镇守';
   return `距镇守 ${rest} 波`;
+}
+
+/**
+ * 手动点一个天赋节点（D207）。
+ *
+ * 天赋原本全自动（见 talents-auto.ts）：放置游戏不该让玩家手点 130 次。
+ * 但"全自动"的副作用是周天图对玩家只是展示 —— 54 个节点没有一个是他选的。
+ * 这里给一条手动的路：点成功一次就把角色标成 manualTalents，自动分配从此停手
+ * （否则玩家刚点完，下一次突破点数又被系统接管，"手动"变成临时状态）。
+ *
+ * 失败（点数不够/前置未点/已达上限）不写角色，只回原因 —— 调用方拿去打日志。
+ */
+export function allocateTalentManually(s: GameSession, nodeId: string): { ok: boolean; reason: string } {
+  const res = allocateTalent(s.character, nodeId, s.firstClearedFloors.length);
+  if (!res.ok) return { ok: false, reason: res.reason };
+  s.character = { ...res.character, manualTalents: true };
+  // 天赋给的是属性修正器，战斗态必须跟着重算 —— 否则点了等于没点
+  syncBattleFromCharacter(s);
+  const node = getTalent(nodeId);
+  pushLog(s, `周天图：点亮「${node ? node.name : nodeId}」（此后不再自动分配，空格继续点）`, '#d4a13c');
+  return { ok: true, reason: '' };
 }

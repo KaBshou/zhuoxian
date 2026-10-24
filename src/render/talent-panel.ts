@@ -55,14 +55,68 @@ const PANEL_W = 640;
 
 export interface TalentPanelResult {
   readonly drawn: boolean;
+  /** 光标所在线路下标（无光标时 -1） */
+  readonly cursorLine: number;
+}
+
+/** 线路条数（main.ts 与测试用来夹光标，不写死数字） */
+export const TALENT_LINE_COUNT = LINES.length;
+
+/** 第 index 条线上的节点（越界返回空数组） */
+export function talentLineNodes(index: number): readonly TalentNode[] {
+  const line = LINES[clampLine(index)];
+  return line ? nodesOfLine(line.prefix) : [];
+}
+
+/** 第 index 条线显示用的标签 */
+export function talentLineLabel(index: number): string {
+  const line = LINES[clampLine(index)];
+  return line ? line.label : '';
+}
+
+/**
+ * 光标移动（D207）：上下走一条线，到头停住不环绕。
+ *
+ * 不环绕是有意的：周天图 11 条线在屏幕上是竖排，从最后一行按 ↓ 跳回第一行会让人
+ * 以为自己点错了面板；停在原地更符合「列表」的手感。
+ */
+export function moveTalentCursor(current: number, delta: number): number {
+  const base = clampLine(current);
+  const step = Number.isFinite(delta) ? Math.trunc(delta) : 0;
+  return clampLine(base + step);
+}
+
+function clampLine(index: number): number {
+  if (!Number.isFinite(index)) return 0;
+  return Math.min(LINES.length - 1, Math.max(0, Math.floor(index)));
+}
+
+/**
+ * 第 index 条线上「下一个可以点的节点」id（没有则 null）。
+ * 手动点天赋（D207）按空格时用它决定点哪个。
+ */
+export function firstAllocatableOnLine(ch: GameSession['character'], firstClearedFloors: number, index: number): string | null {
+  for (const node of talentLineNodes(index)) {
+    if (canAllocate(ch, node.id, firstClearedFloors).ok) return node.id;
+  }
+  return null;
 }
 
 /**
  * 画周天图。返回是否画了（false = 数据为空，调用方不用管）。
  * 面板铺在画面正中，遮住战斗区域 —— 它是"暂停看一眼"的界面，不是常驻 HUD。
+ *
+ * `cursor` 是线路光标（D207 手动点天赋用）：null = 纯展示；数字 = 高亮该行并在底部
+ * 显示「这条线下一个能点什么」。光标只影响显示，点不点由 main.ts 调 core 的纯函数。
  */
-export function drawTalentPanel(ctx: CanvasRenderingContext2D, s: GameSession): TalentPanelResult {
-  if (TALENT_NODES.length === 0) return { drawn: false };
+export function drawTalentPanel(
+  ctx: CanvasRenderingContext2D,
+  s: GameSession,
+  cursor: number | null = null,
+): TalentPanelResult {
+  if (TALENT_NODES.length === 0) return { drawn: false, cursorLine: -1 };
+
+  const focusLine = cursor === null ? -1 : clampLine(cursor);
 
   const spent = new Set(spentIds(s.character));
   const avail = talentPointsAvailable(s.character, s.firstClearedFloors.length);
@@ -98,9 +152,20 @@ export function drawTalentPanel(ctx: CanvasRenderingContext2D, s: GameSession): 
   ctx.fillText('实心=已点　青框=可点　灰=前置未点', x + 250, y + 44);
 
   let ry = y + 66;
-  for (const line of LINES) {
+  for (let lineIndex = 0; lineIndex < LINES.length; lineIndex++) {
+    const line = LINES[lineIndex];
+    if (!line) continue;
     const nodes = nodesOfLine(line.prefix);
     if (nodes.length === 0) continue;
+
+    // 光标行：整行铺一层很淡的底（不清空行内文字，只表示"这里在选中"）
+    if (lineIndex === focusLine) {
+      ctx.fillStyle = 'rgba(212, 161, 60, 0.10)';
+      ctx.fillRect(x + 8, ry - 2, PANEL_W - 16, CELL + 4);
+      ctx.strokeStyle = 'rgba(212, 161, 60, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 8.5, ry - 1.5, PANEL_W - 17, CELL + 3);
+    }
 
     ctx.textAlign = 'left';
     ctx.font = '12px "Noto Sans SC", system-ui, sans-serif';
@@ -149,11 +214,21 @@ export function drawTalentPanel(ctx: CanvasRenderingContext2D, s: GameSession): 
     ry += ROW_H;
   }
 
-  // 底部一行：下一个可点节点的详细说明（玩家最需要的那句"点了会怎样"）
-  const nextNode = TALENT_NODES.find((n) => !spent.has(n.id) && canAllocate(s.character, n.id, s.firstClearedFloors.length).ok);
+  // 底部一行：光标行的下一步（有光标）或全局下一个可点节点（纯展示）
+  const cursorNodeId = focusLine >= 0 ? firstAllocatableOnLine(s.character, s.firstClearedFloors.length, focusLine) : null;
+  const nextNode = cursorNodeId ? getTalent(cursorNodeId) : TALENT_NODES.find((n) => !spent.has(n.id) && canAllocate(s.character, n.id, s.firstClearedFloors.length).ok);
   ctx.textAlign = 'left';
   ctx.font = '11px "Noto Sans SC", system-ui, sans-serif';
-  if (nextNode) {
+  if (focusLine >= 0) {
+    const label = talentLineLabel(focusLine);
+    if (nextNode) {
+      ctx.fillStyle = C.teal;
+      ctx.fillText(`${label}　空格 点「${nextNode.name}」—— ${nextNode.desc}`, x + 16, ry + 8);
+    } else {
+      ctx.fillStyle = C.dim;
+      ctx.fillText(`${label}　这条线暂时无可点节点（点数不够或前置未通）`, x + 16, ry + 8);
+    }
+  } else if (nextNode) {
     ctx.fillStyle = C.teal;
     ctx.fillText(`下一个可点：${nextNode.name} —— ${nextNode.desc}`, x + 16, ry + 8);
   } else if (avail > 0) {
@@ -181,7 +256,7 @@ export function drawTalentPanel(ctx: CanvasRenderingContext2D, s: GameSession): 
   }
 
   ctx.textBaseline = 'alphabetic';
-  return { drawn: true };
+  return { drawn: true, cursorLine: focusLine };
 }
 
 /** 给测试/探针用：某条线有几个节点（防止 LINES 表和 TALENT_NODES 脱节） */

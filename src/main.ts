@@ -37,6 +37,7 @@ import {
   type TutorialFacts,
 } from './core/onboarding';
 import { spendMarks } from './core/marks-runtime';
+import { firstAllocatableOnLine, moveTalentCursor } from './render/talent-panel';
 import type { MarkSink } from './data/marks';
 import { AFFIXES } from './data/affixes';
 import { ITEM_BASES } from './data/bases';
@@ -62,6 +63,7 @@ import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
 import { isSlotId } from './data/slots';
 import { characterGemLoadout } from './core/character';
 import {
+  allocateTalentManually,
   prestige,
   prestigeConfirmArmed,
   prestigeReady,
@@ -805,6 +807,30 @@ window.addEventListener('keydown', (e) => {
   // 不等超时 —— 否则老玩家会被一句已经会了的话挡 14 秒。
   keysUsed.add(e.code);
 
+  // ── 周天图打开时，上下键 / 空格归面板（D207 手动点天赋）─────────
+  // 天赋原本全自动（talents-auto.ts），这里是"想自己选"的出口：
+  // 空格点亮光标所在线路里的第一个可点节点，点成功一次就停止自动分配。
+  if (renderer.talentVisible) {
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      e.preventDefault();
+      renderer.setTalentCursor(moveTalentCursor(renderer.talentCursorLine, e.code === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter') {
+      e.preventDefault();
+      const line = renderer.talentCursorLine;
+      const id = firstAllocatableOnLine(session.character, session.firstClearedFloors.length, line);
+      if (!id) {
+        session.log.push({ text: '这条线暂时没有可点的节点（点数不够或前置未通）', color: '#6d665c', age: 0 });
+        return;
+      }
+      const res = allocateTalentManually(session, id);
+      if (res.ok) autosaver.saveNow();
+      else session.log.push({ text: res.reason, color: '#6d665c', age: 0 });
+      return;
+    }
+  }
+
   // ── 神通面板打开时，方向键 / 空格 / R 归面板 ──────────────
   // 冲突：ArrowLeft/Right 平时是回刷层（D36-B），空格平时是「跳过一条引导」。
   // 面板一开就接管这三个键，否则「改装配」和「回刷层」互相打架，
@@ -1214,6 +1240,10 @@ declare global {
       readonly floorMapVisible: boolean;
       /** D200 统计面板 */
       readonly statsVisible: boolean;
+      /** D207 周天图光标（-1 = 面板没开） */
+      readonly talentCursor: number;
+      /** D207 点第 line 条线上的第一个可点节点（探针免键盘路径用，与空格同一函数） */
+      allocateTalentLine(line: number): { ok: boolean; reason: string };
       /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
       floorMapCells(): Array<{
         readonly floor: number;
@@ -1680,6 +1710,16 @@ if (import.meta.env.DEV) {
     /** D200：统计面板是否打开（探针用，按 Y 切换）。 */
     get statsVisible() {
       return renderer.statsVisible;
+    },
+    get talentCursor() {
+      return renderer.talentCursorLine;
+    },
+    allocateTalentLine(line: number) {
+      const id = firstAllocatableOnLine(session.character, session.firstClearedFloors.length, line);
+      if (!id) return { ok: false, reason: "这条线暂时没有可点的节点" };
+      const res = allocateTalentManually(session, id);
+      if (res.ok) autosaver.saveNow();
+      return res;
     },
     /**
      * 存档面板的按钮矩形（画布坐标）。

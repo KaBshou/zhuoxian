@@ -85,6 +85,7 @@ export function sessionFromSave(state: SaveState, opts: RestoreOptions): GameSes
   ch.ascendancyId = state.player.ascendancyId;
   ch.gemLoadouts = state.player.gemLoadouts ? { ...state.player.gemLoadouts } : undefined;
   ch.talentIds = state.player.talentIds ? [...state.player.talentIds] : undefined;
+  ch.manualTalents = state.player.manualTalents === true;
   // 渊痕（D36-A）：满级后的唯一积累物，丢它等于把几十小时清零。老档没有 → 0。
   ch.marks = Math.max(0, Math.floor(state.player.marks ?? 0));
   ch.diveLockUnlocked = state.player.diveLockUnlocked === true;

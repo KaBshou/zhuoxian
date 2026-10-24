@@ -132,6 +132,8 @@ export class BattleRenderer {
    */
   private focusedSlot: SlotId | null = null;
   private showTalent = false;
+  /** 周天图光标所在线路（D207 手动点天赋）；null = 纯展示 */
+  private talentCursor: number | null = null;
   private showSkill = false;
   /** 图鉴（按 K，D87）。收集进度看不见 = 收集这件事在玩家心里不存在 */
   private showCodex = false;
@@ -191,6 +193,8 @@ export class BattleRenderer {
   /** 周天图面板（按 T）：天赋 54 个节点必须看得见，否则等于没有这个系统 */
   toggleTalent(): boolean {
     this.showTalent = !this.showTalent;
+    // 打开时把光标放在第一行，关闭时清掉 —— 否则下次打开会停在上次的怪位置
+    this.talentCursor = this.showTalent ? 0 : null;
     return this.showTalent;
   }
 
@@ -212,6 +216,15 @@ export class BattleRenderer {
 
   get skillVisible(): boolean {
     return this.showSkill;
+  }
+
+  /** 设置周天图光标（夹取在调用方做，这里只存） */
+  setTalentCursor(line: number | null): void {
+    this.talentCursor = line === null ? null : line;
+  }
+
+  get talentCursorLine(): number {
+    return this.talentCursor ?? -1;
   }
 
   get talentVisible(): boolean {
@@ -399,6 +412,7 @@ export class BattleRenderer {
     this.focusedSlot = null;
     this.showBreakdown = false;
     this.showTalent = false;
+    this.talentCursor = null;
     this.showSkill = false;
     this.showCodex = false;
     this.showMarksPanel = false;
@@ -500,7 +514,7 @@ export class BattleRenderer {
     this.drawHudPanels(s);
     if (this.showBreakdown) this.drawBreakdown(s);
     if (this.showDetail) drawEquipmentDetail(this.ctx, s, this.focusedSlot);
-    if (this.showTalent) drawTalentPanel(this.ctx, s);
+    if (this.showTalent) drawTalentPanel(this.ctx, s, this.talentCursor);
     if (this.showSkill) drawSkillPanel(this.ctx, s, s.character, this.skillCursor);
     if (this.showCodex) drawCodexPanel(this.ctx, s.codex, BATTLE_W, BATTLE_H, this.codexCursor);
     if (this.showAchievements) {

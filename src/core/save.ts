@@ -28,6 +28,9 @@ export interface PlayerSave {
   readonly ascendancyId?: string;
   readonly gemLoadouts?: Record<string, readonly string[]>;
   readonly talentIds?: readonly string[];
+
+  /** 已改为手动点天赋（D207）。不入档 = 玩家点完、刷新一次又被自动接管 */
+  readonly manualTalents?: boolean;
   /** 渊痕（满级后的积累物，D36-A）。可选：老档没有它，读回来按 0 处理。 */
   readonly marks?: number;
   /** D137：定渊是否已解锁（一次性永久，不入档就会每次刷新吞掉玩家花的 720k） */
@@ -137,6 +140,7 @@ export function serialize(input: {
       ascendancyId: ch.ascendancyId ?? undefined,
       gemLoadouts: ch.gemLoadouts ? { ...ch.gemLoadouts } : undefined,
       talentIds: ch.talentIds ? [...ch.talentIds] : undefined,
+    manualTalents: ch.manualTalents === true,
       marks: Math.max(0, Math.floor(ch.marks ?? 0)),
       diveLockUnlocked: ch.diveLockUnlocked === true,
       muted: ch.muted === true,
@@ -209,6 +213,7 @@ export function deserialize(raw: unknown): { ok: true; state: SaveState } | { ok
         ascendancyId: typeof p.ascendancyId === 'string' ? p.ascendancyId : undefined,
         gemLoadouts: (p.gemLoadouts ?? undefined) as PlayerSave['gemLoadouts'],
         talentIds: Array.isArray(p.talentIds) ? (p.talentIds as string[]) : undefined,
+        manualTalents: p.manualTalents === true,
         // 渊痕（D36-A）：deserialize 是逐字段重建的，漏一个字段 = 静默清零。
         // 这条曾经真的漏了（探针「刷新后渊痕还在」红），所以这里宁可按 0 兜底也要显式写出来。
         marks: typeof p.marks === 'number' && Number.isFinite(p.marks) ? Math.max(0, Math.floor(p.marks)) : 0,

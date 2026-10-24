@@ -3397,3 +3397,25 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 - `npx tsc --noEmit` **0**；`npx vitest run` **981 passed / 73 files**；`gate.mjs` 四道门全绿；整盘 34 脚本全绿。
 
 **纪律**：**玩家要做的计算，就是他不会做的计算。** 加要求玩家心算的数值系统，等于让那一层数值对大多数玩家不存在；能算的就别让人算。
+### D207 周天图可以自己点（手动点天赋）
+
+**问题**：天赋从 D31 起就是全自动的（`src/core/talents-auto.ts`：每重境界 +1 点、每层首通 +2 点，按优先级一路铺）。这么做有正当理由 —— 放置游戏不该让玩家手点 130 次。但副作用是：**周天图（T 面板）对玩家只是展示，54 个节点里没有一个是他选的**。这是本项目第 6 次撞「系统存在但玩家没有选择权」（前五次：装备 D178/D187、音效 D181、图鉴成就 D195、秘境产出 D197）。
+
+**做法**：
+- `src/core/character.ts` 加 `readonly manualTalents?: boolean`；`src/core/save.ts` 的 `PlayerSave.manualTalents` + serialize + deserialize；`src/core/save-bridge.ts` 回填。**必须入档** —— 不入档就是「玩家点完、刷新一次又被自动接管」，比不能点更糟（玩家会以为自己点错了）。
+- `src/core/session.ts` 的**两处**自动分配调用点（突破 + 首通层）都加守卫 `s.character.manualTalents !== true`。两处都要改 —— 只改一处的表现是「突破时手动生效、通关时又被接管」，最难查。
+- `src/core/session.ts` 新增 `allocateTalentManually(s, nodeId)`：走 core 现成的 `allocateTalent` 纯函数（不新增第二套加点点逻辑），成功则 `s.character = { ...res.character, manualTalents: true }` + `syncBattleFromCharacter(s)`（天赋是属性修正器，不同步战斗态就是「点了等于没点」）+ 金色日志。
+- `src/render/talent-panel.ts`：`drawTalentPanel(ctx, s, cursor)` 加光标行高亮（淡金底 + 金框，**不清空行内文字**）、底部改成「空格 点「节点名」—— 描述」；新增纯函数 `moveTalentCursor(current, delta)`（夹取不环绕 —— 11 条线竖排，从末行按 ↓ 跳回第一行会让人以为点错了面板）、`firstAllocatableOnLine(ch, floors, index)`、`TALENT_LINE_COUNT`、`talentLineNodes`、`talentLineLabel`、`talentLineCounts`、`orphanTalentIds`。
+- `src/render/battle-renderer.ts`：`talentCursor` 字段 + `setTalentCursor()` + `get talentCursorLine()`；`toggleTalent()` 打开时置 0、关闭时清 null；`closeAllPanels()` 清。
+- `src/main.ts`：周天图打开时 `↑↓` 移光标、`空格/Enter` 点亮（**放在神通面板块之前**，两者互斥不会同时开，但顺序决定谁先接管按键）；调试钩子 `talentCursor` 与 `allocateTalentLine(line)`。
+
+**为什么不做「一键全自动 / 一键重置」**：现在只有「手动点一次就永久手动」这一种模式。加模式开关会让存档多一个三态字段（auto/manual/reset），而本项目已经因为「一个概念两个变量」踩过坑（D116）。想回到自动 = 重开新档，语义干净。
+
+**验收（本次真跑 2026-10-24 20:0x–20:2x）**：
+- 新测 `tests/talent-manual.test.ts` **7/7**：点数够能点亮且标 manual / 手动后自动分配不动角色 / 没点数安静失败不写角色 / 未知 id 不崩 / 光标夹取不环绕（含 NaN）/ 11 条线每条都有节点 + 越界安全 / **manualTalents 经 serialize→JSON→deserialize 往返为 true**。
+- `F:\dsh-work\tools\probe-talent.mjs` **8 → 11/11**（新增三项真按键）：打开后光标 `0` / 按 ↓ 后 `0 → 1` / `allocateTalentLine(0)` 返回 `{"ok":true}` / 已点节点 `4 → 5` / `manualTalents === true`。
+- `npx tsc --noEmit` **0**；`npx vitest run` **988 passed / 74 files**；`node tools/gate.mjs` 四道门全绿。
+- **探针首跑 5/8 全红**：根因是 **dev server 跑的是旧代码**（`_serve.mjs` 是 `watch: null`，改完 `src/` 必须重启）—— 报的是 `window.__zhuoxian.allocateTalentLine is not a function`，看起来像「钩子没写」，实际是「钩子还没被加载」。重启后 11/11。
+- **第二处假红**：光标不动的真因是**周天图的按键块没插进 `main.ts`**（第一次补丁只加了 import 与 core 函数，忘了键盘分支）—— 探针测出 `0 → 0`，而单测全绿（单测测的是纯函数，纯函数是对的）。**「纯函数对」+「接线没接」= 单测全绿、功能全无**，这类只有真按键探针能抓。
+
+**纪律**：**每个「系统」都要有至少一个玩家能做的选择。** 全自动是省事，但如果一个 54 节点的天赋树里玩家一次都不用决策，那它就只是另一块属性面板；给一条手动路（哪怕很窄）就把「展示」变成了「选择」。
