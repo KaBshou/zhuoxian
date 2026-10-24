@@ -1,7 +1,7 @@
 {
   "name": "zhuoxian",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "浊仙 — 修仙暗黑放置刷宝",
   "scripts": {

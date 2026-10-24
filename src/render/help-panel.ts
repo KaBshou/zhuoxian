@@ -14,6 +14,7 @@ import { MAX_FLOOR } from '../data/monsters';
 import { CODEX_TOTAL } from '../core/codex';
 import { ACHIEVEMENT_TOTAL } from '../data/achievements';
 import { TOTAL_STEPS } from '../core/progression';
+import { APP_VERSION } from '../data/version';
 
 const C = {
   shadow: 'rgba(5,7,11,0.72)',
@@ -94,7 +95,7 @@ export const HELP_SECTIONS: readonly HelpSection[] = [
 ];
 
 /** 页脚文案（导出给测试：这句话是设计约束，不是装饰）。 */
-export const HELP_FOOTER = '游戏不会暂停　·　H / ? / Esc 关闭';
+export const HELP_FOOTER = `浊仙 v${APP_VERSION}　·　游戏不会暂停　·　H / ? / Esc 关闭`;
 
 /** 面板高度：标题 + 各节（标题行 + 内容行）+ 节间距 + 页脚。 */
 export function helpPanelHeight(): number {

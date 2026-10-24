@@ -1,6 +1,7 @@
 import type { ClassDef, ClassId } from '../data/classes';
 import { CLASSES } from '../data/classes';
 import { STAT_META } from '../data/stats';
+import { APP_TITLE } from '../data/version';
 import { LOGICAL_H, LOGICAL_W } from './viewport';
 
 /**
@@ -178,6 +179,14 @@ export function drawClassSelect(
   ctx.fillStyle = C.dim;
   const desc = def.desc.length > 66 ? def.desc.slice(0, 66) + '…' : def.desc;
   ctx.fillText(desc, W / 2, H - 46);
+
+  // D216：版本号 + 存档归属。放在第一屏右下角，因为这是「玩家刚打开、什么都还没做」的时刻，
+  // 也是唯一适合提醒「进度只存在这台浏览器」的时机 —— 等玩家练到三十重再说就晚了。
+  ctx.textAlign = 'right';
+  ctx.font = '11px "Noto Sans SC", system-ui, sans-serif';
+  ctx.fillStyle = C.dim;
+  ctx.fillText(`${APP_TITLE}　·　进度只存在这台浏览器（S 存档里可导出）`, W - 18, H - 14);
+  ctx.textAlign = 'center';
 
   return { picked: index, cards: rects.length };
 }
