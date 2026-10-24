@@ -643,3 +643,69 @@ PASS  控制台零报错 · 0 条
 结果：13/13
 
 == probe-floormap.mjs exit=0 dur=5.3s [ok] n/a
+  [PASS] 钩子存在（bagCells/bagVisible）  — true
+  [PASS] 网格 40 格且编号连续
+  [PASS] 新号默认不显示背包  — false
+  [PASS] 按 B 能打开背包  — true
+  [PASS] 面板真的画出来（左缘金条变多）  — 0 → 1320
+  [PASS] 画面被压暗（遮罩生效）  — 26.9 → 13.9
+  [PASS] 打开时互斥清单里有 bag  — ["bag"]
+  [PASS] 点第 6 格后光标落在 6 号位  — cursor=5 scale=1.1518391927083333
+  [PASS] 光标格在钩子里被标成 cursor
+  [PASS] 点面板外能关掉  — false
+  [PASS] 关掉后金条回落  — 1320 → 0
+  [PASS] 关闭有日志反馈
+  [PASS] 背包 filled 格数 === 件数（空包也成立）  — {"filled":0,"count":0} 等待 45s
+  [PASS] 空包时点空格光标也能落上去
+  [PASS] 钩子能造出 3 件背包件  — bagCount=3
+  [PASS] 穿上成功  — true
+  [PASS] 背包件数不变（换下来的那件回到背包）  — {"ok":true,"bag":3,"sword":"探针强剑"}
+  [PASS] 装备坑里真的是刚穿的那件  — 探针强剑
+  [PASS] 丢弃后件数 -1（只减不加）  — 2
+  [PASS] 越界穿上安静失败（不崩）  — false
+  [PASS] 控制台零报错  — errors=0
+
+  截图：F:/dsh-work/zhuoxian/docs/probe-bag.png
+
+=== 21/21 ===
+结果：21/21
+
+== probe-bag.mjs exit=0 dur=52.8s [ok] n/a
+  [PASS] 钩子存在（helpVisible/helpButton/toggleHelp）
+  [PASS] 新号默认不显示帮助
+  [PASS] 按 H 能打开帮助
+  [PASS] 面板真的画出来（左缘金条变多）  — 13 → 2312
+  [PASS] Esc 兜底清单里有 help
+  [PASS] 帮助开着时战斗不暂停（挂机游戏暂停=损失）  — 2.1833333333333305 → 4.19999999999999
+  [PASS] Esc 能关掉帮助
+  [PASS] 关掉后金条回落  — 2312 → 13
+  [PASS] 点底部「?」按钮能打开  — {"x":920,"y":486,"w":26,"h":20}
+  [PASS] 同一个按钮再点一次能关
+  [PASS] 打开背包会把帮助收掉（不叠两块遮罩）  — ["bag"]
+  [PASS] 控制台零报错  — errors=0
+
+  截图：F:/dsh-work/zhuoxian/docs/probe-help.png
+
+=== 12/12 ===
+结果：12/12
+
+== probe-help.mjs exit=0 dur=10.4s [ok] n/a
+PASS  子路径下 index.html 打开了 · 400 chars
+PASS  资源 URL 都带子路径前缀（base: './' 生效） · assets=2
+PASS  没有任何 4xx/403（favicon 除外） · 4 次请求
+PASS  canvas 真的画了东西（不是白屏也不是全黑） · mean=12.6 lit=30197/518400
+PASS  生产构建不带调试钩子（玩家打不开后门） · hooks 未暴露，符合预期
+PASS  按 Enter 能进入战斗（选道统界面确实过了） · mean 12.6 → 28.0
+PASS  游戏循环在跑（6 秒内画面像素变化） · hash 3804590376 → 4122381336
+PASS  子路径 origin 下写出了存档（localStorage 键名 zhuoxian.save.v1） · savedAt=2026-10-24T01:20:04.478Z
+PASS  reload 后存档仍在同 origin（子路径部署不会丢档） · savedAt 1792804804478 → 1792804805172
+PASS  存储键不越界（只有本游戏自己的键） · zhuoxian.save.v1
+PASS  手机路径起点确实是选道统界面（档真清掉了） · mean=12.6
+PASS  手机路径：点屏幕中间能选道统并进战斗（dist 里没有键盘） · 点 y=0.3 后亮度 12.6 变化
+PASS  点进来的战斗确实在跑（2.5 秒像素变化） · hash 1277220982 → 810521416
+PASS  控制台零报错
+
+14/14 通过 · EXIT=0
+
+== probe-dist.mjs exit=0 dur=21s [ok] n/a
+== TOTAL 0/0

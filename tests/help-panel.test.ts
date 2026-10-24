@@ -34,8 +34,11 @@ describe('帮助面板几何（D190）', () => {
 
   it('高度等于「各节行数累加 + 页脚」，不是猜的', () => {
     const rows = HELP_SECTIONS.reduce((n, s) => n + 1 + s.rows.length, 0);
-    // 30(标题) + 20(pad) + rows*17 + 4*8(节间距) + 26(页脚) + 20(pad)
-    expect(helpPanelHeight()).toBe(30 + 20 + rows * 17 + HELP_SECTIONS.length * 8 + 26 + 20);
+    // 30(标题) + 16(pad) + rows*16 + N*6(节间距) + 26(页脚) + 16(pad)
+    // 这四个数改了这里也要改：它是「不许拍脑袋定高度」的护栏。
+    expect(helpPanelHeight()).toBe(30 + 16 + rows * 16 + HELP_SECTIONS.length * 6 + 26 + 16);
+    // 高度必须留出余量：贴着 540 以后再加一行就溢出，而溢出是看不到的（画到画布外）。
+    expect(helpPanelHeight()).toBeLessThanOrEqual(534);
   });
 
   it('宽度是常量且居中（左右留白差 ≤1）', () => {
@@ -81,7 +84,8 @@ describe('页脚「?」按钮（D190）', () => {
 
 describe('帮助正文（D190）', () => {
   it('四节都有标题与内容（空节等于没写）', () => {
-    expect(HELP_SECTIONS.length).toBe(4);
+    // 至少四节：怎么玩 / 名词 / 通货与玉简 / 键位（以后加节只许多不许少）
+    expect(HELP_SECTIONS.length).toBeGreaterThanOrEqual(4);
     for (const sec of HELP_SECTIONS) {
       expect(sec.title.length).toBeGreaterThan(0);
       expect(sec.rows.length).toBeGreaterThan(0);
