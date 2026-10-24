@@ -3258,7 +3258,7 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 **验收（本次真跑 2026-10-24 14:0x）**：
 - 新测 `tests/save-backup.test.ts` **7/7**：第一次保存不写空备份 / 第二次把上一份主档搬进备份 / 主档正常不标记 restoredFromBackup / 主档坏→标记且坏档仍在 / 主档与备份都坏→返回 null 不抛 / `clear()` 连备份清 / 从备份恢复时离线秒数按**备份的 savedAt** 算。
 - 新探针 `tools/probe-save-backup.mjs`（CDP 9395）**7/7**：钩子存在 / 第一次保存只写主档（`bak=false`）/ 第二次产生备份（`bakLen=659`）/ 主档坏且**无 flush** 时 `autosaver.load()` 能从备份恢复并标记 `restoredFromBackup` / 坏档没被悄悄删 / 再存一次主档恢复合法 JSON / 控制台零报错。
-- `npx tsc --noEmit` **0**；`npx vitest run` **960 passed / 69 files**；`node tools/gate.mjs` 四道门全绿；整盘 33 脚本 / 493 项全绿；`git commit 0f1e2ca` + push；Actions success；`probe-live` 线上 10/10。
+- `npx tsc --noEmit` **0**；`npx vitest run` **960 passed / 69 files**；`node tools/gate.mjs` 四道门全绿；整盘 33 脚本 / 493 项全绿；`git commit 417e026` + push；Actions success；`probe-live` 线上 10/10。
 
 **探针为什么会假绿两次（值得单列）**：
 1. 第一版用 `Page.reload` 模拟「主档坏了」。**页面离开会触发 `pagehide` → `flush()`**，把还活着的内存会话写回主档 ⇒ 坏档当场被治好，fallback 根本没走到，但断言「能进游戏」是过的。**教训：要测「下次启动的读档路径」，就得直接调那个入口，不能让浏览器顺手替你修好。**
