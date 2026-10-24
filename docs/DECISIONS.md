@@ -3556,3 +3556,89 @@ Error: CDP 没起来
 - **环境缺失 vs 产品损坏必须分开判**：前者 SKIP 不进分母，后者红。判据是「Chrome 进程根本没起来」还是「起来了但页面白屏」——**两者的修复责任人和紧急程度完全不同**。
 - **凡是子进程，stderr 一律不许丢**。丢掉的 stderr 会在最需要它的时候（CI 红、本机绿）变成零信息。
 - **CI 与本机的时间预算不能共用一个常数**：本机 15 秒够、冷启动 runner 不够；宁可给足 + 早停（进程死了就别等了），也不要「猜一个够用的秒数」。
+### D213 绘制内联公式与「测试用几何函数」合成一份
+
+**问题（D210 死接线审计的直接产物）**
+
+`tools/audit-dead-wiring.mjs` 报出 `codexPanelHeight` / `tutorialBoxRect` / `tutorialBoxHeight` /
+`hitTestSavePanel` 四个导出在 `src/` 里**零引用**。人肉追下去发现它们各自有一份
+「看起来一模一样」的内联副本：
+
+| 导出（被测试用着） | 内联副本（真正生效的） |
+|---|---|
+| `codexPanelHeight(codex)` | `drawCodexPanel` 里 `const h = PAD * 2 + 34 + rows * ROW_H + 26;` |
+| `tutorialBoxRect(...)` | `drawTutorial` 里现算 boxW/boxH/x/y |
+| `tutorialBoxHeight(...)` | 同上 |
+| `hitTestSavePanel(...)` | `main.ts` 的 `savePanelButtons(...).find(b => 点在矩形里)` |
+
+**为什么这比重复更糟**：测试断言的是「那份没人用的函数」。
+`tests/codex-panel-layout.test.ts` 一直在断「面板 fillRect 高度 === `codexPanelHeight()`」，
+可面板根本没用它算高度 —— 两份公式今天相等所以绿；哪天有人只改内联那份，
+测试照样绿，而画面上贴边/溢出。**D208 的 `rowsPerCol` 写死 10 少报 88px 正是这个形状。**
+
+**改动**
+
+1. `src/render/tutorial-overlay.ts`：`drawTutorial` 改为先调 `tutorialBoxRect(...)`，按返回的
+   `{x,y,w,h,lines}` 画。几何只剩 `tutorialBoxRect` 一处；`tutorialBoxHeight` 保留给别处让位用
+   （它与 rect 共用同一组常量）。
+2. `src/render/codex-panel.ts`：`drawCodexPanel` 改用 `codexPanelHeight(codex)`（内部走 `codexColumnRows`）。
+3. `src/main.ts`：存档面板点击改用 `hitTestSavePanel(pt.x, pt.y, LOGICAL_W, LOGICAL_H, savePhase)`，
+   删掉内联的矩形遍历。注意它返回的是 **`SavePanelAction`（动作本身）**而不是按钮对象，
+   所以是 `doSaveAction(hitSave)` 而不是 `hitSave.id`（tsc 抓到的）。
+
+**验收**
+
+- 新测 `tests/single-source-geometry.test.ts` **9 条**：
+  - 行为层：四组画布尺寸下 `drawTutorial(...)` 返回值 **deep-equal** `tutorialBoxRect(...)`；
+    且第一个 `fillRect` 就是那个盒子（证明「画在它算的地方」）。
+  - 行为层：`drawCodexPanel` 的第一步 `fillRect` 高度 === `codexPanelHeight(codex)`。
+  - 源码层：`tutorial-overlay.ts` 里 `PAD_Y * 2 + TITLE_H` ≤ 2 处、`tutorialBoxRect(` ≥ 2 处；
+    `codex-panel.ts` 里 `PAD * 2 + 34` 恰好 1 处；`main.ts` 里旧的
+    `savePanelButtons(...).find(` 出现 **0** 次。
+- `npx tsc --noEmit` exit 0；`npx vitest run` **1024 passed / 78 files**；
+  真机 `probe-codex 23/23`、`probe-save-panel 22/22`、`probe-onboarding 12/12`。
+
+**纪律**：**「测试用几何函数」本身就是一个反模式信号** —— 需要它的唯一理由是
+「绘制路径不返回几何」。要么让绘制函数返回盒子（本项目的面板都在这么做，返回高度），
+要么别写那个函数；两个都写，迟早一个改一个不改。
+
+---
+
+### D214 修为进度与境界命名各留一份
+
+**问题（D213 顺手扫出来的同族）**
+
+1. `src/render/hud-panels.ts` 的 `realmProgressRatio` 与 `src/core/progression.ts` 的
+   `stepProgress` 是同一件事的两份实现（都是 `cur / need` 再夹 `0..1`）——
+   **界面用前者，测试测后者**。
+2. `progression.ts` 的 `stepLabel` / `realmName` / `stageName` 是「境界命名」的平行实现
+   （`stepLabel` 只是转手调 `formatRealm`，另两个各拼一半）。UI 全部用
+   `src/data/glossary.ts` 的 `formatRealm`，这三个**只有测试在调** ——
+   于是测试给的是假信心：改了 `REALM_TERM`，测的是没人看的那份。
+
+**改动**
+
+1. `hud-panels.realmProgressRatio` 改为 `if (!Number.isFinite(step) || !Number.isFinite(xp)) return 0; return stepProgress(step, xp);`
+   （保留 NaN 前置判断：脏值必须 0%，满格会骗玩家「马上突破」——D192 的结论）。
+2. 删掉 `stepLabel` / `realmName` / `stageName`。境界命名的唯一出处是 `glossary.formatRealm`。
+3. `tests/character.test.ts` 的「台阶名走术语表」改成测 `formatRealm` 本体，并补两条脏值
+   （`NaN`、`-5` 都得回「练气·一重」，这是早期实测过的「undefined·undefined」事故）。
+
+**验收**
+
+- `tests/single-source-geometry.test.ts` 增 3 条：`realmProgressRatio` 与 `stepProgress`
+  在 6 个台阶 × 5 个进度上**逐值一致**（`toBeCloseTo(…,10)`）；`hud-panels.ts` 里
+  `cur / need` 出现 0 次；`progression.ts` 不再出现 `export function realmName/stageName/stepLabel`。
+- `npx tsc --noEmit` exit 0；`npx vitest run` **1027 passed / 78 files**。
+
+**环境坑（本轮）**
+
+- 项目**没装 `@types/node`**（`tsconfig` 的 `lib` 只有 ES2022+DOM），测试里 `import { readFileSync } from 'node:fs'`
+  报 `TS2307`。选择**不引依赖**（会让 CI 的 `npm ci` 变得不自洽），改用
+  `// @ts-expect-error - 运行时有 node，缺的只是类型声明` 局部放行。
+- **多行 import 让「出现次数」断言写错两次**：`hitTestSavePanel,`（import 里没有括号）
+  与 `hitTestSavePanel(`（调用）必须分开数。抓了两次才写对 —— 这类源码守卫的断言本身也要按真实文本写。
+- PowerShell 内联 `node -e` 里含 `{`/`'`/`"` 的替换脚本再次被解析器撕碎
+  （`MissingArgument`），一律写 `tools/patch-*.mjs`；但**补丁脚本自己也别用模板串拼锚点**，
+  这轮 `patch-d214.mjs` 的锚点是照上一版注释猜的（实际注释文案不同）导致 `MISS(0)`，
+  读真实文件后 `patch-d214b.mjs` 一次成功。**锚点只能来自刚读过的真实文本。**

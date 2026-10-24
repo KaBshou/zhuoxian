@@ -17,7 +17,7 @@ import { RARITY_NAME, type Rarity } from '../data/rarity';
 import { CURRENCIES, type CurrencyId } from '../data/currency';
 import { TERM, formatRealm } from '../data/glossary';
 import { MAX_FLOOR, MAIN_FLOOR_END, depthRarityBonus } from '../data/monsters';
-import { TOTAL_STEPS, xpForStep } from '../core/progression';
+import { TOTAL_STEPS, stepProgress, xpForStep } from '../core/progression';
 import { affordableSinks } from '../data/marks';
 import { drawPaperdoll, paperdollHeight } from './paperdoll';
 import { CODEX_TOTAL, codexProgress } from '../core/codex';
@@ -154,12 +154,10 @@ export function prestigeHintText(s: GameSession): string | null {
 
 /** 当前台阶的修为进度（0~1）。满级返回 1；脏值返回 0。 */
 export function realmProgressRatio(step: number, xp: number): number {
+  // 只用 progression 的 stepProgress 一份公式（D214）。
+  // 这里保留 NaN 前置判断：脏值一律 0%（满格会骗玩家「马上突破」，D192）。
   if (!Number.isFinite(step) || !Number.isFinite(xp)) return 0;
-  if (step >= TOTAL_STEPS - 1) return 1;
-  const need = xpForStep(step);
-  if (!Number.isFinite(need) || need <= 0) return 0;
-  const cur = Math.max(0, xp);
-  return Math.max(0, Math.min(1, cur / need));
+  return stepProgress(step, xp);
 }
 
 /** 修为进度文案：`金丹·三重 42%`（满级写「圆满」）。 */

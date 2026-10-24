@@ -101,7 +101,9 @@ export function drawCodexPanel(
   const monsters = indexed.filter((x) => x.e.kind === 'monster');
   const others = indexed.filter((x) => x.e.kind !== 'monster');
   const rows = Math.max(monsters.length, others.length);
-  const h = PAD * 2 + 34 + rows * ROW_H + 26;
+  // 高度只由 codexPanelHeight 算一份（它内部用 codexColumnRows）——
+  // 内联一遍同样的公式会让「测出来的高度」与「画出来的高度」变成两个数（D213）。
+  const h = codexPanelHeight(codex);
   const x = Math.round((canvasW - W) / 2);
   const y = Math.round((canvasH - h) / 2);
 

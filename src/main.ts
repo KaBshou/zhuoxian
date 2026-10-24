@@ -95,7 +95,12 @@ import { decodeTransfer, encodeTransfer, transferFailText, transferFileName, tra
 import { sessionFromSave, sessionToSave } from './core/save-bridge';
 import { copyText, downloadText, pickTextFile } from './ui/file-transfer';
 import { formatRealm } from './data/glossary';
-import { savePanelButtons, type SavePanelAction, type SavePanelPhase } from './render/save-panel';
+import {
+  hitTestSavePanel,
+  savePanelButtons,
+  type SavePanelAction,
+  type SavePanelPhase,
+} from './render/save-panel';
 import { LOGICAL_H, LOGICAL_W, resizeCanvas } from './render/viewport';
 
 const canvas = document.getElementById('stage');
@@ -562,12 +567,12 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   if (renderer.savePanelVisible) {
-    const hitSave = savePanelButtons(LOGICAL_W, LOGICAL_H, savePhase).find(
-      (b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h,
-    );
+    // 命中判定只由 hitTestSavePanel 做一份（它内部用的是同一份 savePanelButtons 矩形）——
+    // 原来这里内联了一遍「点在矩形里」，两份实现改一份另一份不变，点击就会和画面对不上（D213）。
+    const hitSave = hitTestSavePanel(pt.x, pt.y, LOGICAL_W, LOGICAL_H, savePhase);
     if (hitSave) {
       e.preventDefault();
-      doSaveAction(hitSave.id);
+      doSaveAction(hitSave);
       return;
     }
     // 存档面板开着时，**顶部按钮条仍然有效** —— 否则「点同一个按钮关不掉」，

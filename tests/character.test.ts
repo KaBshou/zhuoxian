@@ -36,13 +36,12 @@ import { BREAKTHROUGH_XP,
   TOTAL_STEPS,
   addXp,
   isMaxStep,
-  realmName,
-  stepLabel,
   stepProgress,
   totalXpToStep,
   xpForStep,
   xpToNext,
 } from '../src/core/progression';
+import { formatRealm } from '../src/data/glossary';
 import { Rng } from '../src/core/rng';
 import type { AffixDef } from '../src/data/affix-def';
 
@@ -114,11 +113,13 @@ describe('境界与修为 progression', () => {
     expect(xpForStep(999)).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it('台阶名走术语表', () => {
-    expect(stepLabel(0)).toBe('练气·一重');
-    expect(stepLabel(9)).toBe('筑基·一重');
-    expect(realmName(0)).toBe('练气');
-    expect(realmName(80)).toBe('渡劫');
+  it('台阶名走术语表（唯一出处是 glossary.formatRealm，D214）', () => {
+    expect(formatRealm(0)).toBe('练气·一重');
+    expect(formatRealm(9)).toBe('筑基·一重');
+    expect(formatRealm(80)).toBe('渡劫·九重');
+    // 脏值不许显示「undefined·undefined」（D 早期实测事故）
+    expect(formatRealm(Number.NaN)).toBe('练气·一重');
+    expect(formatRealm(-5)).toBe('练气·一重');
   });
 
   it('addXp 不够突破时只加不破', () => {

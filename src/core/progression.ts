@@ -134,20 +134,10 @@ export function totalXpToStep(step: number): number {
   return sum;
 }
 
-/** 境界显示名，如「金丹·三重」 */
-export function stepLabel(step: number): string {
-  return formatRealm(step);
-}
-
-/** 大境界名，如「金丹」 */
-export function realmName(step: number): string {
-  return REALM_TERM[realmIndexOf(step)] ?? '练气';
-}
-
-/** 本境界内的重数名，如「三重」 */
-export function stageName(step: number): string {
-  return REALM_STAGE_TERM[stageIndexOf(step)] ?? '一重';
-}
+// D214：stepLabel / realmName / stageName 已删除。
+// 境界命名的唯一出处是 src/data/glossary.ts 的 formatRealm（UI 全用它）。
+// 这三个是它的平行实现（各拼一半），只有测试调用过 —— 留着等于「命名有两份答案」，
+// 而测试测的是没人用的那份。
 
 /** 是否已经圆满（不能再突破） */
 export function isMaxStep(step: number): boolean {

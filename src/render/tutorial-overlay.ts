@@ -94,13 +94,10 @@ export function drawTutorial(
   canvasH: number,
   bottomInset = 0,
 ): TutorialBox {
-  const boxW = Math.min(MAX_BOX_W, Math.max(240, canvasW - 60));
-  // 半角宽度预算：减去左右内边距，再留一点给标点
-  const textUnits = Math.floor((boxW - PAD_X * 2 - 8) / 6.5);
-  const lines = wrapTutorialText(text, textUnits);
-  const boxH = PAD_Y * 2 + TITLE_H + lines.length * LINE_H;
-  const x = Math.round((canvasW - boxW) / 2);
-  const y = Math.round(canvasH - bottomInset - boxH - BOTTOM_MARGIN);
+  // 几何只由 tutorialBoxRect 算一份 —— 原来这里内联了一遍同样的公式，
+  // 于是「测试断言的矩形」与「真正画出来的矩形」是两个数（D213）。
+  const box = tutorialBoxRect(text, canvasW, canvasH, bottomInset);
+  const { x, y, w: boxW, h: boxH, lines } = box;
 
   ctx.fillStyle = C.panel;
   ctx.fillRect(x, y, boxW, boxH);
