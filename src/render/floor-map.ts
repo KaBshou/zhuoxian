@@ -9,8 +9,9 @@
  *
  * 面板只负责「画 + 命中」，不改任何状态；跳层走 `session.setFloor()`（它自己会拒绝越界）。
  */
-import { MAX_FLOOR, MAIN_FLOOR_END, BOSS_EVERY_FLOORS, hasBossFloor } from '../data/monsters';
+import { MAX_FLOOR, MAIN_FLOOR_END, BOSS_EVERY_FLOORS, hasBossFloor, xpPerKill } from '../data/monsters';
 import { floorSelectableMax } from '../core/session';
+import { avgXpMulOfFloor, killsPerMinute } from '../core/offline';
 import type { GameSession } from '../core/session';
 
 export const FLOOR_MAP_COLS = 10;
@@ -97,6 +98,41 @@ export function floorTagText(floor: number): string {
   return '';
 }
 
+/** 该层「修为/分钟」的闭式估算（与离线收益同一个公式，不另写一套）。 */
+export function floorSettleRate(floor: number): number {
+  const f = Number.isFinite(floor) ? Math.max(1, Math.min(MAX_FLOOR, Math.floor(floor))) : 1;
+  const rate = killsPerMinute(f) * xpPerKill(f) * avgXpMulOfFloor(f);
+  return Number.isFinite(rate) && rate > 0 ? rate : 0;
+}
+
+/** 全图最肥的一层（用来把色调归一化，也用来写「最肥在 N 层」那句提示）。 */
+export function floorSettlePeak(): { floor: number; rate: number } {
+  let bestFloor = 1;
+  let bestRate = 0;
+  for (let f = 1; f <= MAX_FLOOR; f += 1) {
+    const rate = floorSettleRate(f);
+    if (rate > bestRate) {
+      bestRate = rate;
+      bestFloor = f;
+    }
+  }
+  return { floor: bestFloor, rate: bestRate };
+}
+
+/**
+ * 该层产出强度 0~1（相对全图最肥层）。
+ *
+ * 用途只有一个：**让「去哪层刷」从攻略变成看得见的事实**。BALANCE 里层 21 与
+ * 末层 76 最肥，但游戏里玩家只能看到层号 —— 选层等于靠猜。这里用与离线收益
+ * **同一个公式**算相对值，不引入第二套数值。
+ */
+export function floorSettleIntensity(floor: number): number {
+  const peak = floorSettlePeak().rate;
+  if (!(peak > 0)) return 0;
+  const r = floorSettleRate(floor) / peak;
+  return Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 0;
+}
+
 const C = {
   veil: 'rgba(5,7,11,0.72)',
   panel: 'rgba(11,10,12,0.92)',
@@ -134,6 +170,9 @@ export function drawFloorMap(
   const x = Math.round((canvasW - w) / 2);
   const y = Math.round((canvasH - h) / 2);
 
+  const max = floorSelectableMax(s);
+  const peak = floorSettlePeak();
+
   ctx.fillStyle = C.veil;
   ctx.fillRect(0, 0, canvasW, canvasH);
   ctx.fillStyle = C.panel;
@@ -156,13 +195,12 @@ export function drawFloorMap(
   ctx.fillText(FLOOR_MAP_LEGEND[0], x + FLOOR_MAP_PAD, y + 40);
   ctx.textAlign = 'right';
   ctx.fillText(
-    `第 ${s.floor} 层 · 最深 ${floorSelectableMax(s)} 层 · 共 ${MAX_FLOOR} 层`,
+    `第 ${s.floor} 层 · 最深 ${max} 层 · 共 ${MAX_FLOOR} 层 · 修为 ≈${Math.round(floorSettleRate(s.floor)).toLocaleString('en-US')}/分`,
     x + w - FLOOR_MAP_PAD,
     y + 24,
   );
   ctx.textAlign = 'left';
 
-  const max = floorSelectableMax(s);
   for (const c of floorMapLayout(x, y)) {
     const state = floorCellState(c.floor, s);
     const focused = focusedFloor === c.floor;
@@ -171,6 +209,14 @@ export function drawFloorMap(
     ctx.fillStyle =
       state === 'locked' ? C.cellLocked : state === 'cleared' ? C.tealSoft : C.cellReachable;
     ctx.fillRect(c.x, c.y, c.w, c.h);
+
+    // 产出热度：越亮 = 这层修为越多（与离线收益同一个公式）。只给「到过/能去」的层上色 ——
+    // 没到过的层连颜色都不该透露，否则等于把地图攻略直接印在界面上。
+    if (state !== 'locked') {
+      const heat = floorSettleIntensity(c.floor);
+      ctx.fillStyle = `rgba(212,161,60,${(0.06 + 0.3 * heat).toFixed(3)})`;
+      ctx.fillRect(c.x, c.y, c.w, c.h);
+    }
 
     if (state === 'current') {
       ctx.strokeStyle = C.gold;
@@ -201,7 +247,7 @@ export function drawFloorMap(
   ctx.fillStyle = C.dim;
   ctx.font = '10px "Noto Sans SC", system-ui, sans-serif';
   ctx.fillText(
-    `金框 = 当前 · 青 = 已通关 · 灰 = 可前往 · 红点 = 镇守 · 可前往共 ${max} 层`,
+    `金框 = 当前 · 青 = 已通关 · 灰 = 可前往 · 红点 = 镇守 · 越亮 = 修为越多（最肥在第 ${peak.floor} 层）`,
     x + FLOOR_MAP_PAD,
     y + h - 10,
   );
