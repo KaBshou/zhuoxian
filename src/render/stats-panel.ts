@@ -96,6 +96,16 @@ export function statsSections(s: GameSession): readonly StatSection[] {
   const bestPower = equipped.length === 0 ? 0 : Math.max(...equipped.map((e) => itemPower(e.item)));
   const toMax = xpToMax(s);
 
+  // D204 死因：只在致死那一下由 battle 写入。没死过写「—」，
+  // 死了但数据缺失（老档/极端情况）写「不详」—— 两种都不是同一件事。
+  const fatal = s.battle.lastFatal;
+  const fatalText =
+    s.deaths <= 0
+      ? '—'
+      : fatal && Number.isFinite(fatal.amount) && fatal.amount > 0
+        ? `「${fatal.source}」${Math.round(fatal.amount)} 点`
+        : '不详';
+
   return [
     {
       title: '本局',
@@ -105,6 +115,8 @@ export function statsSections(s: GameSession): readonly StatSection[] {
         { label: '距满级', value: toMax === 0 ? '已满级' : `${toMax.toLocaleString('en-US')} 修为`, tone: toMax === 0 ? 'gold' : 'value' },
         { label: '所在', value: `第 ${s.floor} 层 · 第 ${s.wave} 波（每 ${BOSS_EVERY} 波镇守）` },
         { label: '本层击杀', value: `${s.floorKills} 只` },
+        // D204：死因。没死过就写「—」而不是留空 —— 空白会被读成「功能坏了」。
+        { label: '最近死因', value: fatalText, tone: fatalText === '—' ? 'dim' : 'value' },
         { label: '游玩时长', value: durationText(s.playedSeconds) },
         { label: '渊痕/小时', value: (s.character.marks ?? 0) > 0 ? `${marksPerHour(s).toLocaleString('en-US')}（本局均值）` : '满级后才有' },
       ],

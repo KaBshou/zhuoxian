@@ -495,6 +495,18 @@ export function tickSession(s: GameSession, dt: number): void {
   for (const e of s.battle.events) {
     if (e.kind === 'player-died') {
       pushLog(s, '气血枯竭，浊脉重凝', '#e05a3a');
+      // 死因一行（D204）：只说「气血枯竭」等于什么也没说 —— 玩家想知道是谁打的、多少。
+      // 数据来自 `battle.lastFatal`（只在致死那一下写），这里只负责翻译成人话。
+      const fatal = s.battle.lastFatal;
+      if (fatal && Number.isFinite(fatal.amount) && fatal.amount > 0) {
+        const absorbedText =
+          fatal.absorbed > 0 ? `（罡气挡掉 ${Math.round(fatal.absorbed)}）` : '';
+        pushLog(
+          s,
+          `死于「${fatal.source}」一击 ${Math.round(fatal.amount)}${absorbedText}`,
+          '#c25a48',
+        );
+      }
       pushCue(s, 'death');
       // 死亡 ≠ 清场。旧逻辑里死亡清怪 → isCleared 立即为真 → 白送一波进度，
       // 模拟里 10 分钟死 17 次却推了 27 波。现在：重开本波，不给进度。

@@ -283,6 +283,13 @@ export interface BattleState {
   shieldRecharging?: boolean;
   /** 单次最大入伤（D105 的「致死距离」代理：lifeMax / maxHit = 还能挨几下最重的） */
   maxHit: number;
+  /**
+   * 最后一击的来源（D204）：致死那一下的怪名、伤害、被护盾吃掉的量。
+   *
+   * 只在致死时写。玩家被秒时最想知道的就三件事 —— 谁打的、多少、我当时多少血，
+   * 而 `damageTaken`/`maxHit` 只能回答「我挨过多少」，回答不了「死于谁手」。
+   */
+  lastFatal?: { source: string; amount: number; absorbed: number };
   /** D122：普攻（武器段）累计伤害 —— 用来验证「深层 DPS 构成」，运行时计数、不入档 */
   weaponDamage: number;
   /** D122：神通（技能段）累计伤害；含 weapon 类神通（它吃 p.damage，不吃 skillFloorScale） */
@@ -1013,6 +1020,11 @@ function monsterStrike(state: BattleState, m: MonsterInPlay, rng: Rng): void {
   // 它同时是伤害详解面板的数据源（玩家想知道"我为什么这么脆"）。
   state.damageTaken += dealt;
   if (res.amount > state.maxHit) state.maxHit = res.amount;
+  // 最后一击的来源（D204）：玩家被秒时必须能说出「是谁打的、多少」。
+  // 只在致死那一下记 —— 记全部等于每帧写一个对象，而玩家只关心死因。
+  if (p.hp <= 0) {
+    state.lastFatal = { source: m.name, amount: res.amount, absorbed };
+  }
   state.events.push({
     kind: 'monster-hit',
     label: `-${res.amount}`,

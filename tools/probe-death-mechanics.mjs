@@ -181,6 +181,48 @@ try {
   } else {
     console.log('\n（成就模块导出名对不上，跳过 §4 —— 不猜；实际导出：' + (ach ? Object.keys(ach).join(',') : 'load 失败') + '）');
   }
+  // ── 5. D204 死因：致死那一下必须记下「谁打的、多少」 ──────────────
+  {
+    const s = sessionMod.createSession({
+      classId: 'yujian',
+      seed: 2026,
+      tables: { bases: basesMod.ITEM_BASES, affixes: affixMod.AFFIXES },
+    });
+    let died = false;
+    for (let i = 0; i < 4000 && !died; i += 1) {
+      const p = s.battle.player;
+      // 层 1 的怪打不死人（玩家先杀光），所以把玩家压到 1 血、护盾清零再跑一帧。
+      p.hp = 1;
+      p.shield = 0;
+      for (const m of s.battle.monsters) {
+        m.x = p.x;
+        m.y = p.y;
+        m.cooldown = 0;
+      }
+      sessionMod.tickSession(s, 1 / 30);
+      died = s.deaths > 0;
+    }
+    const fatal = s.battle.lastFatal;
+    check(
+      '致死一击记下来源与伤害（D204 死因）',
+      died && !!fatal && typeof fatal.source === 'string' && fatal.source.length > 0 && fatal.amount > 0,
+      `deaths=${s.deaths} fatal=${JSON.stringify(fatal ?? null)}`,
+    );
+    check(
+      '死亡日志写了两行：情绪 + 死因（死因带怪名）',
+      s.log.some((l) => l.text === '气血枯竭，浊脉重凝') &&
+        s.log.some((l) => l.text.startsWith('死于「') && l.text.includes(fatal?.source ?? '\u0000')),
+      s.log.slice(-2).map((l) => l.text).join(' / '),
+    );
+    check(
+      '死因数据只有一份（battle.lastFatal），stats 不另存',
+      s.battle.lastFatal === fatal &&
+        s.deaths > 0 &&
+        Number.isFinite(fatal?.absorbed ?? NaN),
+      `absorbed=${fatal?.absorbed}`,
+    );
+  }
+
 } finally {
   await close();
 }
