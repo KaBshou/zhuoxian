@@ -84,7 +84,7 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuojian',
       name: '浊剑',
-      desc: '浊气凝于剑锋。浊气越高，破绽伤害越高 —— 但浊气满值爆发时你会失去一半护体。',
+      desc: '浊气凝于剑锋。破绽伤害 +35%（加在基础的 1.5 倍之上）。',
       effects: [{ stat: 'critMulti', op: 'flat', value: 0.35, source: { kind: 'ascend', label: '浊剑' } }],
     },
   },
@@ -101,8 +101,11 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuoshou',
       name: '浊兽',
-      desc: '你的召唤物数量 +1，但本体气血上限 -20%。指挥浊兽的代价是自己变薄。',
-      effects: [{ stat: 'life', op: 'increased', value: -0.2, source: { kind: 'ascend', label: '浊兽' } }],
+      desc: '你把气血喂给浊兽：伤害 +30%，但气血上限 −20%。打得狠，也薄。',
+      effects: [
+        { stat: 'damage', op: 'increased', value: 0.3, source: { kind: 'ascend', label: '浊兽' } },
+        { stat: 'life', op: 'increased', value: -0.2, source: { kind: 'ascend', label: '浊兽' } },
+      ],
     },
   },
   {
@@ -118,7 +121,7 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuoyan',
       name: '浊炎',
-      desc: '你的火焰伤害 +40%，但每施放一次都会额外产生浊气。烧得越旺，离浊化越近。',
+      desc: '火焰伤害 +40%。烧得越旺，离浊化越近。',
       effects: [{ stat: 'damage', op: 'increased', value: 0.4, tags: ['fire'], source: { kind: 'ascend', label: '浊炎' } }],
     },
   },
@@ -135,7 +138,7 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuoshui',
       name: '浊水',
-      desc: '浊气不再降低你的回复，反而让每秒回复量 +50%。别人怕浊气，你靠它活。',
+      desc: '气血回复 +50%（乘算）。别人怕浊气，你靠它活。',
       effects: [{ stat: 'lifeRegen', op: 'more', value: 0.5, source: { kind: 'ascend', label: '浊水' } }],
     },
   },
@@ -152,7 +155,7 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuoti',
       name: '浊体',
-      desc: '浊气满值爆发时不再进入虚弱，改为护体罡气翻倍 4 秒。把最危险的时刻变成最强的时刻。',
+      desc: '护体罡气上限 +50%。把最危险的时刻变成最厚的时刻。',
       effects: [{ stat: 'shield', op: 'more', value: 0.5, source: { kind: 'ascend', label: '浊体' } }],
     },
   },
@@ -169,8 +172,11 @@ export const CLASSES: readonly ClassDef[] = [
     ascendancy: {
       id: 'asc-zhuojin',
       name: '浊金',
-      desc: '所有金属性伤害穿透 25% 抗性。代价：自身木属性抗性 -30%（金克木，反噬己身）。',
-      effects: [{ stat: 'resWood', op: 'flat', value: -0.3, source: { kind: 'ascend', label: '浊金' } }],
+      desc: '金属性伤害 +25%。代价：自身木抗 −30%（金克木，反噬己身）。',
+      effects: [
+        { stat: 'damage', op: 'increased', value: 0.25, tags: ['metal'], source: { kind: 'ascend', label: '浊金' } },
+        { stat: 'resWood', op: 'flat', value: -0.3, source: { kind: 'ascend', label: '浊金' } },
+      ],
     },
   },
 ];

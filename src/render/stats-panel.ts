@@ -4,6 +4,8 @@ import { achievementSummary } from '../core/achievement';
 import { equipmentSummary, itemPower } from '../core/inventory';
 import { TOTAL_STEPS, STAGES_PER_REALM, xpForStep } from '../core/progression';
 import { formatRealm } from '../data/glossary';
+import { ASCENDANCY_UNLOCK_FLOOR } from '../core/character';
+import { getClass } from '../data/classes';
 import { MAX_FLOOR, tierOfFloor, floorOfTier } from '../data/monsters';
 import { BOSS_EVERY } from '../core/session';
 import type { GameSession } from '../core/session';
@@ -115,6 +117,12 @@ export function statsSections(s: GameSession): readonly StatSection[] {
         { label: '距满级', value: toMax === 0 ? '已满级' : `${toMax.toLocaleString('en-US')} 修为`, tone: toMax === 0 ? 'gold' : 'value' },
         { label: '所在', value: `第 ${s.floor} 层 · 第 ${s.wave} 波（每 ${BOSS_EVERY} 波镇守）` },
         { label: '本层击杀', value: `${s.floorKills} 只` },
+        // D209：觉醒是「升华」，之前整块是死的（零调用）；解锁了就必须看得见。
+        {
+          label: '浊气觉醒',
+          value: ascendancyText(s),
+          tone: s.character.ascendancyId === null ? 'dim' : 'gold',
+        },
         // D204：死因。没死过就写「—」而不是留空 —— 空白会被读成「功能坏了」。
         { label: '最近死因', value: fatalText, tone: fatalText === '—' ? 'dim' : 'value' },
         { label: '游玩时长', value: durationText(s.playedSeconds) },
@@ -217,4 +225,15 @@ export function drawStatsPanel(
   ctx.font = '11px "Noto Sans SC","Microsoft YaHei",sans-serif';
   ctx.fillText('Y / Esc 关闭　·　时长只算本次运行（不做假装精确的累计估算）', geo.x + PAD, geo.y + geo.h - PAD);
   return geo;
+}
+
+/**
+ * 觉醒那一行（D209）。两态：已觉醒 / 未觉醒（写出门槛，不写空白）。
+ * 空白会被读成「这功能坏了」；写出门槛才告诉玩家「还差什么」。
+ */
+export function ascendancyText(s: GameSession): string {
+  const def = getClass(s.character.classId);
+  const name = def ? def.ascendancy.name : '浊气觉醒';
+  if (s.character.ascendancyId !== null) return `${name}（已觉醒）`;
+  return `未觉醒（通关第 ${ASCENDANCY_UNLOCK_FLOOR} 层后自动觉醒）`;
 }

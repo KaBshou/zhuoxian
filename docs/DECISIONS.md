@@ -3440,3 +3440,30 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 - `tools/probe-achievement.mjs` **23 → 25/25**（新增两条像素断言）：页脚上方那一带带金色文字（`lit=196`）、面板内部青色进度条像素（`teal=459`）。
   - **三条探针假红，全是判据写错**：①「最接近」那行是 `rgba(212,161,60,0.75)` 压近黑，合成约 `(159,121,45)`，我按 `g>130` 判永远不成立（D91.2 同族：判据要按**合成后**的颜色写）；②新号大多数成就 progress=0（不画填充），按 `teal>200` 判假红 —— **判「画出来了」要按最小可见量给阈值**（D192 同族）；③青色全画布扫会扫到**世界层的玩家**（也是 `#4fd1c5`）⇒ 改成只扫面板内部区域。
 - `npx tsc --noEmit` **0**；`npx vitest run` **998 passed / 75 files**；`node tools/gate.mjs` 四道门全绿。
+### D209 浊气觉醒（六条升华）从「零调用」到「通关第一阶自动觉醒」
+
+**问题**：`src/core/character.ts` 的 `chooseAscendancy` 从 D1 起就存在，`tests/character.test.ts:349-361` 一直在测它，但 **`src/` 下零调用**。于是 `characterModifiers` 里那段 `if (def && ch.ascendancyId === def.ascendancy.id)` 从来没执行过 —— 6 个道统的觉醒效果**一条都没生效**，而它是 REQ §2「浊气觉醒（类似流放之路的升华职业）」这一整块。
+
+这是「纯函数对 + 接线没接 = 单测全绿、功能全无」的第二次（D207 天赋手动点同族）。**纯函数测试永远发现不了「没人调用它」**。
+
+更糟的是 6 条 `desc` 在描述一个不存在的游戏：浊兽写「召唤物 +1」、浊金写「穿透 25% 抗性」、浊体写「满值爆发不虚弱」，而实际 `effects` 里 `asc-zhuoshou` 只有 `life increased -0.2`、`asc-zhuojin` 只有 `resWood flat -0.3` —— **纯代价、零收益的陷阱**。
+
+**做法**：
+
+1. **补收益**（`src/data/classes.ts`）：浊兽 `+damage increased 0.30` + 保留 `life -0.20`（打得狠也薄）；浊金 `+damage increased 0.25 [metal]` + 保留 `resWood -0.30`（金克木，反噬己身）。其余四条 desc 改成 effect 的真话（不再写没实现的机制）。
+2. **解锁条件**（`src/core/character.ts`）：新增 `ASCENDANCY_UNLOCK_FLOOR = 9` 与 `ascendancyUnlockReady(ch, clearedFloors)` —— 通关第一阶（第 9 层）即觉醒。理由：觉醒是「升华」，对应 PoE 第一个升华迷宫，位置在玩家摸清基础玩法之后（第一阶约 40 分钟）；**不能放到满级**（满级前 4 小时觉醒应该参与 build，不是最后 20 分钟当奖励）。
+3. **接线**（`src/core/session.ts`）：首通层下潜那段、`syncBattleFromCharacter(s)` 之前调用 —— 觉醒必须同步战斗态，否则「觉醒了但属性没变」。
+4. **可见性**（`src/render/stats-panel.ts`）：统计面板加「浊气觉醒」行，未觉醒时写 `未觉醒（通关第 9 层后自动觉醒）` —— **不写空白**，空白会被读成「这功能坏了」。
+
+**验收**：
+
+- `tests/ascendancy.test.ts` 12/12。刻意不只测纯函数：③用真实 session 把层推到 9、清掉镇守波、跑 600 帧，断言 `ascendancyId` 真的出现；④断言解锁那一刻 `characterStats().critMulti` 真的变大；⑤断言战斗态修正器非空；⑥六个道统都能解锁且**至少 4 种不同属性签名**（防「六个都一样」）；⑦轮回后回到未觉醒；⑧desc 不含已删掉的机制词；⑨每条觉醒至少一条收益（不是纯陷阱）。
+- `tools/probe-ascendancy.mjs`（CDP 9397）**14/14**：走玩家路径构造现场 → 等游戏自己下潜 → 钩子里 `id` 从 `null` 变 `asc-zhuojian` → 战斗态修正器 9 条 → 按 Y 能在统计面板看到这一行。
+- `tsc 0` / `vitest 1010 passed / 76 files` / `gate.mjs` 四门全绿 / 盘子 34 → 35 脚本。
+
+**探针的两次假红（都是探针自己写错）**：
+
+1. `ERR_MODULE_NOT_FOUND: Cannot find package 'ws'` —— 本项目探针**不用 `ws` 包**，全部用 Node 内置 `WebSocket`（照 `tools/probe-stats.mjs` 的写法重写）。
+2. 构造现场写 `s.wave = 9` —— 但下潜条件是 `wave % BOSS_EVERY === 0`，`wave=9` 只会**再开第 10 波（刷出镇守）**，永远不下潜 ⇒ 觉醒不触发。正解 `s.wave = 10`（第 10 波 = 镇守波，`monsters` 清空即 `isCleared`）。**「构造现场」必须按触发条件构造，不能按「大概快到了」构造。**
+
+**纪律**：**每个「系统」都要有一条真浏览器探针走玩家路径**（D207 的「纯函数对 + 接线没接」已经出现两次）；**desc 必须描述代码真正做的事** —— 描述一个不存在的机制，比没有描述更糟，因为它会让玩家（和下一个改代码的人）相信它存在。

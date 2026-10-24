@@ -20,7 +20,15 @@ import {
   type BattleState,
   type MonsterInPlay,
 } from './battle';
-import { characterStats, createCharacter, equip, gainXp, type CharacterState } from './character';
+import {
+  ascendancyUnlockReady,
+  characterStats,
+  chooseAscendancy,
+  createCharacter,
+  equip,
+  gainXp,
+  type CharacterState,
+} from './character';
 import type { SoundName } from './audio';
 import { CURRENCY_SHARE, rollCurrency, type CurrencyId } from '../data/currency';
 import { GEM_SHARE, rollGemDrop } from '../data/gem-drops';
@@ -68,7 +76,7 @@ import type { ItemBaseDef } from '../data/bases';
 import {
   hasBossFloor, bossOfTier, monstersOfTier, MAX_FLOOR, tierOfFloor } from '../data/monsters';
 import { isMaxStep, TOTAL_STEPS } from './progression';
-import type { ClassId } from '../data/classes';
+import { getClass, type ClassId } from '../data/classes';
 import { unlockedGems } from './skills-runtime';
 
 /** 一条飘起来的字（伤害数字 / 掉落提示） */
@@ -700,7 +708,7 @@ export function tickSession(s: GameSession, dt: number): void {
         });
         // 突破会改属性，战斗态必须跟着重算 —— 否则升了境界伤害不变，玩家会以为没生效
         // 顺手把新到手的天赋点花掉（放置游戏不让玩家手点 130 次，理由见 talents-auto.ts）
-        // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
+        // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
         // 下一次突破就把点数接管走了，「手动」变成临时状态。
         if (s.autoTalents && s.character.manualTalents !== true) {
           s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
@@ -847,11 +855,30 @@ export function tickSession(s: GameSession, dt: number): void {
         if (!s.firstClearedFloors.includes(cleared)) {
           s.firstClearedFloors.push(cleared);
           // 首通给 2 点天赋，也要立刻花掉（否则点数攒着不生效）
-          // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
-        // 下一次突破就把点数接管走了，「手动」变成临时状态。
-        if (s.autoTalents && s.character.manualTalents !== true) {
-          s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
-        }
+          // D207：玩家手动点过天赋之后，自动分配必须停手 —— 否则玩家刚点完一条线，
+          // 下一次突破就把点数接管走了，「手动」变成临时状态。
+          if (s.autoTalents && s.character.manualTalents !== true) {
+            s.character = autoAllocateTalents(s.character, s.firstClearedFloors.length);
+          }
+          // D209：通关第一阶 = 浊气觉醒解锁。
+          // 之前 `chooseAscendancy` 全库零调用 ⇒ 6 个道统的觉醒效果从来没生效过，
+          // 而觉醒是 REQ §2「浊气觉醒（类似流放之路的升华职业）」这一整块。
+          if (ascendancyUnlockReady(s.character, s.firstClearedFloors)) {
+            const cls = getClass(s.character.classId);
+            if (cls) {
+              s.character = chooseAscendancy(s.character, cls.ascendancy.id);
+              pushLog(s, `浊气觉醒 · ${cls.ascendancy.name}`, '#d4a13c');
+              pushFloat(s, {
+                text: `觉醒 · ${cls.ascendancy.name}`,
+                x: BATTLE_W / 2,
+                y: BATTLE_H / 2 - 60,
+                color: '#d4a13c',
+                life: 2.2,
+                rise: 34,
+              });
+              pushCue(s, 'ascend');
+            }
+          }
           syncBattleFromCharacter(s);
         }
       }

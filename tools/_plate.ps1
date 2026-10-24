@@ -163,6 +163,7 @@ $probes = @(
   'F:\dsh-work\zhuoxian\tools\probe-stats.mjs',
   'F:\dsh-work\zhuoxian\tools\probe-save-backup.mjs',
   'F:\dsh-work\zhuoxian\tools\probe-playtest.mjs',
+  'F:\dsh-work\zhuoxian\tools\probe-ascendancy.mjs',
   # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'

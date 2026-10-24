@@ -24,6 +24,7 @@ import { gainXp } from './core/character';
 import { equipmentSummary, pickup } from './core/inventory';
 import { RARITY_NAME } from './data/rarity';
 import { bossWaveHint, createSession, discardFromBag, drainSoundCues, equipFromBag, floorSelectableMax, sessionAchievementFacts, setFloor, startWave, syncAchievements, tickSession, type GameSession } from './core/session';
+import { ASCENDANCY_UNLOCK_FLOOR, ascendancyUnlockReady } from './core/character';
 import { createLocalStorageAdapter } from './core/storage';
 import { createAudioEngine } from './core/audio';
 import { FRAGMENT_TERM, type FragmentElement } from './data/fragments';
@@ -1244,6 +1245,18 @@ declare global {
       readonly talentCursor: number;
       /** D207 点第 line 条线上的第一个可点节点（探针免键盘路径用，与空格同一函数） */
       allocateTalentLine(line: number): { ok: boolean; reason: string };
+      /**
+       * D209 浊气觉醒状态（探针用）。
+       * 觉醒的效果是属性修正器，在画面上只体现为几个数字的细微变化 ——
+       * 靠像素判「有没有觉醒」必然假红，所以必须给结构化读数。
+       */
+      ascendancy(): {
+        readonly id: string | null;
+        readonly name: string;
+        readonly desc: string;
+        readonly unlockFloor: number;
+        readonly ready: boolean;
+      };
       /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
       floorMapCells(): Array<{
         readonly floor: number;
@@ -1720,6 +1733,16 @@ if (import.meta.env.DEV) {
       const res = allocateTalentManually(session, id);
       if (res.ok) autosaver.saveNow();
       return res;
+    },
+    ascendancy() {
+      const cls = getClass(session.character.classId);
+      return {
+        id: session.character.ascendancyId,
+        name: cls ? cls.ascendancy.name : '',
+        desc: cls ? cls.ascendancy.desc : '',
+        unlockFloor: ASCENDANCY_UNLOCK_FLOOR,
+        ready: ascendancyUnlockReady(session.character, session.firstClearedFloors),
+      };
     },
     /**
      * 存档面板的按钮矩形（画布坐标）。

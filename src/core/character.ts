@@ -244,6 +244,26 @@ export function gainXp(ch: CharacterState, gain: number): CharacterState & XpGai
   return { ...ch, step: res.step, xp: res.xp, breakthroughs: res.breakthroughs };
 }
 
+/**
+ * 浊气觉醒的解锁门槛：**通关第一阶**（打通第 9 层、下潜到第 10 层）之后。
+ *
+ * 为什么不是一开始就能选：觉醒是「升华」，PoE 里对应第一个升华迷宫，
+ * 位置在玩家已经摸清基础玩法之后。本作第一阶约 40 分钟，正好。
+ * 为什么不是更晚（比如满级）：满级前 4 小时里，觉醒效果应该参与 build，
+ * 而不是只在最后 20 分钟当奖励。
+ */
+export const ASCENDANCY_UNLOCK_FLOOR = 9;
+
+/** 是否已到解锁门槛（未选过 + 已通关第 9 层）。脏值一律 false。 */
+export function ascendancyUnlockReady(
+  ch: CharacterState,
+  clearedFloors: readonly number[],
+): boolean {
+  if (ch.ascendancyId !== null) return false;
+  if (!Array.isArray(clearedFloors)) return false;
+  return clearedFloors.includes(ASCENDANCY_UNLOCK_FLOOR);
+}
+
 /** 选浊气觉醒（只能选一次，选了不能换 —— 换要洗点道具，第一版不做） */
 export function chooseAscendancy(ch: CharacterState, ascendancyId: string): CharacterState {
   const def = getClass(ch.classId);
