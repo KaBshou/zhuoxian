@@ -242,6 +242,61 @@ try {
   const floorAfterArrows = await cdp.eval('(()=>window.__zhuoxian.session.floor)()');
   check('面板开着时 ↑↓ 不会改层号', floorAfterArrows === floorDuring, `${floorDuring} → ${floorAfterArrows}`);
 
+  // ── D208：未达成行有进度条 + 页脚上方有「最接近」 ──
+  // 判据：canvas 没有 DOM 可读，只能按区域数像素。
+  // 「最接近」那一行在页脚上方（面板底 -40 ~ -20），是这一带唯一的米白文字。
+  const NEAR_SCAN =
+    '(() => {' +
+    '  const cv = document.getElementById("stage");' +
+    '  const ctx = cv.getContext("2d");' +
+    '  const ratio = cv.width / 960;' +
+    '  const W = 760, PAD = 18;' +
+    '  const rowsPerCol = Math.ceil(window.__zhuoxian.achievementRows().length / 2);' +
+    '  const h = PAD * 2 + 26 + rowsPerCol * 22 + 22 + 16;' +
+    '  const x = Math.round((960 - W) / 2);' +
+    '  const y = Math.round((540 - h) / 2);' +
+    '  const d = ctx.getImageData(' +
+    '    Math.round((x + PAD) * ratio),' +
+    '    Math.round((y + h - 40) * ratio),' +
+    '    Math.round(420 * ratio),' +
+    '    Math.round(20 * ratio),' +
+    '  ).data;' +
+    '  let lit = 0;' +
+    '  for (let i = 0; i < d.length; i += 4) {' +
+    '    if (d[i] > 120 && d[i] - d[i + 2] > 50 && d[i + 1] > d[i + 2]) lit += 1;' +
+    '  }' +
+    '  return { lit };' +
+    '})()';
+  const nearLine = await cdp.eval(NEAR_SCAN);
+  check('D208 页脚上方有「最接近」那一行', nearLine.lit > 120, 'lit=' + nearLine.lit);
+
+  // 进度条填充色 #4fd1c5（青）—— 全画面数一遍；青色在这个面板里只有进度条在用
+  // 只扫面板内部：世界层的玩家也是 #4fd1c5，全画布扫分不清「进度条」和「玩家」。
+  const TEAL_SCAN =
+    '(() => {' +
+    '  const cv = document.getElementById("stage");' +
+    '  const ctx = cv.getContext("2d");' +
+    '  const ratio = cv.width / 960;' +
+    '  const W = 760, PAD = 18;' +
+    '  const rowsPerCol = Math.ceil(window.__zhuoxian.achievementRows().length / 2);' +
+    '  const h = PAD * 2 + 26 + rowsPerCol * 22 + 22 + 16;' +
+    '  const x = Math.round((960 - W) / 2);' +
+    '  const y = Math.round((540 - h) / 2);' +
+    '  const d = ctx.getImageData(' +
+    '    Math.round((x + PAD) * ratio),' +
+    '    Math.round((y + PAD + 26) * ratio),' +
+    '    Math.round((W - PAD * 2) * ratio),' +
+    '    Math.round((rowsPerCol * 22) * ratio),' +
+    '  ).data;' +
+    '  let teal = 0;' +
+    '  for (let i = 0; i < d.length; i += 4) {' +
+    '    if (d[i] > 60 && d[i] < 120 && d[i + 1] > 190 && d[i + 2] > 170) teal += 1;' +
+    '  }' +
+    '  return { teal };' +
+    '})()';
+  const barPix = await cdp.eval(TEAL_SCAN);
+  check('D208 未达成行画了进度条（青色填充）', barPix.teal > 60, 'teal=' + barPix.teal);
+
   // 真结算：把击杀数顶到第一条门槛，让 syncAchievements 走真路径发渊痕
   // ⚠ 只能挑「击杀类」的第一条：target 最小的是 codex-l-1（目标 1），
   // 拿它当门槛会把 kills 设成 1，什么都不会解锁（第一版就踩了这条，红在「成就没解锁」上）。
