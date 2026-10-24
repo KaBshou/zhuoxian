@@ -27,7 +27,8 @@ export type HudButtonId =
   | 'save'
   | 'sound'
   | 'floormap'
-  | 'bag';
+  | 'bag'
+  | 'stats';
 
 export interface HudButton {
   readonly id: HudButtonId;
@@ -59,6 +60,28 @@ const EDGE = 14;
  */
 const TOP = 42;
 
+const HUD_SPECS: readonly { id: HudButtonId; label: string; key: string }[] = [
+  { id: 'detail', label: '法宝', key: 'E' },
+  { id: 'breakdown', label: '详解', key: 'D' },
+  { id: 'talent', label: '周天', key: 'T' },
+  { id: 'skill', label: '神通', key: 'G' },
+  { id: 'codex', label: '图鉴', key: 'K' },
+  { id: 'achievement', label: '成就', key: 'J' },
+  { id: 'marks', label: '渊痕', key: 'M' },
+  { id: 'save', label: '存档', key: 'S' },
+  // 唯一一个**不是开关面板**的按钮：切换音效静音（D181）。
+  // 它仍然排在同一条按钮条里，因为「玩家想关声音时能不能找到」比「语义是否纯」重要。
+  { id: 'sound', label: '音效', key: 'V' },
+  // 76 层只能靠 ←→ 一层一层挪 = 等于没有回刷（D185），所以给它一个网格面板。
+  { id: 'floormap', label: '秘境', key: 'P' },
+  { id: 'bag', label: '背包', key: 'B' },
+{ id: 'stats', label: '统计', key: 'Y' },
+];
+
+
+/** 全部按钮 id，顺序即绘制顺序。测试用它钉数量 —— 每加一个面板就改一处数字不是好测试。 */
+export const HUD_BUTTON_IDS: readonly HudButtonId[] = HUD_SPECS.map((s) => s.id);
+
 /**
  * 右上角一排按钮。顺序刻意与底部提示行一致（E → D → T → G → K → M），
  * 这样"读提示行"和"找按钮"是同一个顺序。
@@ -70,22 +93,8 @@ const TOP = 42;
  * 放不下就压窄按钮，窄到 40px 还放不下就折成两行 —— 宁可按钮小，不能点不到。
  */
 export function layoutHudButtons(canvasW: number, canvasH = 540): readonly HudButton[] {
-  const specs: readonly { id: HudButtonId; label: string; key: string }[] = [
-    { id: 'detail', label: '法宝', key: 'E' },
-    { id: 'breakdown', label: '详解', key: 'D' },
-    { id: 'talent', label: '周天', key: 'T' },
-    { id: 'skill', label: '神通', key: 'G' },
-    { id: 'codex', label: '图鉴', key: 'K' },
-    { id: 'achievement', label: '成就', key: 'J' },
-    { id: 'marks', label: '渊痕', key: 'M' },
-    { id: 'save', label: '存档', key: 'S' },
-    // 唯一一个**不是开关面板**的按钮：切换音效静音（D181）。
-    // 它仍然排在同一条按钮条里，因为「玩家想关声音时能不能找到」比「语义是否纯」重要。
-    { id: 'sound', label: '音效', key: 'V' },
-    // 76 层只能靠 ←→ 一层一层挪 = 等于没有回刷（D185），所以给它一个网格面板。
-    { id: 'floormap', label: '秘境', key: 'P' },
-    { id: 'bag', label: '背包', key: 'B' },
-  ];
+  const specs = HUD_SPECS;
+
   const n = specs.length;
   const rightEdge = canvasW - EDGE;
   // 可用宽度从「左列右边缘」算到「右边距」，而不是从画布左边算。

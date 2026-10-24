@@ -3216,3 +3216,28 @@ shuzhi 在冻结前做了一轮「文档 vs 代码」逐项对账（14 项常量
 - `npx tsc --noEmit` **0**；`npx vitest run` **947 passed / 67 files**；`node tools/gate.mjs` 四道门全绿；整盘探针 30 → **31** 脚本。
 
 **教训（写进纪律清单）。** 「显示层不许消耗 rng」这条在浮字上踩过一次（整条掉落序列错位），这次直接在 `shakeOffset` 的注释里写死，并且用「同帧同偏移」的单测钉住。**凡是纯显示的量，都必须能用同一输入复现；能不能复现，就是它有没有偷偷吃随机数的唯一证据。**
+### D200 统计面板（`Y`）：把「我这局干了什么」摆出来
+
+**问题。** 挂机刷宝的乐趣有一半是**数字在涨**，但游戏里这些数字是散的：击杀在右列、死亡在面板里看不到、渊痕在囊中、游玩时长压根没记、图鉴/成就只有分子。玩家想知道「我玩了多久 / 一共杀了多少 / 距离满级还差多少」的时候，没有任何一处能一眼看完。
+
+**做法。**
+- 新建 `src/render/stats-panel.ts`，三组数据：
+  - **本局**：境界与台阶、距满级还差多少修为、所在层与波、本层击杀、游玩时长、渊痕/小时；
+  - **累计**：击杀、死亡、脱困次数、掷骰掉落次数、累计仙品件数、周目、最深抵达、已通关层数、囊中（四种通货 + 玉简）；
+  - **收集**：图鉴（含浊物/传奇/异变体三类明细）、成就、最强法宝战力、已穿部位数。
+- `GameSession.playedSeconds`：`tickSession` 里与战斗同口径夹 dt 累加（运行时态，不入档）。**不入档是有意的**：存档里没有「服务器时间」，硬凑一个「累计时长」只能靠估算，而估出来的数和玩家记忆对不上时，面板就成了骗子。
+- `marksPerHour(s)`：`playedSeconds < 60` 直接返回 0 —— 否则玩 3 秒拿到 10 万渊痕（dev 钩子造场景时会这样）会显示「每小时 1.2 亿」。
+- `xpToMax(s)`：逐台阶累加 `xpForStep`（满级 0），**不是**用某个平均速度估。
+- 分母全部来自数据表：`CODEX_TOTAL` / `ACHIEVEMENT_TOTAL` / `MAX_FLOOR` / `TOTAL_STEPS`。文件头写死两条纪律：只读 session、不消耗 rng。
+- 左缘金条用 `rgba(212,161,60,0.85)`（D190 的教训：0.45 叠在近黑底上只有 `(96,73,28)`，探针的 `r>120` 判据数不到 —— 结构像素必须够亮才当得了锚点）。
+
+**接线。** `HudButtonId` 加 `'stats'`（第 11 个按钮，`Y`）；`battle-renderer` 加 `showStats` / `toggleStats()` / `panelOpen` case / `activeButtons`；`main.ts` 加 `PANEL_NAME`、`activatePanel` 分支、`KeyY`、`openPanelIds`（Escape 兜底）、调试钩子 `statsVisible`。
+- **顺带把 `hud-buttons.ts` 的 `specs` 提升成模块级 `HUD_SPECS` 并导出 `HUD_BUTTON_IDS`**：`tests/hud-layout.test.ts` 原来写死「有 11 个按钮 / 这 11 个 id」，每加一个面板就要改一处数字（D186 同族）；现在断言 `buttons.length === HUD_BUTTON_IDS.length`，加按钮不用改测试。
+
+**验收（本次真跑）。**
+- `tests/stats-panel.test.ts` **6/6**：时长四档与脏值（`durationText`）/ 渊痕每小时不足 1 分钟返 0 / 距满级正数·满级 0·NaN 不炸 / 三组标题齐全且分母来自数据表、文本不含 `NaN|undefined|Infinity` / 面板装进 960×540 / 真画一遍（假 ctx 记录 `fillText` + 假 `fillRect` 记录当时的 `fillStyle`）。
+  - **假 ctx 的坑**：`Object.assign` 复制访问器取的是**值**，所以 `fillStyle` 必须写成普通属性、再在 `fillRect` 里记下「当时的值」；写成 get/set 永远收不到颜色。
+- `tools/probe-stats.mjs`（CDP **9394**）**9/9**：钩子存在 / 新号不显示 / **游玩时长真的在涨**（`4.95` 秒）/ 按 `Y` 打开 / 左缘金条 `0 → 1569` / `panelsOpen()` 含 `stats` / 开图鉴时统计被收掉（`["codex"]`）/ `Esc` 能关 / 控制台零报错。截图 `docs/probe-stats.png`。
+- `npx tsc --noEmit` **0**；`npx vitest run` **953 passed / 68 files**；`tools/_plate.ps1` 探针 31 → **32**。
+
+**教训。** 「没有的数据不编」比「看起来完整」重要：面板里每一个数都要能说清**它从哪来**。凑一个「累计游玩时长」只要一行代码，但它会和玩家的记忆打架，而玩家一旦发现某个数字是编的，就会开始怀疑所有数字。

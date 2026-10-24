@@ -236,6 +236,8 @@ export interface GameSession {
   soundCues: SoundName[];
   /** D199 当前震动振幅（运行时态，不入档）。渲染层只读它，不消耗 rng。 */
   shake: number;
+  /** 本次运行累计秒数（运行时态，不入档）。D200 统计面板要显示「玩了多久」。 */
+  playedSeconds: number;
   /** 货币袋：通货计数（不占 40 格背包，记账式） */
   pocket: Record<CurrencyId, number>;
   /** 掉落的玉简（id 计数，拾取即收入） */
@@ -374,6 +376,7 @@ export function createSession(opts: SessionOptions): GameSession {
     breakthroughs: 0,
     soundCues: [],
     shake: 0,
+    playedSeconds: 0,
     pocket: { huang: 0, mie: 0, xi: 0 },
     gemPouch: {},
     firstClearedFloors: [],
@@ -822,6 +825,7 @@ export function tickSession(s: GameSession, dt: number): void {
 
   // 4.5) 震动衰减（纯显示态；放在浮字之前，让本帧刚产生的事件不被同帧衰减）
   s.shake = decayShake(s.shake, dt);
+  s.playedSeconds += Math.max(0, Math.min(0.25, Number.isFinite(dt) ? dt : 0));
 
   // 5) 浮字与日志变老
   for (const f of s.floats) f.age += d;

@@ -37,6 +37,7 @@ import { drawSavePanel, type SavePanelPaint, type SavePanelPhase } from './save-
 import { drawFloorMap } from './floor-map';
 import { drawHelpButton, drawHelpPanel } from './help-panel';
 import { drawBagPanel, clampBagIndex } from './bag-panel';
+import { drawStatsPanel } from './stats-panel';
 import { bossBarGeometry, bossBarVisible, bossPercentText } from './boss-bar';
 import type { SkillCursor } from './skill-panel';
 import { drawTutorial } from './tutorial-overlay';
@@ -143,6 +144,7 @@ export class BattleRenderer {
   private shakeFrame = 0;
   private floorMapFocus: number | null = null;
   private showBag = false;
+  private showStats = false;
   private bagCursor = 0;
   /** 存档面板的状态（null = 关着）。文案与阶段都由 main.ts 给，渲染器不自己编事实。 */
   private savePaint: (SavePanelPaint & { readonly phase: SavePanelPhase }) | null = null;
@@ -278,6 +280,18 @@ export class BattleRenderer {
     return this.showBag;
   }
 
+  /** D200 统计面板：只读；打开时关掉其它面板（与其余面板同一套互斥规则）。 */
+  toggleStats(): boolean {
+    const next = !this.showStats;
+    if (next) this.closeAllPanels();
+    this.showStats = next;
+    return this.showStats;
+  }
+
+  get statsVisible(): boolean {
+    return this.showStats;
+  }
+
   get bagVisible(): boolean {
     return this.showBag;
   }
@@ -366,6 +380,8 @@ export class BattleRenderer {
         return false;
       case 'floormap':
         return this.showFloorMap;
+      case 'stats':
+        return this.showStats;
       case 'bag':
         return this.showBag;
     }
@@ -390,6 +406,7 @@ export class BattleRenderer {
     this.showFloorMap = false;
     this.floorMapFocus = null;
     this.showBag = false;
+    this.showStats = false;
     this.showAchievements = false;
     this.skillCursor = null;
     this.showHelp = false;
@@ -414,6 +431,7 @@ export class BattleRenderer {
     if (this.savePaint !== null) on.push('save');
     if (this.showFloorMap) on.push('floormap');
     if (this.showBag) on.push('bag');
+    if (this.showStats) on.push('stats');
     return on;
   }
 
@@ -496,6 +514,9 @@ export class BattleRenderer {
       });
     // 按钮条画在**所有面板之后**：面板盖住它就看不出还能点，而且它本身是"退出面板"的唯一手段
     // （手机上没有 Escape 键，除了再点一次按钮没有别的关法）。
+    if (this.showStats) {
+      drawStatsPanel(this.ctx, s, BATTLE_W, BATTLE_H);
+    }
     if (this.showBag) {
       drawBagPanel(this.ctx, s, BATTLE_W, BATTLE_H, this.bagCursor);
     }

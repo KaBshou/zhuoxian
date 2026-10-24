@@ -21,6 +21,7 @@ const ALL_IDS: readonly HudButtonId[] = [
   'sound',
   'floormap',
   'bag',
+  'stats',
 ];
 
 describe('布局：任何画布宽度下都不许画到屏幕外', () => {
@@ -42,10 +43,10 @@ describe('布局：任何画布宽度下都不许画到屏幕外', () => {
     expect(960 - (bs[bs.length - 1].x + bs[bs.length - 1].w)).toBe(14);
   });
 
-  it('按钮之间不重叠，且顺序与底部提示行一致（E D T G K J M S V P）', () => {
+  it('按钮之间不重叠，且顺序与底部提示行一致（E D T G K J M S V P B Y）', () => {
     const bs = layoutHudButtons(960);
     expect(bs.map((b) => b.id)).toEqual(ALL_IDS);
-    expect(bs.map((b) => b.key)).toEqual(['E', 'D', 'T', 'G', 'K', 'J', 'M', 'S', 'V', 'P', 'B']);
+    expect(bs.map((b) => b.key)).toEqual(['E', 'D', 'T', 'G', 'K', 'J', 'M', 'S', 'V', 'P', 'B', 'Y']);
     for (let i = 1; i < bs.length; i++) expect(bs[i].x).toBeGreaterThan(bs[i - 1].x + bs[i - 1].w);
   });
 });

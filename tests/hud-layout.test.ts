@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layoutHudButtons } from '../src/render/hud-buttons';
+import { HUD_BUTTON_IDS, layoutHudButtons } from '../src/render/hud-buttons';
 import {
   FOOTER_H,
   HUD_LEFT_X,
@@ -45,8 +45,8 @@ function overlap(a: Rect, b: Rect): boolean {
 const buttons = layoutHudButtons(W, H);
 
 describe('HUD 布局不重叠（D176）', () => {
-  it('有 10 个按钮（法宝/详解/周天/神通/图鉴/成就/渊痕/存档/音效/秘境）', () => {
-    expect(buttons).toHaveLength(11);
+  it('按钮数量与 hud-buttons 的清单一致（不写死数字）', () => {
+    expect(buttons).toHaveLength(HUD_BUTTON_IDS.length);
     expect(buttons.map((b) => b.id)).toEqual([
       'detail',
       'breakdown',
@@ -58,7 +58,8 @@ describe('HUD 布局不重叠（D176）', () => {
       'save',
       'sound',
       'floormap',
-  'bag',
+      'bag',
+      'stats',
     ]);
   });
 

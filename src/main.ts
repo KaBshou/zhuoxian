@@ -232,6 +232,7 @@ const PANEL_NAME: Record<HudButtonId, string> = {
   marks: '渊痕价目表',
   save: '存档',
   floormap: '秘境图',
+  stats: '统计',
   bag: '背包',
   sound: '音效',
 };
@@ -247,6 +248,7 @@ const PANEL_CLOSE_HINT: Record<HudButtonId, string> = {
   marks: '（再按 M 或点按钮关闭）',
   save: '（再按 S 或点按钮关闭）',
   floormap: '（再按 P 或点按钮关闭）',
+  stats: '（再按 Y 或点按钮关闭）',
   bag: '（再按 B 或点按钮关闭）',
   sound: '',
 };
@@ -293,6 +295,8 @@ function activatePanel(id: HudButtonId): void {
     openSavePanel();
   } else if (id === 'bag') {
     renderer.toggleBag();
+  } else if (id === 'stats') {
+    renderer.toggleStats();
   } else if (id === 'floormap') {
     renderer.toggleFloorMap();
   } else {
@@ -330,6 +334,7 @@ function openPanelIds(): string[] {
   if (renderer.floorMapVisible) open.push('floormap');
   if (renderer.bagVisible) open.push('bag');
   if (renderer.helpVisible) open.push('help');
+  if (renderer.statsVisible) open.push('stats');
   return open;
 }
 
@@ -959,6 +964,12 @@ window.addEventListener('keydown', (e) => {
     activatePanel('bag');
     return;
   }
+  if (e.code === 'KeyY') {
+    e.preventDefault();
+    activatePanel('stats');
+    return;
+  }
+
   if (e.code === 'KeyP') {
     e.preventDefault();
     activatePanel('floormap');
@@ -1190,6 +1201,8 @@ declare global {
       discardBagItem(index: number): boolean;
       /** 秘境图是否开着 */
       readonly floorMapVisible: boolean;
+      /** D200 统计面板 */
+      readonly statsVisible: boolean;
       /** 秘境图 76 格几何 + 状态（探针用；坐标与绘制同源） */
       floorMapCells(): Array<{
         readonly floor: number;
@@ -1653,6 +1666,10 @@ if (import.meta.env.DEV) {
       h: b.h,
     })),
     panelsOpen: () => openPanelIds(),
+    /** D200：统计面板是否打开（探针用，按 Y 切换）。 */
+    get statsVisible() {
+      return renderer.statsVisible;
+    },
     /**
      * 存档面板的按钮矩形（画布坐标）。
      * 布局的唯一出处在 `save-panel.ts` 的 `savePanelButtons` —— 钩子只是把它透出去，
