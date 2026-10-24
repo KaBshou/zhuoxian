@@ -108,6 +108,12 @@ await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 960, y: 520, b
 await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 960, y: 520, button: 'left', clickCount: 1 });
 await sleep(4000);
 
+// 等到修为 > 0（进度条有内容），最多等 10 秒；0% 时只有暗底轨、没有青色像素
+for (let i = 0; i < 20; i += 1) {
+  const xpNow = await evaluate(`window.__zhuoxian ? window.__zhuoxian.session.character.xp : 0`);
+  if (typeof xpNow === `number` && xpNow > 0) break;
+  await sleep(500);
+}
 const regions = await evaluate(`(() => {
   const c = document.getElementById('stage');
   const g = c.getContext('2d');
@@ -137,6 +143,11 @@ const regions = await evaluate(`(() => {
     leftPanel: box(14, 42, 210, 200),
     rightPanel: box(736, 74, 210, 240),
     barArea: box(8, 4, 630, 26),
+    hookedButtons: (() => {
+      try { return window.__zhuoxian.hudButtons().length; } catch { return -1; }
+    })(),
+    // 右列「修为」那一行下方的 4px 进度条（D192）
+    xpBar: box(736, 98, 210, 16),
   };
 })()`);
 
@@ -147,7 +158,8 @@ console.log(JSON.stringify({ url: URL, out: OUT, ...regions }, null, 2));
 
 const checks = [
   ['画布已铺满 1920 宽', regions.canvas.w === 1920],
-  ['8 个 HUD 按钮', regions.buttons === 8],
+  ['HUD 按钮数与钩子一致（不写死数量）', regions.buttons === regions.hookedButtons],
+  ['HUD 按钮数合理（≥8）', regions.buttons >= 8],
   ['已进战斗（phase=play）', regions.phase === 'play'],
   ['顶栏右侧有字（境界/战力/层数/波次）', regions.topStrip.lit > 200],
   ['顶栏下有 4px 空白带（不再有字压着按钮）', regions.gapBand.lit < 260],
@@ -156,6 +168,8 @@ const checks = [
   ['右列面板有内容', regions.rightPanel.lit > 200],
   ['血条区有内容', regions.barArea.lit > 200],
   ['血条区有饱和色（气血锈红 / 浊气紫 / 罡气金）', regions.barArea.chroma > 200],
+  // 只证「画出来了」：刚开局进度条只有几个像素宽，阈值不能按满格定（那是拿掉率/时长赌断言）
+  ['修为进度条画出来了（右列青色像素）', regions.xpBar.teal > 6],
 ];
 let bad = 0;
 for (const [name, ok] of checks) {

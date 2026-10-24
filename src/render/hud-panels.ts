@@ -17,7 +17,7 @@ import { RARITY_NAME, type Rarity } from '../data/rarity';
 import { CURRENCIES, type CurrencyId } from '../data/currency';
 import { TERM, formatRealm } from '../data/glossary';
 import { MAX_FLOOR, MAIN_FLOOR_END, depthRarityBonus } from '../data/monsters';
-import { TOTAL_STEPS } from '../core/progression';
+import { TOTAL_STEPS, xpForStep } from '../core/progression';
 import { affordableSinks } from '../data/marks';
 import { drawPaperdoll, paperdollHeight } from './paperdoll';
 
@@ -75,7 +75,16 @@ export const HUD_RIGHT_X = 960 - PANEL_W - PANEL_X_GAP;
 const PANEL_X_RIGHT = HUD_RIGHT_X;
 const PANEL_X_LEFT = HUD_LEFT_X;
 
-type Line = { label: string; value: string; color?: string };
+/**
+ * 一行 HUD 数据。
+ *
+ * `bar` 存在时，这一行下方多画一条 4px 进度条（0~1）。
+ * 为什么要进度条：挂机游戏的正反馈是「离下一个目标还有多远」，
+ * 而「金丹·三重」是状态不是进度 —— 只有数字，玩家感受不到自己在推进。
+ */
+type Line = { label: string; value: string; color?: string; bar?: number };
+const BAR_H = 4;
+const BAR_GAP = 4;
 
 /** 画一块面板，返回它的高度（调用方靠返回值堆叠，别写死坐标） */
 function drawPanel(
@@ -86,7 +95,8 @@ function drawPanel(
   title?: string,
 ): number {
   const head = title ? 16 : 0;
-  const h = 10 + head + lines.length * ROW_H + 4;
+  const bars = lines.filter((l) => typeof l.bar === 'number').length;
+  const h = 10 + head + lines.length * ROW_H + bars * (BAR_H + BAR_GAP) + 4;
   ctx.fillStyle = C.panel;
   ctx.fillRect(x, y, PANEL_W, h);
   ctx.strokeStyle = C.edge;
@@ -109,6 +119,19 @@ function drawPanel(
     ctx.fillStyle = line.color ?? C.text;
     ctx.fillText(line.value, x + PANEL_W - 12, ly);
     ly += ROW_H;
+    if (typeof line.bar === 'number') {
+      const ratio = Number.isFinite(line.bar) ? Math.max(0, Math.min(1, line.bar)) : 0;
+      const bx = x + 12;
+      const bw = PANEL_W - 24;
+      // 底槽用极暗实色：静音/暗色背景下也要能看出「这条有长度」
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(bx, ly - 4, bw, BAR_H);
+      if (ratio > 0) {
+        ctx.fillStyle = C.teal;
+        ctx.fillRect(bx, ly - 4, Math.max(1, Math.round(bw * ratio)), BAR_H);
+      }
+      ly += BAR_H + BAR_GAP;
+    }
   }
   ctx.textAlign = 'left';
   return h;
@@ -126,6 +149,23 @@ export function prestigeHintText(s: GameSession): string | null {
   return s.cycle > 0 ? `第 ${s.cycle} 周目圆满 · 按 N 再入` : '渡劫圆满 · 按 N 入轮回';
 }
 
+/** 当前台阶的修为进度（0~1）。满级返回 1；脏值返回 0。 */
+export function realmProgressRatio(step: number, xp: number): number {
+  if (!Number.isFinite(step) || !Number.isFinite(xp)) return 0;
+  if (step >= TOTAL_STEPS - 1) return 1;
+  const need = xpForStep(step);
+  if (!Number.isFinite(need) || need <= 0) return 0;
+  const cur = Math.max(0, xp);
+  return Math.max(0, Math.min(1, cur / need));
+}
+
+/** 修为进度文案：`金丹·三重 42%`（满级写「圆满」）。 */
+export function realmProgressText(step: number, xp: number): string {
+  const ratio = realmProgressRatio(step, xp);
+  if (step >= TOTAL_STEPS - 1) return `${formatRealm(step)} · 圆满`;
+  return `${formatRealm(step)} · ${Math.floor(ratio * 100)}%`;
+}
+
 export function drawStatusPanel(
   ctx: CanvasRenderingContext2D,
   s: GameSession,
@@ -136,6 +176,13 @@ export function drawStatusPanel(
   // 境界 / 战力 / 层数 / 波次 已经在顶栏（drawTopStripInfo、D176），这里不再重复：
   // 同一组数字画两遍，玩家会以为两个数不一样。
   const lines: Line[] = [
+    // 修为进度放第一行：它是玩家每一分钟都在看的那条线
+    {
+      label: TERM.xp ?? '修为',
+      value: realmProgressText(s.character.step, s.character.xp),
+      color: maxed ? C.gold : C.teal,
+      bar: realmProgressRatio(s.character.step, s.character.xp),
+    },
     { label: '击杀', value: `${s.battle.kills}（死 ${s.floorDeaths}）`, color: C.dim },
   ];
   // 渊痕只在满级后才有意义（它是满级后的唯一积累物，不产生战力）。
