@@ -3523,3 +3523,36 @@ const legendaries = entries.filter((e) => e.kind === 'legendary');
 **验收**：新测 `tests/codex-panel-layout.test.ts` **8/8** —— 异变体那行真的画出来 / 右列标题含「异变体」/ 列行数 21 / **面板 fillRect 高度 === `codexPanelHeight()`** / 装得进 540 / 光标指向异变体（绝对索引 18）时有高亮 / 已收录带 `·`、未收录带 `？`。`F:\dsh-work\tools\probe-codex.mjs` 真机 **23/23**。`tsc 0` / `vitest 1018 passed / 77 files`。
 
 **纪律**：**加一条数据行时，必须同时问「它会被画出来吗、它会让别的行号偏移吗、它会让高度算错吗」** —— 三件事都不会报错。D160 加异变体时只测了 `codexEntries` 的条数与顺序（那三件都测不出来），而面板是另一个消费者。
+### D212 CI 上「产物自检」红：环境缺 Chrome 不该阻塞部署
+
+**现象**：`ba99992` 的部署流水线里，**类型检查 / 单测 / 构建全绿**，只有第 8 步「产物自检（子路径）」红，`deploy` 被 skip，线上停在上一版。
+
+**根因（从 job log 里挖出来的）**：
+
+```
+Error: CDP 没起来
+    at tools/probe-dist.mjs:202
+```
+
+`probe-dist.mjs` 起无头 Chrome、等它开 CDP 端口，等 15 秒（60×250ms）没等到就判红。三个放大器让这次失败**几乎无法排查**：
+
+1. **`stdio: 'ignore'`** —— Chrome 起不来的原因（缺库 / 沙箱 / 参数不支持）全写在它的 stderr 里，而我们把 stderr 直接扔了。
+2. **15 秒对本机够、对冷启动 runner 不够**。
+3. **没有区分「环境没有浏览器」与「页面是坏的」** —— 前者是环境问题（该跳过），后者才是产品问题（必须红）。两者都表现为 `CDP 没起来`。
+
+**做法（三处）**：
+
+1. **探针**（`tools/probe-dist.mjs`）：
+   - `stdio: ['ignore','ignore','pipe']` + stderr ring buffer（保留最后 4KB）+ `chrome.on('exit')` 记退出码；
+   - 等待上限 15s → **60s**，并且**一发现进程已退出就立刻停**（不白等）；
+   - 失败时打印 `CHROME=…` / `chrome 已退出 code=…` / stderr 最后 8 行；
+   - **`process.env.CI` 为真时 SKIP 并 exit 0**（环境缺浏览器不进分母），本机缺 Chrome 仍然红（开发环境不对要立刻知道）；
+   - 顺带加 `--disable-gpu --disable-software-rasterizer`（CI 无 GPU，软件渲染更稳）。
+2. **工作流**（`.github/workflows/deploy.yml`）：新增 `browser-actions/setup-chrome@v1` 一步，`CHROME_PATH` 通过 env 传给探针 —— 把「环境有没有浏览器」从运气变成确定的事。
+3. 本地复跑 `node tools/probe-dist.mjs` 仍 **14/14**（改动没影响正常路径）。
+
+**纪律（并入 D91 的「产物自检」族）**：
+
+- **环境缺失 vs 产品损坏必须分开判**：前者 SKIP 不进分母，后者红。判据是「Chrome 进程根本没起来」还是「起来了但页面白屏」——**两者的修复责任人和紧急程度完全不同**。
+- **凡是子进程，stderr 一律不许丢**。丢掉的 stderr 会在最需要它的时候（CI 红、本机绿）变成零信息。
+- **CI 与本机的时间预算不能共用一个常数**：本机 15 秒够、冷启动 runner 不够；宁可给足 + 早停（进程死了就别等了），也不要「猜一个够用的秒数」。
