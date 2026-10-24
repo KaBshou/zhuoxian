@@ -45,6 +45,20 @@ import { drawHudButtons, type HudButtonId } from './hud-buttons';
 import { monsterAffixSuffix } from '../data/monster-affixes';
 
 /** 调色板（沿用 GDD 七色） */
+/** D199 震动最大像素：4px 是「能感到但不晕」的上限（>6px 挂机看久会难受） */
+export const MAX_SHAKE_PX = 4;
+
+/**
+ * 确定性震动偏移：只依赖帧序号，**不消耗 rng**（显示层吃随机数会让掉落序列整体错位）。
+ * x 与 y 用不同频率，避免屏幕上画出一条斜线。
+ */
+export function shakeOffset(amp: number, frame: number): { x: number; y: number } {
+  if (!Number.isFinite(amp) || amp <= 0) return { x: 0, y: 0 };
+  const a = Math.min(1, amp) * MAX_SHAKE_PX;
+  const t = Number.isFinite(frame) ? frame : 0;
+  return { x: Math.sin(t * 1.7) * a, y: Math.cos(t * 2.3) * a * 0.72 };
+}
+
 const C = {
   void: '#05070b',
   bg: '#0b0a0c',
@@ -125,6 +139,8 @@ export class BattleRenderer {
   /** 秘境图（D185）：76 层网格，点格子跳层。 */
   private showFloorMap = false;
   private showHelp = false;
+  /** D199 渲染帧计数（只给震动用，与游戏时间无关：暂停时也继续数） */
+  private shakeFrame = 0;
   private floorMapFocus: number | null = null;
   private showBag = false;
   private bagCursor = 0;
@@ -438,6 +454,13 @@ export class BattleRenderer {
     ctx.fillStyle = C.void;
     ctx.fillRect(0, 0, BATTLE_W, BATTLE_H);
 
+    // D199 震动：只平移「世界层」（地板/掉落/怪/玩家/浮字），HUD 与暗角不动 ——
+    // 让状态栏跟着抖会让玩家读不到数字，那是最典型的「juice 做过头」。
+    this.shakeFrame += 1;
+    const shake = shakeOffset(s.shake, this.shakeFrame);
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
+
     this.ensureFloor(s.floor);
     if (this.floor) ctx.drawImage(this.floor, 0, 0);
 
@@ -448,6 +471,8 @@ export class BattleRenderer {
     this.drawPlayer(state, t);
 
     for (const f of s.floats) this.drawFloat(f);
+
+    ctx.restore();
 
     this.drawLighting(state.player.x, state.player.y);
     this.drawTopBars(state);

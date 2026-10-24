@@ -1,0 +1,376 @@
+﻿# probe plate @ 2026-10-24T11:04:59.8289172+08:00 base=http://127.0.0.1:5292/
+node.exe : 探针自己崩了： 游戏没起来，先看控制台红字
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针自己崩了： 游戏没起来，先看控制台红字:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+== probe-battle.mjs exit=1 dur=2.7s [RED] n/a
+node.exe : 探针崩了： Error: SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for t
+his document.
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针崩了： Error: Se... this document.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at evaluate (file:///F:/dsh-work/tools/probe-save.mjs:163:15)
+    at async main (file:///F:/dsh-work/tools/probe-save.mjs:175:5)
+
+== probe-save.mjs exit=1 dur=3.1s [RED] n/a
+FAIL  调试钩子挂上了（window.__zhuoxian.session）  [false]
+FAIL  探针自身没崩  [Error: 钩子没挂上，后面没法测]
+
+结果：0/2 通过   截图：F:/dsh-work/zhuoxian/docs/probe-floor.png
+
+== probe-floor.mjs exit=1 dur=16.7s [RED] n/a  澶辫触椤? FAIL  调试钩子挂上了（window.__zhuoxian.session）  [false] | FAIL  探针自身没崩  [Error: 钩子没挂上，后面没法测]
+FAIL  探针自身没崩  [Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":0,"scriptId":"6","exception":{"type":"object","subtype":"error","className":"DOMExceptio]
+
+结果：0/1 通过   截图：F:/dsh-work/zhuoxian/docs/probe-breakdown.png
+
+== probe-breakdown.mjs exit=1 dur=16.5s [RED] n/a  澶辫触椤? FAIL  探针自身没崩  [Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":0,"scriptId":"6","exception":{"type":"object","subtype":"error","className":"DOMExceptio]
+FAIL  探针自身没崩  [Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":0,"scriptId":"6","exception":{"type":"object","subtype":"error","className":"DOMExceptio]
+
+结果：0/1 通过   截图：F:/dsh-work/zhuoxian/docs/probe-detail.png
+
+== probe-detail.mjs exit=1 dur=16.7s [RED] n/a  澶辫触椤? FAIL  探针自身没崩  [Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":0,"scriptId":"6","exception":{"type":"object","subtype":"error","className":"DOMExceptio]
+FAIL  调试钩子存在
+FAIL  探针执行未崩溃 · Error: 没有 window.__zhuoxian.session，后面全跳过
+
+0/2 通过
+失败项：
+ - 调试钩子存在
+ - 探针执行未崩溃 · Error: 没有 window.__zhuoxian.session，后面全跳过
+
+== probe-marks.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在 | FAIL  探针执行未崩溃 · Error: 没有 window.__zhuoxian.session，后面全跳过
+FAIL  探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+
+结果：0/1 通过   截图：F:\dsh-work\zhuoxian\docs\probe-talent.png
+ - 探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+
+== probe-talent.mjs exit=1 dur=3s [RED] n/a  澶辫触椤? FAIL  探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+FAIL  调试钩子存在
+FAIL  探针执行未崩溃 · Error: no hook
+
+结果：0/2 通过   截图：F:\dsh-work\zhuoxian\docs\probe-skill.png
+ - 调试钩子存在
+ - 探针执行未崩溃 · Error: no hook
+
+== probe-skill.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在 | FAIL  探针执行未崩溃 · Error: no hook
+FAIL  调试钩子存在
+FAIL  探针执行未崩溃 · Error: no hook
+
+结果：0/2 通过   截图：F:\dsh-work\zhuoxian\docs\probe-class.png
+ - 调试钩子存在
+ - 探针执行未崩溃 · Error: no hook
+
+== probe-class.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在 | FAIL  探针执行未崩溃 · Error: no hook
+FAIL  探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+
+结果：0/1 通过   截图：F:\dsh-work\zhuoxian\docs\probe-onboarding.png
+ - 探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+
+== probe-onboarding.mjs exit=1 dur=3s [RED] n/a  澶辫触椤? FAIL  探针执行未崩溃 · Error: "SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+  OK   A 注入一件带传奇的仙品成功 — {"legendary":"taiyi","rarity":"xian","affixes":4}
+  OK   A 钩子能读到该件 legendary 字段 — legendary=taiyi
+  OK   A 仙品仍是 4 条灵纹（传奇不占灵纹位） — affixes=4
+  OK   B 面板打开的确实是一张卡片（亮文字像素明显多于关闭态） — 关闭 543 → 打开 1136
+  OK   B 传奇效果真占一行文字（描述色 #c9a06a：有 ≥150 且比无传奇多 ≥60） — 描述色 有传奇 257 / 无传奇 114（差 143）· 全画布米白 1136 vs 1114 · 最大单行差 3
+  OK   C 仙品标题橙金色真的画出来了（≥20 像素） — 橙金像素=497
+  OK   D 开关面板后 legendary 没被渲染层改掉 — legendary=taiyi
+  OK   D 未知传奇 id 不崩、面板照画 — legendary=not-a-real-legendary-id 新增错误=0
+  OK   E 全程无控制台错误 — 0 条
+
+通过 9/9
+
+== probe-legendary.mjs exit=0 dur=8.3s [ok] n/a
+  OK   reset() 后回到「选道统」阶段 — phase=select
+  OK   真新号的引导从第 0 条开始 — tutorialStep=0
+  OK   选完道统进入战斗，引导仍停在 0 — phase=play step=0
+  OK   底部出现「引路」金色条带 — 底部金色像素=3251
+  OK   挂机 9 秒后引导自己往前走（step ≥ 1） — step 0 → 1
+  OK   引导推进不影响战斗（等到真的击杀） — kills 0 → 1（30s 等待）
+  OK   按 G 后引导不倒退 — step 3 → 4
+  OK   事实补齐后按 G 能吃掉「按 G 看神通」这一条（step 越过 panel-skill） — kills=3 drops=3 step 3 → 4（panel-skill 的下标是 3，越过它应 ≥4）
+  OK   按 T 后引导不倒退 — step 4 → 5
+  OK   G/T 两条面板引导被吃掉（step 越过 panel-talent） — 挂机时 1 → 按完 G/T 5（panel-talent 下标 4，越过它应 ≥5）
+  OK   reload 后直接进战斗（不再选道统） — phase=play
+  OK   reload 后引导不重讲（进度不回 0） — step 5 → 5
+  OK   finishTutorial() 把引导推到末条（tutorialLength） — step=11 / tutorialLength=11
+  OK   引导走完后底部条带没有残留高亮（金色像素低） — 走完后 184（阈值 600，条带存在时实测 3000+）
+  OK   引导结束后战斗照常推进（击杀继续涨） — kills 0 → 1（30s 窗口）
+  OK   选道统画面有两行世界观文字（米白文字像素） — 米白文字像素=2095（阈值 120，实测请勿低于它太多）
+  OK   switch-floor 那条能按 → 推进（不靠 12 秒兜底） — step 8 → 9
+  OK   tier 那条能把引导推到末条（灌层 10 后 step → tutorialLength） — step=10 / tutorialLength=11
+  OK   控制台无报错（含 reset/选道统/按键/灌层全流程） — 干净
+
+通过 19/19
+
+== probe-onboarding-indep.mjs exit=0 dur=31.4s [ok] n/a
+FAIL  调试钩子存在（gems / skillRows / skillCursor）
+FAIL  探针执行未崩溃 · Error: no hook
+
+结果：0/2 通过   截图：F:\dsh-work\zhuoxian\docs\probe-gem.png
+ - 调试钩子存在（gems / skillRows / skillCursor）
+ - 探针执行未崩溃 · Error: no hook
+
+== probe-gem.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（gems / skillRows / skillCursor） | FAIL  探针执行未崩溃 · Error: no hook
+FAIL  调试钩子存在（codex / codexRows / unlockCodex / codexCursor）
+FAIL  探针执行未崩溃 · Error: no hook
+
+结果：0/2 通过   截图：F:\dsh-work\zhuoxian\docs\probe-codex.png
+ - 调试钩子存在（codex / codexRows / unlockCodex / codexCursor）
+ - 探针执行未崩溃 · Error: no hook
+
+== probe-codex.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（codex / codexRows / unlockCodex / codexCursor） | FAIL  探针执行未崩溃 · Error: no hook
+FAIL  钩子存在（复用 session().character.marks，未新增产品侧钩子）
+FAIL  探针自身没崩　—　Error: no hook
+
+结果：0/2 通过   截图：F:\dsh-work\zhuoxian\docs\probe-marks-panel.png
+失败项：钩子存在（复用 session().character.marks，未新增产品侧钩子） | 探针自身没崩
+
+== probe-marks-panel.mjs exit=1 dur=26s [RED] n/a  澶辫触椤? FAIL  钩子存在（复用 session().character.marks，未新增产品侧钩子） | FAIL  探针自身没崩　—　Error: no hook
+FAIL  调试钩子存在（hudButtons / panelsOpen / classCards）
+node.exe : 探针异常： Error: no hook
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针异常： Error: no hook:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at file:///F:/dsh-work/zhuoxian/tools/probe-touch.mjs:187:22
+
+== probe-touch.mjs exit=1 dur=15.9s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（hudButtons / panelsOpen / classCards）
+FAIL  调试钩子存在（achievements / achievementRows / achievementFacts / achievementCursor）
+FAIL  探针执行未崩溃 · Error: no hook
+
+0/2 通过
+
+== probe-achievement.mjs exit=1 dur=5.3s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（achievements / achievementRows / achievementFacts / achievementCursor） | FAIL  探针执行未崩溃 · Error: no hook
+FAIL  钩子可用（session().battle 可读）
+FAIL  探针执行未抛异常　—　Error: no hook
+
+通过 0/2
+
+== probe-monster-affix.mjs exit=1 dur=31.2s [RED] n/a  澶辫触椤? FAIL  钩子可用（session().battle 可读） | FAIL  探针执行未抛异常　—　Error: no hook
+FAIL  调试钩子存在（fragments / setFragmentAim / session）
+FAIL  探针自身没崩 · Error: no hook
+
+0/2 通过 · EXIT=1
+
+== probe-fragments.mjs exit=1 dur=5.6s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（fragments / setFragmentAim / session） | FAIL  探针自身没崩 · Error: no hook
+
+threat 常量：FROM=22 MUL=3.5 SLOPE=0.2 BOSS_EXTRA=1.5 ENABLED=true
+层21: 普通 ×1.00 / 镇守 ×1.00　·　层22: 普通 ×1.00 / 镇守 ×1.50　·　层23: 普通 ×1.20 / 镇守 ×1.80　·　层27: 普通 ×2.00 / 镇守 ×3.00　·　层30: 普通 ×2.60 / 镇守 ×3.90　·　层34: 普通 ×3.40 / 镇守 ×5.10　·　层41: 普通 ×3.50 / 镇守 ×5.25　·　层42: 普通 ×3.50 / 镇守 ×5.25　·　层46: 普通 ×3.50 / 镇守 ×5.25　·　层76: 普通 ×3.50 / 镇守 ×5.25
+PASS  层 21 及以下不吃威胁（×1.00）　—　层21 = ×1.00
+PASS  层 22 是斜坡起点（×1.00，不是一步吃到封顶）　—　层22 = ×1.00
+PASS  斜坡单调不减且封顶 = DEEP_THREAT_MUL　—　峰值 = ×3.50
+PASS  镇守额外 ×1.5（层 22+ 同层普通与镇守之比恒 1.5）　—　层46 普通 ×3.50 / 镇守 ×5.25　·　层21 是例外（<22 早退，镇守也不加）: 普通 ×1.00 / 镇守 ×1.00
+
+spawnMonster damage（fangshi-yuanke）：层21 4.2367 · 层22 4.3638 · 层34 21.1540 · 层76 75.3609
+比值 22/21 = 1.030（理论 1.030 = 层曲线 ×1.03 × threat ×1.00）　34/21 = 4.993（理论 4.993）　76/21 = 17.788（理论 17.788）
+PASS  层 22 只吃层曲线、没提前吃威胁（22/21 = 层曲线比）　—　实测 1.0300 vs 理论 1.0300
+PASS  层 34 与层 21 的伤害比 = 层曲线比 × threat(34)　—　实测 4.9930 vs 理论 4.9930
+PASS  层 76 也吃到 threat（封顶 = DEEP_THREAT_MUL）　—　实测 17.7875 vs 理论 17.7875
+PASS  血量不吃威胁（只抬伤害，不拖 TTK）　—　maxHp 76/34 = 54.765（理论 54.764，差在 maxHp 取整）
+
+死亡前后：层 2 → 2　波次 3 → 1　deaths=1　reviveCooldown(死亡当帧)=6.00　修为 50 → 45
+PASS  REVIVE_COOLDOWN = 6 秒　—　const = 6
+PASS  死亡后本层回到第 1 波（s.wave === 1）　—　wave = 1（死前 3）
+PASS  死亡不降层　—　层 2 → 2
+PASS  死亡当帧 reviveCooldown 被设成 6　—　实测 6.00
+PASS  死亡只掉当前台阶存量的 10%（不是全身）　—　修为 50 → 45
+PASS  setFloor 能把角色放到层 5（逃生阀测试前置）　—　setFloor(5) = true, floor = 5
+
+逃生阀：层 5 连死 3 次 → 层 4　escapeValveCount 0 → 1　（ESCAPE_VALVE_DEATHS=3 / ESCAPE_VALVE_LAYERS=1）
+PASS  同层连死 3 次后逃生阀触发、退回 1 层　—　层 5 → 4，阀门 0 → 1，实测死亡 3 次
+PASS  逃生阀把本层死亡计数清零（不会一退再退）　—　floorDeaths = 0
+
+层 1 连死 4 次：floor=1　escapeValveCount=1
+PASS  层 1 无处可退时不退到 0 层　—　层 1 连死多次后仍在层 1
+PASS  成就表条数 = 模块派生量 ACHIEVEMENT_TOTAL（不写死 20）　—　DEFS=27 · ACHIEVEMENT_TOTAL=27
+PASS  floor-46 已不存在　—　含 floor-46 = false
+PASS  floor-76 存在且 target=76 / reward=50000　—　{"id":"floor-76","name":"渊底","desc":"走到魔渊最深处（第七十六层）。","target":76,"reward":50000}
+
+通过 20/20
+
+== probe-death-mechanics.mjs exit=0 dur=0.8s [ok] n/a
+FAIL  探针自身没崩 · Error: TypeError: Failed to fetch dynamically imported module: chrome-error://chromewebdata/src/data/cycles.ts
+
+0/1 通过 · EXIT=1
+
+== probe-cycle.mjs exit=1 dur=5.9s [RED] n/a  澶辫触椤? FAIL  探针自身没崩 · Error: TypeError: Failed to fetch dynamically imported module: chrome-error://chromewebdata/src/data/cycles.ts
+# 24h 周目链验收（D138）
+
+| 周目 | 满级中位(min) | (h) | min/max | 死亡中位 | 首次撞墙层 | 来源 |
+|---|---:|---:|---|---:|---:|---|
+| c0 | 273.0 | 4.55 | 232.4/296.2 | 3.5 | 53 | base-c0.json |
+| c1 | 298.9 | 4.98 | 271.6/321.7 | 22.5 | 37 | base-c1.json |
+| c2 | 369.4 | 6.16 | 318.3/409.5 | 57 | 29 | base-c2.json |
+| c3 | 506.6 | 8.44 | 382.6/695.9 | 88 | 30 | base-c3.json |
+
+- 累计：**24.13h**（4 轮）｜目标 24h，窗口 [20.4, 27.6]h → **通过**
+- 说明：单轮满级窗口只对 c0 生效（c≥1 只记录），因为 260min 是初临的目标；周目的需求是「24h 之后还有内容」，判的是累计。
+- 死亡时间占比（**D150 记录项，同量纲**）：c0 1.2% / c1 6.7% / c2 13.3% / c3 15.3%（分子分母都是分钟；c4+ 超 30% 才是「该动机制」的信号，c0~c3 只记录）
+
+- 单调线（硬线，D140）：相邻周目比值 ≥ 1.05
+  - c0 → c1：1.095 ✓
+  - c1 → c2：1.236 ✓
+  - c2 → c3：1.371 ✓
+- 死亡比例（硬线，D141）：≤ 15 次/小时
+  - c0：0.77 次/小时 ✓
+  - c1：4.52 次/小时 ✓
+  - c2：9.26 次/小时 ✓
+  - c3：10.42 次/小时 ✓
+
+通过 1/1  24h 周目链（累计 / 单调 / 死亡比例）
+
+== probe-cycle-24h.mjs exit=0 dur=0.2s [ok] n/a
+FAIL  调试钩子齐全（探针不靠点文件选择器） · {"ok":false}
+node.exe : file:///F:/dsh-work/zhuoxian/tools/probe-save-panel.mjs:84
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (file:///F:/dsh-...ve-panel.mjs:84:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+      throw new Error(String(r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails)));
+            ^
+
+Error: TypeError: Cannot read properties of null (reading 'getContext')
+    at <anonymous>:3:17
+    at <anonymous>:18:3
+    at Cdp.eval (file:///F:/dsh-work/zhuoxian/tools/probe-save-panel.mjs:84:13)
+    at async file:///F:/dsh-work/zhuoxian/tools/probe-save-panel.mjs:213:18
+
+Node.js v24.22.0
+
+== probe-save-panel.mjs exit=1 dur=5.4s [RED] n/a  澶辫触椤? FAIL  调试钩子齐全（探针不靠点文件选择器） · {"ok":false}
+node.exe : file:///F:/dsh-work/zhuoxian/tools/probe-audio.mjs:80
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (file:///F:/dsh-...be-audio.mjs:80:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails));
+                                ^
+
+Error: {"exceptionId":1,"text":"Uncaught","lineNumber":0,"columnNumber":0,"scriptId":"5","exception":{"type":"object","
+subtype":"error","className":"DOMException","description":"SecurityError: Failed to read the 'localStorage' property fr
+om 'Window': Access is denied for this document.","objectId":"-8147973052610143681.1.2","preview":{"type":"object","sub
+type":"error","description":"SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied 
+for this document.","overflow":false,"properties":[{"name":"stack","type":"string","value":"SecurityError: Failed to re
+ad the 'localStorage' p…rom 'Window': Access is denied for this document."},{"name":"code","type":"number","value":"18"
+},{"name":"name","type":"string","value":"SecurityError"},{"name":"message","type":"string","value":"Failed to read the
+ 'localStorage' property from 'Window': Access is denied for this document."}]}}}
+    at evalJs (file:///F:/dsh-work/zhuoxian/tools/probe-audio.mjs:80:33)
+    at async file:///F:/dsh-work/zhuoxian/tools/probe-audio.mjs:154:3
+
+Node.js v24.22.0
+
+== probe-audio.mjs exit=1 dur=3.7s [RED] n/a
+
+=== 纸娃娃真机体检：http://127.0.0.1:5292/ ===
+
+  [FAIL] 调试钩子存在 — typeof = undefined
+node.exe : 探针异常： 没有钩子，后面全没法验
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针异常： 没有钩子，后面全没法验:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+== probe-paperdoll.mjs exit=1 dur=4s [RED] n/a
+
+=== 镇守血条（D183）真机 ===
+
+node.exe : Error: Uncaught
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: Uncaught:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at evalJs (file:///F:/dsh-work/zhuoxian/tools/probe-boss-bar.mjs:99:33)
+    at async main (file:///F:/dsh-work/zhuoxian/tools/probe-boss-bar.mjs:193:5)
+
+== probe-boss-bar.mjs exit=1 dur=23.1s [RED] n/a
+
+=== 秘境图（D185）真机 ===
+
+FAIL  调试钩子存在（floorMapCells / floorMapVisible）
+node.exe : 探针异常： Error: no hook
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (探针异常： Error: no hook:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at main (file:///F:/dsh-work/zhuoxian/tools/probe-floormap.mjs:164:24)
+
+== probe-floormap.mjs exit=1 dur=11.4s [RED] n/a  澶辫触椤? FAIL  调试钩子存在（floorMapCells / floorMapVisible）
+  [FAIL] 钩子存在（bagCells/bagVisible）  — [object Object]
+  [FAIL] 网格 40 格且编号连续
+  [FAIL] 新号默认不显示背包  — [object Object]
+  [FAIL] 按 B 能打开背包  — [object Object]
+  [FAIL] 面板真的画出来（左缘金条变多）  — undefined → undefined
+node.exe : EXPLODE TypeError: Cannot read properties of undefined (reading 'toFixed')
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (EXPLODE TypeErr...ding 'toFixed'):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at main (file:///F:/dsh-work/zhuoxian/tools/probe-bag.mjs:177:63)
+
+== probe-bag.mjs exit=1 dur=17.1s [RED] n/a
+  [FAIL] 钩子存在（helpVisible/helpButton/toggleHelp）
+  [FAIL] 新号默认不显示帮助
+  [FAIL] 按 H 能打开帮助
+  [FAIL] 面板真的画出来（左缘金条变多）  — [object Object] → [object Object]
+  [FAIL] Esc 兜底清单里有 help
+  [FAIL] 帮助开着时战斗不暂停（挂机游戏暂停=损失）  — [object Object] → [object Object]
+  [FAIL] Esc 能关掉帮助
+  [FAIL] 关掉后金条回落  — [object Object] → [object Object]
+node.exe : EXPLODE Error: Invalid parameters
+At F:\dsh-work\zhuoxian\tools\_plate.ps1:168 char:8
++   $o = & node $p $base 2>&1 | Out-String
++        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (EXPLODE Error: Invalid parameters:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at WebSocket.<anonymous> (file:///F:/dsh-work/zhuoxian/tools/probe-help.mjs:77:26)
+    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:869:20)
+    at WebSocket.dispatchEvent (node:internal/event_target:810:26)
+    at fireEvent (node:internal/deps/undici/undici:14438:14)
+    at #onMessage (node:internal/deps/undici/undici:15762:9)
+    at Object.onMessage (node:internal/deps/undici/undici:15469:76)
+    at websocketMessageReceived (node:internal/deps/undici/undici:14442:15)
+    at node:internal/deps/undici/undici:15171:21
+    at node:internal/deps/undici/undici:14951:11
+    at afterWrite (node:internal/streams/writable:712:5)
+
+== probe-help.mjs exit=1 dur=8.1s [RED] n/a
+PASS  子路径下 index.html 打开了 · 400 chars
+PASS  资源 URL 都带子路径前缀（base: './' 生效） · assets=2
+PASS  没有任何 4xx/403（favicon 除外） · 4 次请求
+PASS  canvas 真的画了东西（不是白屏也不是全黑） · mean=12.6 lit=30197/518400
+PASS  生产构建不带调试钩子（玩家打不开后门） · hooks 未暴露，符合预期
+PASS  按 Enter 能进入战斗（选道统界面确实过了） · mean 12.6 → 28.0
+PASS  游戏循环在跑（6 秒内画面像素变化） · hash 82446632 → 3149499047
+PASS  子路径 origin 下写出了存档（localStorage 键名 zhuoxian.save.v1） · savedAt=2026-10-24T03:10:00.511Z
+PASS  reload 后存档仍在同 origin（子路径部署不会丢档） · savedAt 1792811400511 → 1792811403011
+PASS  存储键不越界（只有本游戏自己的键） · zhuoxian.save.v1
+PASS  手机路径起点确实是选道统界面（档真清掉了） · mean=12.6
+PASS  手机路径：点屏幕中间能选道统并进战斗（dist 里没有键盘） · 点 y=0.3 后亮度 12.6 变化
+PASS  点进来的战斗确实在跑（2.5 秒像素变化） · hash 860596318 → 3810680984
+PASS  控制台零报错
+
+14/14 通过 · EXIT=0
+
+== probe-dist.mjs exit=0 dur=21.1s [ok] n/a
+== TOTAL 0/0

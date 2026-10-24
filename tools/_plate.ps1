@@ -155,6 +155,9 @@ $probes = @(
   # 29th: help panel (D190). 12 items. Opened by H / ? / the bottom-right "?" button;
   # asserts battle is NOT paused while it is open (a paused idle game is lost progress).
   'F:\dsh-work\zhuoxian\tools\probe-help.mjs',
+  # 30th: screen shake (D199). 8 items. Asserts combat produces shake, decay direction,
+  # NaN never reaches the renderer, and the HUD is not translated with the world layer.
+  'F:\dsh-work\zhuoxian\tools\probe-shake.mjs',
   # 29th: production build (serves dist/ on its own port, ignores the base URL; SKIPs when dist/ is
   # missing instead of going red -- a missing build artifact is not a regression).
   'F:\dsh-work\zhuoxian\tools\probe-dist.mjs'

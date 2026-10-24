@@ -99,6 +99,33 @@ export const MAX_LOG_LINES = 6;
  * 为什么要在 core 里就设上限：放置游戏满级后一秒能杀十几只怪，
  * 逐个播 = 白噪音；而且 main.ts 每帧 drain 一次，堆太多会让音效滞后于画面。
  */
+/** D199 震动的六种来源（0~1 振幅；实际像素由渲染层乘 MAX_SHAKE_PX） */
+export const SHAKE_ON_HIT = 0.06;
+export const SHAKE_ON_CRIT = 0.14;
+export const SHAKE_ON_MONSTER_HIT = 0.05;
+export const SHAKE_ON_KILL = 0.05;
+export const SHAKE_ON_BOSS_KILL = 0.34;
+export const SHAKE_ON_DEATH = 0.6;
+export const SHAKE_MAX = 1;
+/** 每秒 e^-8 衰减：0.6 的死亡震动约 0.35s 掉到 0.03 —— 够短，不会让人晕 */
+export const SHAKE_DECAY_PER_SEC = 8;
+
+/** 叠加震动（只加，上限 SHAKE_MAX；脏值当 0）。 */
+export function addShake(s: { shake: number }, amount: number): void {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  const cur = Number.isFinite(s.shake) ? s.shake : 0;
+  s.shake = Math.min(SHAKE_MAX, cur + amount);
+}
+
+/** 每帧衰减。指数衰减与帧率无关（dt 变了曲线不变）。 */
+export function decayShake(shake: number, dt: number): number {
+  if (!Number.isFinite(shake) || shake <= 0) return 0;
+  // **不许夹 dt**：指数衰减夹住 dt 就变成「大 dt 衰减更慢」，帧率一变曲线就变（测试会红）。
+  // 战斗里夹 dt 是为了防切标签页补算，那里夹得对；这里只需要「时间越长越小」。
+  const d = Number.isFinite(dt) && dt > 0 ? dt : 0;
+  return Math.max(0, shake * Math.exp(-SHAKE_DECAY_PER_SEC * d));
+}
+
 export const MAX_SOUND_CUES = 6;
 
 /** 清场之后隔多久开下一波（秒）。给玩家「喘一口气 + 看清掉落」的时间 */
@@ -207,6 +234,8 @@ export interface GameSession {
    * 这样离线结算/数值模拟跑 session 时既不会发声、也不会创建音频上下文（Node 里根本没有）。
    */
   soundCues: SoundName[];
+  /** D199 当前震动振幅（运行时态，不入档）。渲染层只读它，不消耗 rng。 */
+  shake: number;
   /** 货币袋：通货计数（不占 40 格背包，记账式） */
   pocket: Record<CurrencyId, number>;
   /** 掉落的玉简（id 计数，拾取即收入） */
@@ -344,6 +373,7 @@ export function createSession(opts: SessionOptions): GameSession {
     floorMinutes: 0,
     breakthroughs: 0,
     soundCues: [],
+    shake: 0,
     pocket: { huang: 0, mie: 0, xi: 0 },
     gemPouch: {},
     firstClearedFloors: [],
@@ -469,6 +499,7 @@ export function tickSession(s: GameSession, dt: number): void {
       s.floorDeaths += 1;
       s.battle.floorDeaths += 1;
       s.deaths += 1;
+      addShake(s, SHAKE_ON_DEATH);
       // 修为惩罚：掉 10%，但不掉装备也不掉层（惩罚要疼，但不能让人想退游）
       if (s.character.xp > 0) {
         const loss = Math.max(1, Math.floor(s.character.xp * DEATH_XP_PENALTY));
@@ -520,6 +551,8 @@ export function tickSession(s: GameSession, dt: number): void {
       // 伤害浮字：暴击金色更大，普攻灰白 —— 玩家不看数字也能感到"这一下重"
       const crit = e.kind === 'player-crit';
       pushCue(s, crit ? 'crit' : 'hit');
+      // D199 震动：暴击比普攻重一倍（玩家不看数字也分得出这一下更疼）
+      addShake(s, crit ? SHAKE_ON_CRIT : SHAKE_ON_HIT);
       pushFloat(s, {
         text: crit ? `${e.amount}!` : String(e.amount),
         // 抖动必须**确定性**：浮字是纯显示，吃 rng 会把「第几条随机数」整体错位，
@@ -531,6 +564,8 @@ export function tickSession(s: GameSession, dt: number): void {
         rise: crit ? 40 : 30,
       });
     } else if (e.kind === 'monster-hit') {
+      // 挨打比打人轻：玩家要知道自己在掉血，但不该被自己的伤害震到
+      addShake(s, SHAKE_ON_MONSTER_HIT);
       pushFloat(s, {
         text: e.label,
         x: (e.x ?? BATTLE_W / 2) + jitter(e.amount, 5),
@@ -545,6 +580,7 @@ export function tickSession(s: GameSession, dt: number): void {
       // 累计与本层击杀：按层真实击杀率（BALANCE §21.11）的唯一实测来源
       s.kills += 1;
       s.floorKills += 1;
+      addShake(s, killed.rarity === 'boss' ? SHAKE_ON_BOSS_KILL : SHAKE_ON_KILL);
       s.diag.killsByRarity[killed.rarity] += 1;
       // 图鉴（D87）：收录这只浊物。recordMonsterKill 在已收录时返回原对象，
       // 所以这里只在「第一次遇到」时复制数组 + 播报，热路径无额外开销。
@@ -783,6 +819,9 @@ export function tickSession(s: GameSession, dt: number): void {
   } else {
     s.waveTimer = 0;
   }
+
+  // 4.5) 震动衰减（纯显示态；放在浮字之前，让本帧刚产生的事件不被同帧衰减）
+  s.shake = decayShake(s.shake, dt);
 
   // 5) 浮字与日志变老
   for (const f of s.floats) f.age += d;
