@@ -13,8 +13,15 @@
  *   击杀是热路径（每分钟十几次），每次击杀都复制一遍数组没必要。
  */
 
-import { ALL_MONSTERS, getMonster, type MonsterDef } from '../data/monsters';
-import { ALL_LEGENDARY_DEFS, DEEP_LEGENDARY_DEFS, getLegendary, type LegendaryDef } from '../data/legendary';
+import { ALL_MONSTERS, MAX_FLOOR, floorOfTier, getMonster, type MonsterDef } from '../data/monsters';
+import {
+  ALL_LEGENDARY_DEFS,
+  DEEP_LEGENDARY_DEFS,
+  DEEP_LEGENDARY_MIN_FLOOR,
+  getLegendary,
+  type LegendaryDef,
+} from '../data/legendary';
+import { VARIANT_MIN_FLOOR, VARIANT_WAVE_EVERY } from './monster-roll';
 import { ELEMENT_TERM } from '../data/glossary';
 
 export type CodexKind = 'monster' | 'legendary' | 'variant';
@@ -147,6 +154,18 @@ export interface CodexEntry {
   readonly unlocked: boolean;
 }
 
+/**
+ * 该阶浊物出没的层段（D202）。
+ *
+ * 玩家在图鉴里看到一行「尚未遭遇」时，最想知道的是「去哪找」，而不是「它有多少血」。
+ * 层段由 `floorOfTier` 推出来 —— 阶位边界只许有一个出处，改了那里这里跟着变。
+ */
+export function monsterFloorRangeText(tier: 1 | 2 | 3): string {
+  const from = floorOfTier(tier);
+  const to = tier === 1 ? 9 : tier === 2 ? 18 : MAX_FLOOR;
+  return tier === 3 ? `第 ${from}–${MAX_FLOOR} 层` : `第 ${from}–${to} 层`;
+}
+
 function monsterDetail(def: MonsterDef): string {
   const head = def.boss ? '镇守 · ' : '';
   return (
@@ -167,7 +186,15 @@ export function codexEntries(codex: CodexState): CodexEntry[] {
     const def = getMonster(id);
     if (!def) continue;
     const unlocked = hasMonster(codex, id);
-    out.push({ kind: 'monster', id, name: def.name, detail: unlocked ? monsterDetail(def) : '尚未遭遇', unlocked });
+    // D202：未见过的行不剧透数值，但告诉玩家「在哪一层能遇到」——
+    // 否则图鉴就是一排问号，玩家不知道 18 只怪里少的那只该去几层找。
+    out.push({
+      kind: 'monster',
+      id,
+      name: def.name,
+      detail: unlocked ? monsterDetail(def) : `尚未遭遇（${def.tier} 阶 · ${monsterFloorRangeText(def.tier)}）`,
+      unlocked,
+    });
   }
   // D160：异变体独立成行（第 31 行）——玩家要知道「有这东西存在」，但不给「见过 N 次」的计数
   out.push({
@@ -176,7 +203,7 @@ export function codexEntries(codex: CodexState): CodexEntry[] {
     name: '异变体',
     detail: hasVariant(codex)
       ? '深层异变 · 额外 1 条同类妖纹 · 掉落数量 +10%'
-      : '尚未遭遇',
+      : `尚未遭遇（第 ${VARIANT_MIN_FLOOR} 层以上 · 每 ${VARIANT_WAVE_EVERY} 波一只）`,
     unlocked: hasVariant(codex),
   });
   // D167：深层传奇的 detail 必须两句 ——「层 ≥40 才可掉」+「与基础传奇同时可掉（不是替换）」。
@@ -190,7 +217,18 @@ export function codexEntries(codex: CodexState): CodexEntry[] {
     const detail = DEEP_SET.has(id)
       ? `${body}　｜　层 ≥40 才可掉；与基础传奇同时可掉（不是替换）`
       : body;
-    out.push({ kind: 'legendary', id, name: def.name, detail: unlocked ? detail : '尚未获得', unlocked });
+    // D202：未获得的传奇也要给「去哪打」（深层 3 条老实写「层 ≥40」）。
+    out.push({
+      kind: 'legendary',
+      id,
+      name: def.name,
+      detail: unlocked
+        ? detail
+        : DEEP_SET.has(id)
+          ? `尚未获得（第 ${DEEP_LEGENDARY_MIN_FLOOR} 层以上）`
+          : '尚未获得（任意层都可能掉）',
+      unlocked,
+    });
   }
   return out;
 }

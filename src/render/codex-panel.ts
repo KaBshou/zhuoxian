@@ -28,6 +28,31 @@ const PAD = 18;
 const ROW_H = 17;
 const COL_GAP = 26;
 const COL_W = Math.floor((W - PAD * 2 - COL_GAP) / 2);
+/** detail 的起始偏移与可用宽度（D202：detail 变长了，必须能折/截） */
+const DETAIL_X = 96;
+const DETAIL_FONT = 11;
+const DETAIL_MAX_W = COL_W - DETAIL_X - 6;
+
+/** 全角按 1、半角按 0.55 个字宽估算（宁可高估，高估只是多截一个字符） */
+function estimateWidth(text: string, fontPx: number): number {
+  let units = 0;
+  for (const ch of text) units += ch.charCodeAt(0) > 0x2e80 ? 1 : 0.55;
+  return units * fontPx;
+}
+
+/**
+ * 把 detail 截到可用宽度内（D202）。
+ *
+ * 图鉴的 detail 从「尚未遭遇」变成了「尚未遭遇（3 阶 · 第 19–76 层）」—— 它比原来长了一倍。
+ * 面板是固定宽度的两列，溢出就会画进右边那一列，看起来像「这只怪叫『第 19–7…』」。
+ * 与其缩小字号（11px 已经很小），不如截断并保留省略号：玩家至少知道「后面还有话」。
+ */
+export function fitDetailText(text: string, maxPx: number = DETAIL_MAX_W): string {
+  if (estimateWidth(text, DETAIL_FONT) <= maxPx) return text;
+  const chars = [...text];
+  while (chars.length > 1 && estimateWidth(chars.join('') + '…', DETAIL_FONT) > maxPx) chars.pop();
+  return chars.join('') + '…';
+}
 /** 一列放几行：浊物 15 条、传奇 9 条，两列都放得下（取 15 的上限） */
 const ROWS_PER_COL = 15;
 
@@ -118,7 +143,7 @@ export function drawCodexPanel(
       // 数值/描述只在收录后显示：未收录时写「尚未遭遇」，不剧透气血攻伐
       ctx.fillStyle = e.unlocked ? C.dim : 'rgba(109, 102, 92, 0.55)';
       ctx.font = '11px "Microsoft YaHei", "PingFang SC", sans-serif';
-      ctx.fillText(e.detail, colX + 96, rowY + 1);
+      ctx.fillText(fitDetailText(e.detail), colX + DETAIL_X, rowY + 1);
       ctx.font = '12px "Microsoft YaHei", "PingFang SC", sans-serif';
     });
   };

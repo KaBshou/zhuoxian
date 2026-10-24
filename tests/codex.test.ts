@@ -19,6 +19,7 @@ import {
   moveCodexCursor,
   recordLegendary,
   recordMonsterKill,
+  monsterFloorRangeText,
   sanitizeCodex,
 } from '../src/core/codex';
 import { ALL_MONSTERS } from '../src/data/monsters';
@@ -28,6 +29,7 @@ import { createSession, sessionAchievementFacts, tickSession } from '../src/core
 import { makeItem } from '../src/core/item';
 import { Rng } from '../src/core/rng';
 import { ITEM_BASES } from '../src/data/bases';
+import { MAX_FLOOR } from '../src/data/monsters';
 import { AFFIXES } from '../src/data/affixes';
 
 const TABLES = { bases: ITEM_BASES, affixes: AFFIXES };
@@ -133,10 +135,31 @@ describe('图鉴：条目与光标', () => {
     expect(rows.every((e) => e.name.length > 0)).toBe(true);
   });
 
-  it('未收录不剧透数值：detail 是「尚未遭遇 / 尚未获得」', () => {
+  it('未收录不剧透数值，但要告诉玩家去哪找（D202）', () => {
     const rows = codexEntries(createCodex());
-    expect(rows.filter((e) => e.kind === 'monster').every((e) => e.detail === '尚未遭遇')).toBe(true);
-    expect(rows.filter((e) => e.kind === 'legendary').every((e) => e.detail === '尚未获得')).toBe(true);
+    // 不剧透：不许出现气血倍率/攻伐倍率这些战斗数值
+    for (const e of rows.filter((r) => !r.unlocked)) {
+      expect(e.detail).not.toContain('气血');
+      expect(e.detail).not.toContain('攻伐');
+    }
+    // 但必须给「出处」：浊物说层段、传奇说任意层/深层、异变体说触发条件
+    for (const e of rows.filter((r) => r.kind === 'monster' && !r.unlocked)) {
+      expect(e.detail.startsWith('尚未遭遇（')).toBe(true);
+      expect(e.detail).toMatch(/第 \d+–\d+ 层/);
+    }
+    const variant = rows.find((r) => r.kind === 'variant');
+    expect(variant?.detail).toContain('层以上');
+    expect(variant?.detail).toContain('波一只');
+    const legendaries = rows.filter((r) => r.kind === 'legendary' && !r.unlocked);
+    expect(legendaries.every((e) => e.detail.startsWith('尚未获得（'))).toBe(true);
+    expect(legendaries.some((e) => e.detail.includes('任意层'))).toBe(true);
+    expect(legendaries.some((e) => e.detail.includes('40 层以上'))).toBe(true);
+  });
+
+  it('浊物出处层段与阶位边界同源（改 floorOfTier 不会漏改文案）', () => {
+    expect(monsterFloorRangeText(1)).toBe('第 1–9 层');
+    expect(monsterFloorRangeText(2)).toBe('第 10–18 层');
+    expect(monsterFloorRangeText(3)).toBe(`第 19–${MAX_FLOOR} 层`);
   });
 
   it('收录后才有数值/描述（浊物带阶位，传奇带描述）', () => {
