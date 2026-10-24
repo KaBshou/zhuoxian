@@ -1007,6 +1007,25 @@ export function breakthroughLogText(step: number): string {
  * 为什么只判满级、不要求「清完第 76 层」：满级是修为线的终点，层数是装备线；
  * 两条线不该互相阻塞（想刷装备的人可以随时轮回，反之亦然）。
  */
+// D193：轮回不可撤销（清空境界与装备），必须二次确认。
+// 判定抽成纯函数：内联在 main.ts 里既没法单测，也没法让按钮 / 手势入口复用同一套规则。
+export const PRESTIGE_CONFIRM_MS = 6000;
+
+/** 二次确认是否仍在窗口内。时钟倒退、未武装、脏值一律 false（宁可不执行，也不误删进度）。 */
+export function prestigeConfirmArmed(params: {
+  readonly armedAt: number;
+  readonly nowMs: number;
+  readonly windowMs?: number;
+}): boolean {
+  const a = Number.isFinite(params.armedAt) ? params.armedAt : 0;
+  const t = Number.isFinite(params.nowMs) ? params.nowMs : 0;
+  const wRaw = Number.isFinite(params.windowMs) ? params.windowMs : PRESTIGE_CONFIRM_MS;
+  const w = Math.max(0, wRaw as number);
+  if (a <= 0) return false;
+  const dt = t - a;
+  return dt >= 0 && dt <= w;
+}
+
 export function prestigeReady(s: GameSession): boolean {
   return isMaxStep(s.character.step) && s.battle.reviveCooldown <= 0;
 }

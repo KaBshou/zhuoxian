@@ -223,6 +223,12 @@ try {
   // 键位路径这一段；同帧渊痕断言放在刷新之后（那时它把 1 → 2，不影响前面的断言）。
   const marksBefore = await cdp.eval('(()=>{const z=window.__zhuoxian;z.session.character={...z.session.character,step:80};z.session.battle.reviveCooldown=0;return z.session.character.marks??0})()');
   await cdp.key('KeyN', 'n');
+  await sleep(300);
+  const armedOnce = await cdp.eval(
+    '(() => { const z = window.__zhuoxian; return { armed: z.prestigeArmed, cycle: z.session.cycle }; })()'
+  );
+  check('第一次按 N 只武装、不改周目（D193 二次确认）', armedOnce.armed === true && armedOnce.cycle === 0, `armed=${armedOnce.armed} cycle=${armedOnce.cycle}`);
+  await cdp.key('KeyN', 'n');
   await sleep(900);
   const after5 = await cdp.eval(`(() => {
     const z = window.__zhuoxian;

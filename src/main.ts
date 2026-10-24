@@ -73,7 +73,11 @@ import { helpButtonRect, hitTestHelpButton } from './render/help-panel';
 import { HUD_LEFT_X, HUD_PANEL_W, TOP_STRIP_H } from './render/hud-panels';
 import { isSlotId } from './data/slots';
 import { characterGemLoadout } from './core/character';
-import { prestige, prestigeReady } from './core/session';
+import {
+  prestige,
+  prestigeConfirmArmed,
+  prestigeReady,
+} from './core/session';
 import { cycleDmgMul, cycleHpMul, cycleMarksMul, cycleName } from './data/cycles';
 import {
   applyGemLoadout,
@@ -180,6 +184,8 @@ let skillCursor = { skill: 0, slot: 0 };
 let codexCursor = 0;
 // 成就光标权威在 main.ts（渲染器只持本帧副本，与图鉴/神通同一条纪律）
 let achievementCursor = 0;
+
+let prestigeArmedAt = 0;
 
 /** 把光标同步给渲染层（每次移动后都调一次，避免两处各存一份状态） */
 function syncSkillCursor(): void {
@@ -1014,6 +1020,18 @@ window.addEventListener('keydown', (e) => {
       session.log.push({ text: '轮回需先满级（第九境渡劫）', color: '#6d665c', age: 0 });
       return;
     }
+    const nowMs = Date.now();
+    // 第一次按：只武装。窗口内第二次：真轮回（D193）。
+    if (!prestigeConfirmArmed({ armedAt: prestigeArmedAt, nowMs })) {
+      prestigeArmedAt = nowMs;
+      session.log.push({
+        text: '轮回会清空境界与装备（渊痕 / 图鉴 / 成就保留）—— 再按一次 N 确认',
+        color: '#d4a13c',
+        age: 0,
+      });
+      return;
+    }
+    prestigeArmedAt = 0;
     const before = session.cycle;
     if (prestige(session)) {
       autosaver.saveNow();
@@ -1229,6 +1247,8 @@ declare global {
       readonly tutorialStep: number;
       /** 引导总条数（探针断言「走完」时要跟这个数比，不许写死 9/10） */
       readonly tutorialLength: number;
+  /** D193：轮回是否处于「待确认」窗口（探针据此验二次确认，不去解析日志文案）。 */
+  readonly prestigeArmed: boolean;
   readonly viewport: () => { readonly logicalW: number; readonly logicalH: number; readonly ratio: number };
       /** 一口气把引导推到底（探针不想等 12 秒时用） */
       finishTutorial(): void;
@@ -1555,6 +1575,9 @@ if (import.meta.env.DEV) {
     /** 画布像素比（后备缓冲 / 逻辑 960）：探针把「逻辑坐标」换算成「缓冲像素」时要乘它 */
   viewport: () => ({ logicalW: LOGICAL_W, logicalH: LOGICAL_H, ratio: pixelRatio }),
 
+  get prestigeArmed() {
+    return prestigeConfirmArmed({ armedAt: prestigeArmedAt, nowMs: Date.now() });
+  },
   get tutorialLength() {
       return TUTORIAL_LENGTH;
     },
